@@ -226,9 +226,9 @@ export const ROOMS: Room[] = [
     // the foyer wraps round the inside of it. Simplified to the two walls that
     // matter for finding the door.
     slug: 'foyer-1', name: 'Foyer 1', code: 'F1', floor: 'downstairs',
-    tape: TAPE.beige, studios: [], label: [440, 1215],
+    tape: TAPE.beige, studios: [], label: [440, 1225],
     note: 'The door to the street, and the project feature area.',
-    shape: [[305, 1163], [560, 1163], [560, 1250], [430, 1330], [305, 1235]],
+    shape: [[312, 1163], [560, 1163], [560, 1306], [378, 1306], [312, 1240]],
   },
   {
     slug: 'front-desk', name: 'Front Desk', code: 'FD', floor: 'downstairs',
@@ -237,8 +237,8 @@ export const ROOMS: Room[] = [
   },
   {
     slug: 'lounge', name: 'Lounge', code: 'LO', floor: 'downstairs',
-    tape: TAPE.beige, studios: [], label: [560, 1390], chip: [567, 1260],
-    shape: [[560, 1253], [730, 1253], [730, 1465], [310, 1465], [430, 1333]],
+    tape: TAPE.beige, studios: [], label: [575, 1395], chip: [567, 1313],
+    shape: [[484, 1306], [730, 1306], [730, 1471], [316, 1471]],
   },
   {
     slug: 'office', name: 'Office', code: 'OF', floor: 'downstairs',
@@ -273,6 +273,42 @@ export const ROOMS: Room[] = [
  * genuinely narrower - the garage is an upstairs-only extension - so its right
  * quarter is empty ground, which is the correct thing for it to say.
  */
+/**
+ * The building's own outline, per floor - the thing the rooms sit inside.
+ *
+ * Traced the same way as the rooms but off a different signal: the exterior
+ * walls are the only dark runs on the drawing longer than about 300px, so
+ * scanning each row and column for its longest run finds them and finds
+ * nothing else. Text never makes a run that long, which is what made the
+ * earlier attempt (leftmost dark pixel per row) useless - it kept returning
+ * the first letter of a room name.
+ *
+ * What came back: the top wall at y=25 and the bottom at y=738, both from
+ * x=312; the left wall at x=312; and downstairs a right wall at x=1604 with a
+ * 45-degree notch cut into the bottom-left corner, which is the recessed
+ * entrance. The notch is two diagonals with a flat between them - (312,1240)
+ * down-right to (378,1306), across, then (484,1306) down-left to (314,1478) -
+ * rather than the single apex the foyer and the lounge were drawn against
+ * first. Those two rooms follow the real walls now.
+ *
+ * Upstairs runs 240 units further right than downstairs because the garage is
+ * an upstairs-only extension; its own wall is drawn in beige on the original,
+ * which is why the long-run scan stops at the main block and the right-hand
+ * extent comes from the garage room instead.
+ */
+export const FLOOR_SHELL: Record<Floor, Pt[]> = {
+  upstairs: rect(312, 25, 1852, 739),
+  downstairs: [
+    [312, 763],
+    [1607, 763],
+    [1607, 1477],
+    [314, 1477],
+    [484, 1306],
+    [378, 1306],
+    [312, 1240],
+  ],
+};
+
 export const FLOOR_VIEW: Record<Floor, { viewBox: string; title: string; sub: string }> = {
   upstairs: { viewBox: '225 15 1640 745', title: 'Upstairs', sub: '2nd floor' },
   downstairs: { viewBox: '225 750 1640 745', title: 'Downstairs', sub: '1st floor' },

@@ -17,6 +17,7 @@
 import Base from '../layouts/Base.astro';
 import { toolById, pageTitle } from '../data/tools';
 import {
+  FLOOR_SHELL,
   FLOOR_VIEW,
   ROOMS,
   roomsOnFloor,
@@ -163,6 +164,12 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
                 <text x="30" y="78">N</text>
               </g>
 
+              {/* The building itself, under the rooms: one dark outline and
+                  the floor inside it. Without this the corridors were the same
+                  mist as the ground outside, so the plan read as a scatter of
+                  rooms rather than as a building with rooms in it. */}
+              <polygon class="mp-shell" points={FLOOR_SHELL[floor].map((q) => q.join(',')).join(' ')} />
+
               {PLACED[floor].map((p) => (
                 <g
                   class:list={['mp-room', p.studios.length > 0 && 'is-studio', !p.room.code && 'is-service']}
@@ -176,11 +183,16 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
                     {p.room.note ? ` — ${p.room.note}` : ''}
                   </title>
 
-                  <polygon
-                    class="mp-wall"
-                    points={p.points}
-                    style={p.room.tape ? `--tape: ${p.room.tape}` : undefined}
-                  />
+                  <polygon class="mp-wall" points={p.points} />
+
+                  {/* The tape rides ON the wall rather than being it. Drawn
+                      over the wall at half its weight, it reads as a cased
+                      line - a dark wall with a coloured strip down it - which
+                      is both what the room actually looks like and the only
+                      way pale tape (beige, yellow) stays visible on white. */}
+                  {p.room.tape && (
+                    <polygon class="mp-tape" points={p.points} style={`--tape: ${p.room.tape}`} />
+                  )}
 
                   {p.lines.map((line, i) => (
                     <text class="mp-name" x={p.cx} y={p.lineY[i]} style={`font-size: ${p.size}px`}>
@@ -210,6 +222,13 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
                   )}
                 </g>
               ))}
+
+              {/* The envelope again, outline only, over the rooms. A room
+                  flush against an exterior wall paints its own partition
+                  stroke across it - the lounge's beige tape was running down
+                  the outside of the building at the entrance - and on a
+                  floorplan the wall you cannot walk through has to win. */}
+              <polygon class="mp-shell-line" points={FLOOR_SHELL[floor].map((q) => q.join(',')).join(' ')} />
             </svg>
           </div>
 
@@ -329,13 +348,15 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
     color: var(--color-sm-slate);
   }
 
-  /* The plan sits on the mist rather than on the sheet's white, so the rooms
-     read as objects standing off a ground - the same relationship /today's
-     plates have to its board, and the reason the white rooms are visible at
-     all without a heavy outline round each one. */
+  /* Three tones, darkest outwards: the ground outside the building, the floor
+     inside it, then the rooms. That ordering is what makes a corridor read as
+     a corridor - it is lighter than the street and darker than a room, which
+     is exactly what it is. With the wrap and the shell both on mist, the
+     corridors WERE the street, and the plan looked like a scatter of rooms
+     rather than a building containing them. */
   .mp-plan-wrap {
     padding: 0.75rem;
-    background: var(--color-sm-mist);
+    background: #e3e7e4;
     border-radius: 12px;
   }
 
@@ -344,6 +365,22 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
     width: 100%;
     height: auto;
     overflow: visible;
+  }
+
+  /* The building. A heavy ink outline, because this is the one line on the
+     plan that is load-bearing in both senses: everything else is a partition,
+     and a partition that reads as heavily as an exterior wall tells you
+     nothing about which one you cannot walk through. */
+  .mp-shell {
+    fill: var(--color-sm-mist);
+  }
+
+  .mp-shell-line {
+    fill: none;
+    stroke: var(--color-sm-ink);
+    stroke-width: 9;
+    stroke-linejoin: round;
+    pointer-events: none;
   }
 
   .mp-north path {
@@ -366,23 +403,24 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
     cursor: default;
   }
 
-  /* The tape colour is the room's own stroke, at a weight that survives being
-     shrunk to phone width. Rooms with no tape in the key get a hairline in the
-     line token, so the wall is still drawn and the absence of tape is legible
-     as an absence rather than as a missing room. */
+  /* Partition walls: slate, and about half the envelope's weight. They used
+     to be drawn in the room's own tape colour, which is where the walls went
+     missing - beige is #f5d29c and yellow is #f5fc01, and neither of those is
+     a wall on a white room. The tape is a separate stroke over the top now. */
   .mp-wall {
     fill: var(--color-sm-paper);
-    stroke: var(--color-sm-line);
-    stroke-width: 3;
+    stroke: var(--color-sm-slate);
+    stroke-width: 5;
     stroke-linejoin: round;
-    transition:
-      fill 140ms ease,
-      stroke-width 140ms ease;
+    transition: fill 140ms ease;
   }
 
-  .mp-room[style],
-  .mp-wall[style] {
+  .mp-tape {
+    fill: none;
     stroke: var(--tape);
+    stroke-width: 2.4;
+    stroke-linejoin: round;
+    pointer-events: none;
   }
 
   /* A room that houses a studio is tinted. It is the only fill difference on
@@ -392,11 +430,11 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
     fill: var(--color-sm-wash);
   }
 
-  /* Stairs, bathrooms and the cupboards: drawn, named, and deliberately quiet.
-     They are landmarks you navigate BY rather than destinations. */
+  /* Stairs and bathrooms: drawn, named, and deliberately quiet. They are
+     landmarks you navigate BY rather than destinations - so they keep a full
+     wall (they are real rooms with real walls) and give up their fill. */
   .mp-room.is-service .mp-wall {
-    fill: #eceeec;
-    stroke: var(--color-sm-line);
+    fill: #dfe4e0;
   }
 
   .mp-name {
@@ -430,9 +468,8 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
      the wall it is drawn on and the room appears to twitch. */
   .mp-room.is-hot .mp-wall {
     fill: var(--color-sm-green-mid);
-    fill-opacity: 0.28;
+    fill-opacity: 0.32;
     stroke: var(--color-sm-green);
-    stroke-width: 6;
   }
 
   .mp-room.is-hot .mp-name {

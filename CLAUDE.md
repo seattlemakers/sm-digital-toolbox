@@ -2016,6 +2016,39 @@ the box is. It is a note on the stairs now. Worth remembering that every other
 room came from the colour extraction and this was the one read by hand, which
 is exactly why it was the one that was wrong.
 
+**The building outline is the plan, and it was missing.** The first version had
+no envelope at all - rooms floating on the mist, with the corridors the same
+tone as the street outside, so it read as a scatter of rooms rather than as a
+building containing them. It is three tones now, darkest outwards: the ground
+outside, the floor inside, then the rooms. A corridor is lighter than the
+street and darker than a room, which is exactly what a corridor is.
+
+**The exterior walls came from a different signal than the rooms.** They are
+the only dark runs on the drawing longer than about 300px, so scanning each row
+and column for its longest run finds them and nothing else. The attempt before
+that - leftmost dark pixel per row - was useless, because text is dark too and
+it kept returning the first letter of a room name.
+
+**The tape is on the wall rather than being it.** Every room's outline used to
+be stroked in its own tape colour, which is where the walls went missing: beige
+is `#f5d29c` and yellow is `#f5fc01`, and neither of those is a wall on a white
+room. The wall is slate at 5 units with the tape drawn over it at 2.4, which
+reads as a cased line - a dark wall with a coloured strip down it - and is also
+what the door frame actually looks like.
+
+**The envelope has to be drawn twice.** A room flush against an exterior wall
+paints its own partition stroke over it, so the lounge's beige tape was running
+down the outside of the building at the entrance. The shell's fill goes under
+the rooms and its outline goes over them; on a floorplan the wall you cannot
+walk through has to win.
+
+**The entrance notch is two diagonals with a flat between them**, not the single
+apex the foyer and the lounge were first drawn against: (312,1240) down-right to
+(378,1306), across to (484,1306), then down-left to (314,1478). The middle of
+the lower diagonal reads wrong in a raw scan because the Front Desk's own angled
+box sits on it - extrapolate the clean ends rather than trusting the rows in
+between.
+
 **A code chip at the shape's top-left corner is only inside rectangles.** The
 laser room is an L that wraps under the 3D printing bay, and the lounge is
 angled where the entrance notches into the building - for both, the bounding
