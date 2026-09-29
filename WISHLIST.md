@@ -90,3 +90,39 @@ its tags land on the same single event.
 
 One tag per studio, matching the room's name, would fix the door signs and a
 good deal else besides.
+
+## 6. Series sessions that stop showing up on the website's own calendar
+
+A multi-part class is one entry on the calendar, and the calendar grid draws it
+once per session, on each day that session runs. That is how the board and the
+printed sheets know a four-part series is on four different evenings, and it
+works: "CNC Certification Series (3 part series)" correctly shows on Wednesday
+23, Monday 28 and Wednesday 30 September, which is exactly what its own
+description says.
+
+For four series it stops part-way through, and always at the same place -
+where the series runs past the end of the month it started in:
+
+| series | runs | drawn on the calendar |
+| --- | --- | --- |
+| Ceramics Wheel (4 Part Series) | Sep 21 - Oct 12 | Sep 21, Sep 28 |
+| Clay Teapots - Beyond the Basics | Oct 14 - Nov 11 | Oct 14, Oct 21 |
+| Ceramics Wheel (4 Part Series) | Oct 19 - Nov 9 | Oct 19, Oct 26 |
+| Ceramics Wheel (4 Part Series) | Nov 16 - Dec 7 | Nov 16, Nov 23, Nov 30 |
+
+The October page genuinely has nothing on 5 or 12 October for the first of
+those, even though the event's own page lists "October 5 @ 7-9 pm" and
+"October 12 @ 7-9 pm" in its description, and its dates say it runs until 9pm
+on 12 October. So the sessions exist and are advertised; the calendar just
+does not draw them.
+
+**What that costs us:** those evenings are missing from the wall board and from
+the studio's printed sheet. Somebody standing in front of the ceramics room on
+5 October is told nothing is on, while a four-part class is running in it.
+
+This one is a question for whoever administers the calendar plugin rather than
+something we can fix - we read what the page draws, deliberately, because
+guessing the dates instead gets them wrong. Weekly arithmetic off the start and
+end dates would have put the CNC series on the wrong days, and the descriptions
+that do list the dates are written five different ways and are not always right
+either ("Sunday, October 5" on the weekend woodshop series is a Monday).

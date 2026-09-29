@@ -26,6 +26,11 @@ const MONTHS = {
 
 const pad = (n) => String(n).padStart(2, '0');
 
+/** "August 5, 2026 6:00 pm" -> "18:00". The clock half of a tooltip date. */
+function clockOf(iso) {
+  return iso.slice(11);
+}
+
 /** "August 5, 2026 6:00 pm" -> "2026-08-05T18:00" (floating local time). */
 function parseWhen(text) {
   const m = /^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})\s+(\d{1,2}):(\d{2})\s*(am|pm)$/i.exec(text.trim());
@@ -54,13 +59,74 @@ function decode(s) {
     .trim();
 }
 
+/**
+ * The three things worth finding, in document order.
+ *
+ * Read as one alternation rather than three passes, because what an anchor
+ * *means* depends on the month header and day cell above it - see the note on
+ * `parse()`. `matchAll` walks the document once and the groups say which of
+ * the three matched.
+ */
+const TOKEN = new RegExp(
+  [
+    // <h3 class="pe-month-header">Showing: September 2026</h3>
+    '<h3 class="pe-month-header"[^>]*>\\s*Showing:\\s*([A-Za-z]+)\\s+(\\d{4})\\s*</h3>',
+    // <li class="event-day mon"><div class="head"><span class="inline-day">Mon</span>21</div>
+    '<li class="event-day[^"]*"><div class="head"><span class="inline-day">[^<]*</span>(\\d{1,2})</div>',
+    // the event link itself
+    '<a\\s+title="([^"]*)"\\s+href="([^"]+)"\\s+rel="(\\d+)"\\s+class="([^"]*)"',
+  ].join('|'),
+  'g',
+);
+
+/**
+ * The day an event is **on** comes from the grid cell it sits in, not from its
+ * own tooltip, and that distinction is the whole of the multi-session bug.
+ *
+ * A series is one post with one tooltip, and that tooltip states the *span*:
+ * "Ceramics Wheel (4 Part Series)" reads September 21 7:00 pm - October 12
+ * 9:00 pm. Read literally that is a three-week class. What the page actually
+ * does is render the anchor once per session, in the cell of the day that
+ * session runs - four anchors, all carrying the same span - so the sessions
+ * were there all along and the parser was throwing them away: it dated every
+ * anchor from the tooltip and then deduplicated on `id@start`, which collapsed
+ * all four back into one row on the first day. Weekly sessions two and three
+ * vanished, and any session in a later month vanished with the month.
+ *
+ * So the cell gives the date and the tooltip gives the clock times. The clock
+ * times are right on every session - that was already established for
+ * `sessionEnd()`, which was the workaround for reading the span as a session -
+ * and the cell is the source stating, per day, that this thing is on.
+ *
+ * Nothing is inferred. The dates were tried as arithmetic first - weekly from
+ * the span - and the calendar refutes it: "CNC Certification Series (3 part
+ * series)" runs Wednesday, **Monday**, Wednesday, and "Woodshop Basics (4 Part
+ * Series) [Weekends]" is two Saturday/Sunday pairs. Reading them out of the
+ * description prose was the other option and is worse still: five different
+ * phrasings across thirteen series, one of them ("Sunday, October 5" on a
+ * Monday) already wrong at the source, and one series with no list at all.
+ */
 export function parse(html) {
-  const anchor = /<a\s+title="([^"]*)"\s+href="([^"]+)"\s+rel="(\d+)"\s+class="([^"]*)"/g;
   const events = [];
   const seen = new Set();
 
-  for (const m of html.matchAll(anchor)) {
-    const [, titleAttr, href, rel, classAttr] = m;
+  let year = null;
+  let month = null;
+  let day = null;
+
+  for (const m of html.matchAll(TOKEN)) {
+    const [, headMonth, headYear, cellDay, titleAttr, href, rel, classAttr] = m;
+
+    if (headMonth) {
+      month = MONTHS[headMonth.toLowerCase()] ?? null;
+      year = Number(headYear);
+      day = null;
+      continue;
+    }
+    if (cellDay) {
+      day = Number(cellDay);
+      continue;
+    }
     if (!classAttr.includes('pp-tip')) continue;
 
     const titleMatch = /pe-hover-title[^>]*>(.*?)<\/div>/s.exec(titleAttr);
@@ -80,16 +146,23 @@ export function parse(html) {
 
     const endRaw = dates[dates.length - 1];
     const tsMatch = /\*(\d{9,11})\*/.exec(endRaw);
-    const start = parseWhen(decode(dates[0].replace(/<[^>]+>/g, '')));
-    const end = parseWhen(decode(endRaw.replace(/\*\d+\*/, '').replace(/<[^>]+>/g, '')));
-    if (!start) continue;
+    const spanStart = parseWhen(decode(dates[0].replace(/<[^>]+>/g, '')));
+    const spanEnd = parseWhen(decode(endRaw.replace(/\*\d+\*/, '').replace(/<[^>]+>/g, '')));
+    if (!spanStart) continue;
+
+    // The cell's date with the tooltip's clock times. Falling back to the span
+    // keeps an anchor that somehow sits outside a grid - a markup change here
+    // should cost the session dates, not the event.
+    const on = year && month && day ? `${year}-${pad(month)}-${pad(day)}` : spanStart.slice(0, 10);
+    const start = `${on}T${clockOf(spanStart)}`;
+    const end = spanEnd ? `${on}T${clockOf(spanEnd)}` : null;
 
     const categories = classAttr
       .split(/\s+/)
       .filter((c) => c && !NOISE.has(c));
 
-    // The same event can appear more than once in the grid (multi-day series
-    // render on each day they touch); the post id plus start time is unique.
+    // One row per cell the event appears in, so a series' sessions are separate
+    // events. `id@start` still catches a genuine duplicate inside one cell.
     const key = `${rel}@${start}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -99,8 +172,10 @@ export function parse(html) {
       title: name,
       url: href,
       start,
-      end: end ?? null,
-      endTs: tsMatch ? Number(tsMatch[1]) : null,
+      end,
+      // The span's final end, so it belongs to the last session only. Kept
+      // because the shape is public; nothing on the site reads it.
+      endTs: tsMatch && end === spanEnd ? Number(tsMatch[1]) : null,
       available,
       soldOut: classAttr.includes('pe-inv-out') || available === 0,
       kinds: categories.filter((c) => KINDS.includes(c)),

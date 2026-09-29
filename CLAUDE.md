@@ -401,6 +401,51 @@ deliberately frozen, and it is the only one.
 
 ### The board
 
+**A series is one post drawn once per session, and the day comes from the grid
+cell rather than the tooltip.** Fixed 2026-09-29; before that, multi-session
+classes appeared on their first evening and nowhere else.
+
+The calendar page is five month grids, each cell a day. A series - "Ceramics
+Wheel (4 Part Series)", "CNC Certification Series (3 part series)" - is a
+single post whose anchor is rendered once in each day cell it runs on, and
+every one of those anchors carries the *same* tooltip, which states the span:
+September 21 7:00 pm to October 12 9:00 pm. The parser dated each anchor from
+that tooltip and then deduplicated on `id@start`, so all four sessions
+collapsed into one row on the first day. Sessions two and three vanished, and
+any session in a later month vanished with the month - which is why an October
+sheet for the ceramics room could show nothing at all for a class running in
+it. 192 rows became 230.
+
+So `parse()` walks the document once through one alternation - month header,
+day cell, anchor - and keeps the current year, month and day. The cell gives
+the date, the tooltip gives the clock times. `sessionEnd()` in day-status.ts
+was the workaround for this and is what established that the clock times are
+right on every session; it is still there for the anchor that somehow lands
+outside a grid, which falls back to the tooltip's own dates.
+
+**Nothing about the dates is inferred, and both ways of inferring them were
+tried and are wrong.** Expanding the span weekly puts "CNC Certification
+Series" on two Wednesdays when it actually runs Wednesday, **Monday**,
+Wednesday, and turns "Woodshop Basics (4 Part Series) [Weekends]" - two
+Saturday/Sunday pairs - into something else entirely. Reading the dates out of
+the description prose is worse: five different phrasings across thirteen
+series, one series with no list at all, and at least one list wrong at the
+source ("Sunday, October 5" is a Monday; the grid has the Sunday right).
+
+**The source states two independent checks and both hold.** Of 177
+single-occurrence rows, the cell date equals the tooltip's start date **177
+times** - zero mismatches, which is what says the cell is the right thing to
+read. And for eight of the twelve series the number of cells the post appears
+in equals the part count written in its own title: `(4 Part Series)` in four
+cells, `(3 part series)` in three. `npm test` pins the CNC series
+specifically, because it is the one weekly arithmetic gets wrong.
+
+The other four series are short, and that is the website rather than us - see
+WISHLIST item 6. Each stops where it crosses out of the month it began in, and
+the page genuinely has nothing in those later cells. Left as it is on purpose:
+filling them in would take the guesswork above, and a door sign is the last
+place to put a guessed date.
+
 **The feed's `end` is not the session's end, and this is the single thing here
 most likely to bite someone.** A multi-part course carries the end of its
 *last* session: "Woodshop Basics (4 Part Series)" runs
