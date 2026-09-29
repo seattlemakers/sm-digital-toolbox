@@ -64,3 +64,32 @@ document.addEventListener('focusin', (e) => {
 });
 
 document.addEventListener('focusout', clear);
+
+/* ------------------------------------------------------------ labels --- */
+
+/**
+ * The labels switch. Off by default while the geometry is being checked -
+ * names, codes, icons, tape and the studio tint all come off the drawing, and
+ * what is left is walls.
+ *
+ * The state lives in the URL rather than only in the checkbox, so "here it is
+ * with the labels on" is a link. `replaceState` rather than `pushState`:
+ * flicking the switch four times should not put four entries in the back
+ * button between you and the page you came from.
+ */
+const main = document.getElementById('mp-main');
+const labels = document.getElementById('mp-labels') as HTMLInputElement | null;
+
+if (main && labels) {
+  const on = new URLSearchParams(location.search).get('labels') === '1';
+  labels.checked = on;
+  main.classList.toggle('labels-off', !on);
+
+  labels.addEventListener('change', () => {
+    main.classList.toggle('labels-off', !labels.checked);
+    const url = new URL(location.href);
+    if (labels.checked) url.searchParams.set('labels', '1');
+    else url.searchParams.delete('labels');
+    history.replaceState(null, '', url);
+  });
+}

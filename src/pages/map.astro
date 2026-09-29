@@ -134,11 +134,26 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
     <span class="sm-stamp">Interbay · 2 floors · {ROOMS.length} rooms</span>
   </div>
 
-  <main class="sm-sheet">
+  <main class="sm-sheet labels-off" id="mp-main">
     <header class="sm-hero">
       <h1 class="sm-h1">{TOOL.name}</h1>
       <p class="sm-lead">{TOOL.blurb}</p>
     </header>
+
+    {/* Walls-only is the default while the geometry is being checked. Labels
+        are a switch rather than a deletion, and the switch writes `?labels=1`
+        so the labelled version is a link somebody can send. The room names are
+        still in each room's <title>, so hovering names it without putting a
+        word back on the drawing. */}
+    <div class="mp-controls no-print">
+      <label class="mp-switch">
+        <input type="checkbox" id="mp-labels" />
+        <span>Labels</span>
+      </label>
+      <span class="mp-controls-note">
+        Walls only. Hover a room to name it.
+      </span>
+    </div>
 
     {
       FLOORS.map((floor) => (
@@ -321,6 +336,61 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
 </script>
 
 <style>
+  /* ------------------------------------------------------ walls only --- */
+
+  /* Everything that is not a wall comes off the drawing: names, codes, studio
+     icons, the tape, and the tint that says a room houses a studio. What is
+     left is the geometry, which is the only thing you can judge while any of
+     the rest is competing for the same space. The rooms are still there and
+     still carry their <title>, so the plan stays readable by pointing at it. */
+  .labels-off .mp-name,
+  .labels-off .mp-icon,
+  .labels-off .mp-chip,
+  .labels-off .mp-tape {
+    display: none;
+  }
+
+  .labels-off .mp-room.is-studio .mp-wall {
+    fill: var(--color-sm-paper);
+  }
+
+  .mp-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .mp-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-sm-slate);
+    cursor: pointer;
+  }
+
+  .mp-switch input {
+    accent-color: var(--color-sm-green);
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .mp-controls-note {
+    font-size: 0.8125rem;
+    color: var(--color-sm-slate);
+  }
+
+  /* With the labels on, the note describes a state that is no longer true. */
+  #mp-main:not(.labels-off) .mp-controls-note {
+    visibility: hidden;
+  }
+
   /* ---------------------------------------------------------- the plans --- */
 
   .mp-floor + .mp-floor,

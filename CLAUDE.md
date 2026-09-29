@@ -2016,6 +2016,13 @@ the box is. It is a note on the stairs now. Worth remembering that every other
 room came from the colour extraction and this was the one read by hand, which
 is exactly why it was the one that was wrong.
 
+**Labels are a switch, and it starts off.** While the geometry is being checked
+the drawing shows walls and nothing else - no names, codes, studio icons, tape
+or studio tint - because none of those can be judged at the same time as the
+thing underneath them, and all of them compete for the same space. Each room
+keeps its `<title>`, so the plan is still readable by pointing at it. The switch
+writes `?labels=1`, which makes the labelled version a link.
+
 **The building outline is the plan, and it was missing.** The first version had
 no envelope at all - rooms floating on the mist, with the corridors the same
 tone as the street outside, so it read as a scatter of rooms rather than as a
