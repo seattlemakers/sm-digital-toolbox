@@ -102,6 +102,21 @@ Done:
   300dpi and checked against the address printed beside it.
 - The whole sheet lives in the query string, so a studio can bookmark its own.
 
+Space map (`/map`) is built and verified in the browser, added 2026-09-29.
+
+Done:
+- Both floors drawn from `src/data/rooms.ts` - 33 rooms, their tape codes, and
+  which studios each one houses. Traced off the space's own floorplan drawing
+  rather than eyeballed; see *The map* below for how.
+- `rooms.ts` points into `studios.ts` by slug and repeats nothing about a
+  studio, so the map, the calendar and the board cannot disagree about what a
+  studio is called or which icon it carries. A bad slug throws at build.
+- The gaps are rendered rather than hidden: ceramics, leatherworking and
+  lapidary say "no room yet", and any room whose note carries a question mark
+  is listed under *Still to confirm*.
+- Hovering a studio lights every room it is in, on both floors, and hovering a
+  room lights its row. One delegated handler over `data-room` / `data-studios`.
+
 Label maker (`/labels`) is built and verified against a print-to-PDF. Most of
 the *Implementation notes* below are about it.
 
@@ -1958,6 +1973,92 @@ six-row path was verified by forcing `--weeks` and measuring rather than by
 rendering real data into it. The geometry is proven; what has never been seen is
 a *full* six-row sheet, so check the trim pass on one when the calendar reaches
 it.
+
+### The map
+
+**Rooms and studios are two lists, and flattening them would force a lie.** A
+studio is a discipline the calendar tags events with; a room is a place with
+walls, a door and a colour of tape on the frame. They never line up one-to-one -
+the woodshop is two rooms, the MegaStudio holds several disciplines at once, and
+the kitchen, the darkroom and the utilities cupboard host no studio at all. So
+`rooms.ts` carries an array of studio *slugs* and repeats nothing else about
+them; `studios.ts` stays the single source of truth for names and icons. A slug
+that does not resolve throws at module load, which fails the build - a typo
+would otherwise render as a room with a missing icon and no name beside it,
+which looks like a styling bug and is not one.
+
+**The geometry was extracted from the drawing, not eyeballed.** Every room on
+the plan is outlined in its own tape colour, which means each room's outline is
+one connected component of one colour - so its bounding box *is* the room. The
+pipeline, all of it built-in tooling:
+
+1. `sips -s format png` turns the webp into a PNG.
+2. A ~50-line decoder in Node (`zlib.inflateSync` plus the five PNG row
+   filters) gives raw RGB. No image library is installed and none is needed -
+   the same reasoning as the JPEG SOF parsing in event-image.mjs.
+3. Flood-fill 8-connected components within a colour distance of each tape
+   colour, report bounding boxes, drop anything under ~500px.
+
+That gave every coloured room outright. The black-walled rooms - the bathrooms,
+the stairs - came off a dark-pixel occupancy map of the same image printed as
+ASCII at 10px per cell, which makes the wall grid readable directly.
+
+**The tape colours are read off the key's own swatches**, walking down the
+swatch column and reporting each solid run, rather than sampled from a room's
+stroke. The key is what the space tapes to; a room's stroke is one drawing of
+it, and an antialiased one.
+
+**"Storage?" on the upstairs plan is a callout, not a room.** It was drawn as a
+rectangle first, and came out sitting on top of the stairs. The tells were both
+in the raster: it has leader lines running out of it, and the stair hatch
+continues *underneath* it - the row profile of hatch pixels does not drop where
+the box is. It is a note on the stairs now. Worth remembering that every other
+room came from the colour extraction and this was the one read by hand, which
+is exactly why it was the one that was wrong.
+
+**A code chip at the shape's top-left corner is only inside rectangles.** The
+laser room is an L that wraps under the 3D printing bay, and the lounge is
+angled where the entrance notches into the building - for both, the bounding
+box's top-left is in the room next door, and the `L` chip rendered inside 3D
+Printing. Those two rooms carry a `chip` anchor. Checked by point-in-polygon
+over every chip and every label rather than by looking, which is also what
+confirmed the labels: 0 outside, on both floors.
+
+**SVG has no text wrapping, so the labels are laid out in the frontmatter.** A
+room name is measured against its own room's width at build time and wrapped
+greedily, at a size that steps down with the room; the studio icons then take
+what height is left, and a room too short for both drops the icons rather than
+the name. The 0.53 is Figtree semibold's average advance as a fraction of its
+size - close enough that the size step, not the estimate, is what keeps a name
+between its own walls.
+
+**Both floors share one viewBox size, and the empty quarter is the point.** The
+downstairs plan is genuinely narrower than the upstairs one, because the garage
+is an upstairs-only extension. Given its own extents each floor would fill its
+frame and the building would appear to change shape between them; sharing the
+frame puts the two plans at one scale, lines the walls up vertically, and lets
+the blank right-hand quarter say the true thing.
+
+**The compass needs a gutter, or a room eats it.** Drawn at the viewBox origin
+it landed inside whichever room owns the top-left corner and was painted over,
+since the rooms are drawn after it. The viewBox starts 80 units left of the
+building instead.
+
+**An open question is a `?` in the note, not a flag of its own.** The notes are
+written to be read on the page, and a second field saying "this one is
+unresolved" would be the same fact in two places, free to disagree. The first
+version filtered on *rooms with no studio at all*, which missed exactly the
+interesting ones - the MegaStudio has screen printing in it **and** an open
+question about what else does.
+
+**Every room is tinted by whether it houses a studio, and nothing else.** It is
+the only fill difference on the plan, so "is there a studio in here" is
+answerable without reading a word. Stairs and bathrooms are greyed: they are
+landmarks you navigate *by* rather than destinations.
+
+**The live highlight is an overlay, not a thicker wall.** A stroke that grows
+moves the wall it is drawn on, and the room appears to twitch under the cursor -
+the same reasoning as /today's live frame.
 
 ### The rest
 

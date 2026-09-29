@@ -1,0 +1,610 @@
+---
+/**
+ * Where everything is: the building, one floor at a time, with the studios
+ * placed in the rooms that hold them.
+ *
+ * The plan is drawn from data/rooms.ts rather than being an image with hotspots
+ * over it. That costs a coordinate list and buys three things an image cannot:
+ * the rooms are text (so they are searchable and legible at any size), the tape
+ * colours are the same tokens the key uses, and a room's studios come out of
+ * studios.ts - so this page and the calendar cannot disagree about what a
+ * studio is called or which icon it carries.
+ *
+ * The room labels are laid out here, in the frontmatter, rather than by the
+ * browser. SVG has no text wrapping, so a room name either gets measured
+ * against its own room's width at build time or runs out over the wall.
+ */
+import Base from '../layouts/Base.astro';
+import { toolById, pageTitle } from '../data/tools';
+import {
+  FLOOR_VIEW,
+  ROOMS,
+  roomsOnFloor,
+  roomsForStudio,
+  studiosInRoom,
+  studiosWithoutRoom,
+  type Floor,
+  type Pt,
+  type Room,
+} from '../data/rooms';
+import { STUDIOS } from '../data/studios';
+
+const TOOL = toolById('map');
+
+const FLOORS: Floor[] = ['upstairs', 'downstairs'];
+
+const bbox = (pts: Pt[]) => {
+  const xs = pts.map((p) => p[0]);
+  const ys = pts.map((p) => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys);
+  return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+};
+
+/**
+ * Greedy wrap against a character budget. The 0.53 is Figtree semibold's
+ * average advance as a fraction of its size - close enough to keep a name
+ * inside its own walls, and the labels drop a size rather than relying on it
+ * being exact.
+ */
+function wrap(text: string, maxChars: number): string[] {
+  if (maxChars < 3) return [text];
+  const out: string[] = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    const next = line ? `${line} ${word}` : word;
+    if (next.length <= maxChars || !line) line = next;
+    else { out.push(line); line = word; }
+  }
+  if (line) out.push(line);
+  return out;
+}
+
+/** White on a dark chip, ink on a pale one. The tape colours span both. */
+function onColour(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#1a1a1a' : '#ffffff';
+}
+
+/** Everything the renderer needs for one room, measured once. */
+function place(room: Room) {
+  const b = bbox(room.shape);
+  const studios = studiosInRoom(room);
+  const anchor = room.label ?? [b.cx, b.cy];
+
+  // Name size steps down with the room, so a bathroom does not shout as loudly
+  // as the woodshop and a small room's name still fits between its own walls.
+  const size = b.w < 130 || b.h < 100 ? 17 : b.w < 230 ? 20 : 23;
+  const lines = wrap(room.name, Math.floor((b.w - 16) / (0.53 * size)));
+
+  // Icons ride under the name. They are the thing you scan for, so they get the
+  // room's height before the name does - a room too short for both drops them.
+  const icon = Math.min(46, b.h - lines.length * size * 1.15 - 22, b.w / Math.max(studios.length, 1) - 8);
+  const showIcons = studios.length > 0 && icon >= 22;
+  const iconBlock = showIcons ? icon + 8 : 0;
+
+  const textH = lines.length * size * 1.15;
+  const top = anchor[1] - (textH + iconBlock) / 2;
+  const iconRowW = showIcons ? studios.length * icon + (studios.length - 1) * 6 : 0;
+
+  return {
+    room,
+    studios,
+    points: room.shape.map((p) => p.join(',')).join(' '),
+    b,
+    size,
+    lines,
+    lineY: lines.map((_, i) => top + size * 0.85 + i * size * 1.15),
+    cx: anchor[0],
+    showIcons,
+    icon,
+    iconY: top + textH + 8,
+    iconX: studios.map((_, i) => anchor[0] - iconRowW / 2 + i * (icon + 6)),
+    chip: room.code
+      ? { x: (room.chip?.[0] ?? b.x0) + 7, y: (room.chip?.[1] ?? b.y0) + 7,
+          w: Math.max(26, room.code.length * 11 + 12), h: 22,
+          fill: room.tape ?? '#f5d29c', ink: onColour(room.tape ?? '#f5d29c') }
+      : null,
+  };
+}
+
+const PLACED = Object.fromEntries(
+  FLOORS.map((f) => [f, roomsOnFloor(f).map(place)]),
+) as Record<Floor, ReturnType<typeof place>[]>;
+
+const ORPHANS = studiosWithoutRoom();
+
+/**
+ * Rooms whose note asks a question. A question mark is the marker rather than a
+ * flag of its own: these notes are written for a person to read on the page,
+ * and a second field saying "this one is unresolved" would be a fact kept in
+ * two places that could disagree. It deliberately catches rooms that already
+ * have a studio - the MegaStudio has screen printing in it AND an open question
+ * about what else does, and filtering on an empty studio list missed exactly
+ * those.
+ */
+const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
+---
+
+<Base title={pageTitle(TOOL)} description={TOOL.blurb} shellWidth="72rem">
+  <div class="sm-crumb-row">
+    <a class="sm-back" href="/">← All tools</a>
+    <span class="sm-stamp">Interbay · 2 floors · {ROOMS.length} rooms</span>
+  </div>
+
+  <main class="sm-sheet">
+    <header class="sm-hero">
+      <h1 class="sm-h1">{TOOL.name}</h1>
+      <p class="sm-lead">{TOOL.blurb}</p>
+    </header>
+
+    {
+      FLOORS.map((floor) => (
+        <section class="mp-floor" data-floor={floor}>
+          <h2 class="mp-floor-h">
+            {FLOOR_VIEW[floor].title}
+            <span>{FLOOR_VIEW[floor].sub}</span>
+          </h2>
+
+          <div class="mp-plan-wrap">
+            <svg
+              class="mp-plan"
+              viewBox={FLOOR_VIEW[floor].viewBox}
+              role="img"
+              aria-label={`Floorplan of the ${FLOOR_VIEW[floor].title.toLowerCase()} floor`}
+            >
+              {/* North is up on the drawing this was traced from, so it is up
+                  here. The arrow is the one thing on the plan that is not a
+                  room, and it is worth the space: every instruction anyone
+                  gives in this building is "past the woodshop", not "north". */}
+              <g class="mp-north" transform={`translate(${+FLOOR_VIEW[floor].viewBox.split(' ')[0] + 8} ${+FLOOR_VIEW[floor].viewBox.split(' ')[1] + 10})`}>
+                <path d="M 18 58 L 30 18 L 42 58 L 30 48 Z" />
+                <text x="30" y="78">N</text>
+              </g>
+
+              {PLACED[floor].map((p) => (
+                <g
+                  class:list={['mp-room', p.studios.length > 0 && 'is-studio', !p.room.code && 'is-service']}
+                  data-room={p.room.slug}
+                  data-studios={p.room.studios.join(' ')}
+                >
+                  <title>
+                    {p.room.name}
+                    {p.room.code ? ` (${p.room.code})` : ''}
+                    {p.studios.length ? ` — ${p.studios.map((s) => s.name).join(', ')}` : ''}
+                    {p.room.note ? ` — ${p.room.note}` : ''}
+                  </title>
+
+                  <polygon
+                    class="mp-wall"
+                    points={p.points}
+                    style={p.room.tape ? `--tape: ${p.room.tape}` : undefined}
+                  />
+
+                  {p.lines.map((line, i) => (
+                    <text class="mp-name" x={p.cx} y={p.lineY[i]} style={`font-size: ${p.size}px`}>
+                      {line}
+                    </text>
+                  ))}
+
+                  {p.showIcons &&
+                    p.studios.map((s, i) => (
+                      <image
+                        class="mp-icon"
+                        href={s.icon}
+                        x={p.iconX[i]}
+                        y={p.iconY}
+                        width={p.icon}
+                        height={p.icon}
+                      />
+                    ))}
+
+                  {p.chip && (
+                    <g class="mp-chip">
+                      <rect x={p.chip.x} y={p.chip.y} width={p.chip.w} height={p.chip.h} rx="5" fill={p.chip.fill} />
+                      <text x={p.chip.x + p.chip.w / 2} y={p.chip.y + 16} fill={p.chip.ink}>
+                        {p.room.code}
+                      </text>
+                    </g>
+                  )}
+                </g>
+              ))}
+            </svg>
+          </div>
+
+          <ul class="mp-rooms">
+            {roomsOnFloor(floor).map((r) => (
+              <li class="mp-row" data-room={r.slug} data-studios={r.studios.join(' ')} tabindex="0">
+                <span
+                  class:list={['mp-code', !r.code && 'is-none']}
+                  style={r.tape ? `--tape: ${r.tape}` : undefined}
+                >
+                  {r.code ?? '·'}
+                </span>
+                <span class="mp-row-body">
+                  <span class="mp-row-name">{r.name}</span>
+                  {r.studios.length > 0 && (
+                    <span class="mp-row-studios">
+                      {studiosInRoom(r).map((s) => (
+                        <span class="mp-tag">
+                          <img src={s.icon} alt="" width="18" height="18" />
+                          {s.name}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                  {r.note && <i class="mp-row-note">{r.note}</i>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    }
+
+    <section class="mp-index">
+      <h2 class="mp-floor-h">Studios<span>{STUDIOS.length} in the calendar</span></h2>
+      <p class="mp-lede">
+        The studio list is <b>data/studios.ts</b> — the same one the calendar and the
+        daily board read. This page only says which room each one is in, so a studio
+        renamed there is renamed here, and a studio with nowhere to send anybody
+        shows up below rather than quietly going missing.
+      </p>
+
+      <ul class="mp-studios">
+        {
+          STUDIOS.map((s) => {
+            const where = roomsForStudio(s.slug);
+            return (
+              <li class:list={['mp-studio', where.length === 0 && 'is-orphan']} data-studio={s.slug} tabindex="0">
+                <img src={s.icon} alt="" width="30" height="30" />
+                <span class="mp-studio-body">
+                  <span class="mp-studio-name">{s.name}</span>
+                  <span class="mp-studio-where">
+                    {where.length === 0
+                      ? 'no room yet'
+                      : where.map((r) => `${r.name}${r.code ? ` · ${r.code}` : ''}`).join('  +  ')}
+                  </span>
+                </span>
+              </li>
+            );
+          })
+        }
+      </ul>
+
+      {
+        (ORPHANS.length > 0 || OPEN_QUESTIONS.length > 0) && (
+          <div class="mp-todo">
+            <h3>Still to confirm</h3>
+            <ul>
+              {ORPHANS.length > 0 && (
+                <li>
+                  <b>{ORPHANS.map((s) => s.name).join(', ')}</b> — no room on the plan
+                  yet. Which room, or rooms, do these live in?
+                </li>
+              )}
+              {OPEN_QUESTIONS.map((r) => (
+                <li>
+                  <b>{r.name}</b> — {r.note}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+    </section>
+  </main>
+</Base>
+
+<script>
+  import '../scripts/map';
+</script>
+
+<style>
+  /* ---------------------------------------------------------- the plans --- */
+
+  .mp-floor + .mp-floor,
+  .mp-index {
+    margin-top: 3.25rem;
+  }
+
+  .mp-floor-h {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    margin-bottom: 1rem;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--color-sm-ink);
+  }
+
+  .mp-floor-h span {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-sm-slate);
+  }
+
+  /* The plan sits on the mist rather than on the sheet's white, so the rooms
+     read as objects standing off a ground - the same relationship /today's
+     plates have to its board, and the reason the white rooms are visible at
+     all without a heavy outline round each one. */
+  .mp-plan-wrap {
+    padding: 0.75rem;
+    background: var(--color-sm-mist);
+    border-radius: 12px;
+  }
+
+  .mp-plan {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .mp-north path {
+    fill: var(--color-sm-slate);
+    opacity: 0.55;
+  }
+
+  .mp-north text {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    text-anchor: middle;
+    fill: var(--color-sm-slate);
+    opacity: 0.55;
+  }
+
+  /* --------------------------------------------------------- the rooms --- */
+
+  .mp-room {
+    cursor: default;
+  }
+
+  /* The tape colour is the room's own stroke, at a weight that survives being
+     shrunk to phone width. Rooms with no tape in the key get a hairline in the
+     line token, so the wall is still drawn and the absence of tape is legible
+     as an absence rather than as a missing room. */
+  .mp-wall {
+    fill: var(--color-sm-paper);
+    stroke: var(--color-sm-line);
+    stroke-width: 3;
+    stroke-linejoin: round;
+    transition:
+      fill 140ms ease,
+      stroke-width 140ms ease;
+  }
+
+  .mp-room[style],
+  .mp-wall[style] {
+    stroke: var(--tape);
+  }
+
+  /* A room that houses a studio is tinted. It is the only fill difference on
+     the plan, so "is there a studio in here" is answerable without reading a
+     word - which is what somebody standing in a corridor with a phone wants. */
+  .mp-room.is-studio .mp-wall {
+    fill: var(--color-sm-wash);
+  }
+
+  /* Stairs, bathrooms and the cupboards: drawn, named, and deliberately quiet.
+     They are landmarks you navigate BY rather than destinations. */
+  .mp-room.is-service .mp-wall {
+    fill: #eceeec;
+    stroke: var(--color-sm-line);
+  }
+
+  .mp-name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-anchor: middle;
+    fill: var(--color-sm-ink);
+    paint-order: stroke;
+    pointer-events: none;
+  }
+
+  .mp-room.is-service .mp-name {
+    font-weight: 600;
+    fill: var(--color-sm-slate);
+  }
+
+  .mp-icon {
+    pointer-events: none;
+  }
+
+  .mp-chip text {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-anchor: middle;
+  }
+
+  /* Highlight, driven from either direction - the plan or the lists below it.
+     An overlay rather than a thicker stroke, because a stroke that grows moves
+     the wall it is drawn on and the room appears to twitch. */
+  .mp-room.is-hot .mp-wall {
+    fill: var(--color-sm-green-mid);
+    fill-opacity: 0.28;
+    stroke: var(--color-sm-green);
+    stroke-width: 6;
+  }
+
+  .mp-room.is-hot .mp-name {
+    fill: var(--color-sm-green-dark);
+  }
+
+  /* --------------------------------------------------------- the lists --- */
+
+  .mp-rooms,
+  .mp-studios {
+    display: grid;
+    gap: 0.15rem;
+    margin-top: 1rem;
+  }
+
+  .mp-rooms {
+    grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  }
+
+  .mp-row,
+  .mp-studio {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 9px;
+    transition: background-color 140ms ease;
+  }
+
+  .mp-row.is-hot,
+  .mp-studio.is-hot,
+  .mp-row:focus-visible,
+  .mp-studio:focus-visible {
+    background: var(--color-sm-wash);
+    outline: none;
+  }
+
+  /* The code is the thing actually written on the door frame, in the colour
+     actually taped to it, so it is set as the tape rather than described. */
+  .mp-code {
+    flex: 0 0 auto;
+    min-width: 2.4rem;
+    padding: 0.18rem 0.35rem;
+    border-radius: 6px;
+    background: var(--tape, var(--color-sm-line));
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-align: center;
+    color: var(--color-sm-ink);
+  }
+
+  .mp-code.is-none {
+    background: transparent;
+    color: var(--color-sm-line);
+  }
+
+  .mp-row-body,
+  .mp-studio-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .mp-row-name,
+  .mp-studio-name {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-sm-ink);
+  }
+
+  .mp-row-studios {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 0.6rem;
+  }
+
+  .mp-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    font-size: 0.8125rem;
+    color: var(--color-sm-green-dark);
+  }
+
+  .mp-row-note,
+  .mp-studio-where {
+    font-size: 0.8125rem;
+    font-style: normal;
+    line-height: 1.45;
+    color: var(--color-sm-slate);
+  }
+
+  .mp-row-note {
+    font-style: italic;
+  }
+
+  /* ------------------------------------------------------- the studios --- */
+
+  .mp-lede {
+    max-width: 62ch;
+    margin-bottom: 1rem;
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    color: var(--color-sm-slate);
+  }
+
+  .mp-studios {
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  }
+
+  .mp-studio img {
+    flex: 0 0 auto;
+    margin-top: 0.1rem;
+  }
+
+  /* A studio with no room is the one thing this page exists to surface, so it
+     is marked on the studio itself as well as listed again below - a reader
+     scanning the grid should not have to reach the footnote to find it. */
+  .mp-studio.is-orphan .mp-studio-where {
+    font-weight: 600;
+    color: var(--color-sm-alert);
+  }
+
+  .mp-studio.is-orphan img {
+    opacity: 0.45;
+  }
+
+  .mp-todo {
+    margin-top: 1.75rem;
+    padding: 1.1rem 1.25rem;
+    background: var(--color-sm-mist);
+    border-left: 4px solid var(--color-sm-green-mid);
+    border-radius: 0 10px 10px 0;
+  }
+
+  .mp-todo h3 {
+    margin-bottom: 0.5rem;
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-sm-slate);
+  }
+
+  .mp-todo ul {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .mp-todo li {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--color-sm-ink-2);
+  }
+
+  @media (max-width: 40rem) {
+    .mp-rooms,
+    .mp-studios {
+      grid-template-columns: 1fr;
+    }
+
+    .mp-plan-wrap {
+      /* The plan is the one thing here that cannot usefully shrink any
+         further, so at phone width it gets the sheet's own gutters back. */
+      margin: 0 calc(var(--pad-x) * -1);
+      padding: 0.6rem;
+      border-radius: 0;
+    }
+  }
+</style>

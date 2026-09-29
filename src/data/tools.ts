@@ -16,7 +16,7 @@
 
 export type Tool = {
   /** Stable key for `toolById`. Not user-visible, and not the URL. */
-  id: 'today' | 'calendar' | 'labels';
+  id: 'today' | 'calendar' | 'labels' | 'map';
   name: string;
   /** Path. Deliberately unchanged by renames: /labels encodes a saved label
       design in its query string, so old bookmarks must keep working. */
@@ -53,6 +53,12 @@ export const TOOLS: Tool[] = [
     href: '/calendar',
     name: 'Studio Calendar',
     blurb: "Print a month of one studio's classes as a sign for its door.",
+  },
+  {
+    id: 'map',
+    name: 'Space Map',
+    href: '/map',
+    blurb: 'Find a studio: which room it is in, on which floor, behind which colour of tape.',
   },
   {
     id: 'labels',
