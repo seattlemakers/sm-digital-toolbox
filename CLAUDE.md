@@ -2016,6 +2016,73 @@ the box is. It is a note on the stairs now. Worth remembering that every other
 room came from the colour extraction and this was the one read by hand, which
 is exactly why it was the one that was wrong.
 
+**Zones are not rooms and rooms are not walls, and conflating them is what made
+this page confusing.** The drawing's key is a list of *tape colours*, because
+much of this building is open shop floor with tape marking the areas out:
+Woodshop 1 and Woodshop 2 have no wall between them at all. The first version
+stroked each zone as an outline, which drew walls that are not there - and then
+removing the outlines left the plan with holes, because the zones had been doing
+the walls' job. Three layers now: the floorplate, the zones painted flat on it
+with no outline, and the walls in ink over the top. **If it is black you cannot
+walk through it.** That one rule is what the zone outlines were quietly
+breaking.
+
+**The walls are traced by `scripts/trace-floorplan.mjs`,** which is the file to
+read before changing any of this. A wall on the drawing is a long thin dark
+rectangle, so the trace masks dark pixels sitting in a run of at least 22,
+run-length encodes the mask and merges runs down the rows to get rectangles
+back, then keeps the ones whose short side is a plausible wall.
+
+**`MIN_THICK` is 1, and that is the whole trick.** The exterior walls are 7-9px
+of solid black; the interior partitions are a *single* dark pixel, drawn between
+two tape-coloured zone boxes and anti-aliased into both. At a floor of 3 the
+trace came back with the shell, the bathrooms and the stairs and nothing else,
+which reads as "this drawing has no interior walls" and is wrong - the sample
+that settled it was the Low VOC / High VOC divide, one pixel of `99,107,88`
+between two beige boxes.
+
+**Doors come out for free, and that is the reason for tracing rather than
+drawing.** Runs are deliberately not merged across gaps, so a wall with a
+doorway in it arrives as two rectangles with a hole between them. A junction
+where another wall crosses does not break a run, because the crossing wall is
+dark too - so the holes that survive are openings. Nothing in walls.ts marks a
+door; the absence is the door, which is also how the building works.
+
+**Furniture traces exactly like a wall, and is told apart by its flanks.** The
+drawing fills benches and machines with flat mid-grey and outlines them, so
+those outlines are long thin dark rectangles too - the rolling tables in
+Woodshop 2 came out as four convincing partitions. A wall has room on both
+sides; a furniture edge has the object's own grey fill on one. The threshold is
+0.72 rather than a half, because a bench pushed against a wall gives that wall a
+grey flank as well, and those walls are real.
+
+**Then the orphans go.** What survives is mostly walls plus a scatter of stubs -
+a dimension leader, the edge of a callout box. They are indistinguishable from a
+door jamb by shape but not by company: a real wall meets another wall, because
+that is what makes a room. Kept if it touches something, or if it is long enough
+to stand on its own. One pass, not a transitive closure, or one long wall drags
+a chain of leaders in behind it.
+
+**The drawing is a sheet, not a floorplate.** It carries a key box down the
+left, a north arrow above that and the tape-colour table down the right, and all
+three are line art that traces as convincingly as a wall. The first render put
+the drawing's own compass on the page at ten times the size of ours. Clipping by
+floor separates the two plans anyway, so the same step clips the sheet furniture
+off both.
+
+**Thin walls are evened up at render, not in the data.** One drawing pixel is
+about two thirds of a screen pixel at this size, so the partitions came out as a
+grey suggestion against the shell's slab. Both are walls in the building, so a
+floor of 4 units is more truthful than reproducing the drawing's own
+inconsistency - the shell keeps its real weight, because an exterior wall really
+is heavier.
+
+**What the trace cannot fix: the source drawing is not an architectural plan.**
+It is a zone and electrical diagram, so the big upstairs shop reads as nearly
+open - which is probably right, but it is not *evidence* that it is right. The
+laser-cut board map in the space is a true wall model and was cut from a vector
+file; that file is the better source if anyone can find it.
+
 **Labels are a switch, and it starts off.** While the geometry is being checked
 the drawing shows walls and nothing else - no names, codes, studio icons, tape
 or studio tint - because none of those can be judged at the same time as the

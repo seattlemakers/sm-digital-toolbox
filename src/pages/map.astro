@@ -29,6 +29,7 @@ import {
   type Room,
 } from '../data/rooms';
 import { STUDIOS } from '../data/studios';
+import { WALLS_DOWNSTAIRS, WALLS_UPSTAIRS, type Wall } from '../data/walls';
 
 const TOOL = toolById('map');
 
@@ -110,6 +111,30 @@ function place(room: Room) {
   };
 }
 
+const WALLS: Record<Floor, Wall[]> = {
+  upstairs: WALLS_UPSTAIRS,
+  downstairs: WALLS_DOWNSTAIRS,
+};
+
+/**
+ * A wall thin enough to vanish is given a floor thickness.
+ *
+ * The drawing is not consistent about weight: its exterior walls are 7-9px of
+ * solid black and its interior partitions are a single pixel. At the size this
+ * plan renders, one pixel of the drawing is about two thirds of a screen pixel,
+ * so the partitions came out as a grey suggestion and the shell as a slab.
+ *
+ * Both are walls in the building, so evening the thin ones up is more truthful
+ * than reproducing the drawing's own inconsistency. The shell keeps its real
+ * weight, which is worth keeping - an exterior wall really is heavier.
+ */
+const MIN_WALL = 4;
+function wallBox([x, y, w, h]: Wall) {
+  if (w < MIN_WALL) { x -= (MIN_WALL - w) / 2; w = MIN_WALL; }
+  if (h < MIN_WALL) { y -= (MIN_WALL - h) / 2; h = MIN_WALL; }
+  return { x, y, w, h };
+}
+
 const PLACED = Object.fromEntries(
   FLOORS.map((f) => [f, roomsOnFloor(f).map(place)]),
 ) as Record<Floor, ReturnType<typeof place>[]>;
@@ -147,11 +172,17 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
         word back on the drawing. */}
     <div class="mp-controls no-print">
       <label class="mp-switch">
+        <input type="checkbox" id="mp-zones" />
+        <span>Zones</span>
+      </label>
+      <label class="mp-switch">
         <input type="checkbox" id="mp-labels" />
         <span>Labels</span>
       </label>
       <span class="mp-controls-note">
-        Walls only. Hover a room to name it.
+        Walls only. Hover a room to name it. Zones are the tape-coloured areas
+        from the key, which are not the same as rooms — the two woodshops have
+        no wall between them.
       </span>
     </div>
 
@@ -179,36 +210,49 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
                 <text x="30" y="78">N</text>
               </g>
 
-              {/* The building itself, under the rooms: one dark outline and
-                  the floor inside it. Without this the corridors were the same
-                  mist as the ground outside, so the plan read as a scatter of
-                  rooms rather than as a building with rooms in it. */}
+              {/* The floor. Everything inside the building stands on it, so
+                  a corridor reads as a corridor: lighter than the ground
+                  outside and darker than a room. */}
               <polygon class="mp-shell" points={FLOOR_SHELL[floor].map((q) => q.join(',')).join(' ')} />
 
+              {/* ZONES, under the walls.
+
+                  These are the tape-coloured areas off the drawing's key, and
+                  conflating them with rooms is what made the first version of
+                  this page confusing. They are not the same thing: Woodshop 1
+                  and Woodshop 2 have no wall between them at all, they are one
+                  room with tape on the floor. So a zone is painted ON the
+                  floor - a flat tint, no outline, under the walls - and a wall
+                  is a wall. Anything you cannot walk through is black. */}
               {PLACED[floor].map((p) => (
-                <g
-                  class:list={['mp-room', p.studios.length > 0 && 'is-studio', !p.room.code && 'is-service']}
+                <polygon
+                  class="mp-zone"
+                  points={p.points}
                   data-room={p.room.slug}
                   data-studios={p.room.studios.join(' ')}
+                  style={p.room.tape ? `--tape: ${p.room.tape}` : undefined}
                 >
                   <title>
                     {p.room.name}
                     {p.room.code ? ` (${p.room.code})` : ''}
-                    {p.studios.length ? ` — ${p.studios.map((s) => s.name).join(', ')}` : ''}
-                    {p.room.note ? ` — ${p.room.note}` : ''}
+                    {p.studios.length ? ` \u2014 ${p.studios.map((s) => s.name).join(', ')}` : ''}
+                    {p.room.note ? ` \u2014 ${p.room.note}` : ''}
                   </title>
+                </polygon>
+              ))}
 
-                  <polygon class="mp-wall" points={p.points} />
+              {/* THE WALLS. Traced from the drawing; the gaps in them are the
+                  doorways, because a door is the absence of a wall and there
+                  is nothing else it could honestly be drawn as here. */}
+              {WALLS[floor].map((wall) => {
+                const b = wallBox(wall);
+                return <rect class="mp-brick" x={b.x} y={b.y} width={b.w} height={b.h} />;
+              })}
 
-                  {/* The tape rides ON the wall rather than being it. Drawn
-                      over the wall at half its weight, it reads as a cased
-                      line - a dark wall with a coloured strip down it - which
-                      is both what the room actually looks like and the only
-                      way pale tape (beige, yellow) stays visible on white. */}
-                  {p.room.tape && (
-                    <polygon class="mp-tape" points={p.points} style={`--tape: ${p.room.tape}`} />
-                  )}
-
+              {/* The labels, over everything. Kept in their own pass so the
+                  walls cannot be drawn on top of a room's own name. */}
+              {PLACED[floor].map((p) => (
+                <g class="mp-label" data-room={p.room.slug} data-studios={p.room.studios.join(' ')}>
                   {p.lines.map((line, i) => (
                     <text class="mp-name" x={p.cx} y={p.lineY[i]} style={`font-size: ${p.size}px`}>
                       {line}
@@ -237,13 +281,6 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
                   )}
                 </g>
               ))}
-
-              {/* The envelope again, outline only, over the rooms. A room
-                  flush against an exterior wall paints its own partition
-                  stroke across it - the lounge's beige tape was running down
-                  the outside of the building at the entrance - and on a
-                  floorplan the wall you cannot walk through has to win. */}
-              <polygon class="mp-shell-line" points={FLOOR_SHELL[floor].map((q) => q.join(',')).join(' ')} />
             </svg>
           </div>
 
@@ -345,13 +382,8 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
      still carry their <title>, so the plan stays readable by pointing at it. */
   .labels-off .mp-name,
   .labels-off .mp-icon,
-  .labels-off .mp-chip,
-  .labels-off .mp-tape {
+  .labels-off .mp-chip {
     display: none;
-  }
-
-  .labels-off .mp-room.is-studio .mp-wall {
-    fill: var(--color-sm-paper);
   }
 
   .mp-controls {
@@ -386,8 +418,10 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
     color: var(--color-sm-slate);
   }
 
-  /* With the labels on, the note describes a state that is no longer true. */
-  #mp-main:not(.labels-off) .mp-controls-note {
+  /* With anything switched on, the note describes a state that is no longer
+     true, so it goes rather than sitting there being wrong. */
+  #mp-main:not(.labels-off) .mp-controls-note,
+  #mp-main.zones-on .mp-controls-note {
     visibility: hidden;
   }
 
@@ -434,7 +468,6 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
     display: block;
     width: 100%;
     height: auto;
-    overflow: visible;
   }
 
   /* The building. A heavy ink outline, because this is the one line on the
@@ -445,12 +478,34 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
     fill: var(--color-sm-mist);
   }
 
-  .mp-shell-line {
-    fill: none;
-    stroke: var(--color-sm-ink);
-    stroke-width: 9;
-    stroke-linejoin: round;
-    pointer-events: none;
+  /* The walls, and the only thing on the plan drawn in ink. If it is black you
+     cannot walk through it; if it is not, you can. That rule is the whole
+     reason the wall trace was worth doing, and it is what the zone outlines
+     were quietly breaking - a tape colour round a room drew a wall that is not
+     there. */
+  .mp-brick {
+    fill: var(--color-sm-ink);
+  }
+
+  /* A zone is paint on the floor. No outline, ever: an outline is what a wall
+     looks like. It still takes the pointer with no fill at all, which is what
+     lets a room be hovered on the bare plan. */
+  .mp-zone {
+    fill: transparent;
+    pointer-events: all;
+    transition: fill 140ms ease;
+  }
+
+  .zones-on .mp-zone {
+    fill: var(--tape, #aab4ae);
+    fill-opacity: 0.34;
+  }
+
+  /* After .zones-on, so the highlight wins on source order - the two weigh the
+     same and the hover has to beat the resting state. */
+  .mp-zone.is-hot {
+    fill: var(--color-sm-green-mid);
+    fill-opacity: 0.5;
   }
 
   .mp-north path {
@@ -469,42 +524,8 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
 
   /* --------------------------------------------------------- the rooms --- */
 
-  .mp-room {
-    cursor: default;
-  }
-
-  /* Partition walls: slate, and about half the envelope's weight. They used
-     to be drawn in the room's own tape colour, which is where the walls went
-     missing - beige is #f5d29c and yellow is #f5fc01, and neither of those is
-     a wall on a white room. The tape is a separate stroke over the top now. */
-  .mp-wall {
-    fill: var(--color-sm-paper);
-    stroke: var(--color-sm-slate);
-    stroke-width: 5;
-    stroke-linejoin: round;
-    transition: fill 140ms ease;
-  }
-
-  .mp-tape {
-    fill: none;
-    stroke: var(--tape);
-    stroke-width: 2.4;
-    stroke-linejoin: round;
+  .mp-label {
     pointer-events: none;
-  }
-
-  /* A room that houses a studio is tinted. It is the only fill difference on
-     the plan, so "is there a studio in here" is answerable without reading a
-     word - which is what somebody standing in a corridor with a phone wants. */
-  .mp-room.is-studio .mp-wall {
-    fill: var(--color-sm-wash);
-  }
-
-  /* Stairs and bathrooms: drawn, named, and deliberately quiet. They are
-     landmarks you navigate BY rather than destinations - so they keep a full
-     wall (they are real rooms with real walls) and give up their fill. */
-  .mp-room.is-service .mp-wall {
-    fill: #dfe4e0;
   }
 
   .mp-name {
@@ -516,9 +537,8 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
     pointer-events: none;
   }
 
-  .mp-room.is-service .mp-name {
-    font-weight: 600;
-    fill: var(--color-sm-slate);
+  .labels-off .mp-name {
+    display: none;
   }
 
   .mp-icon {
@@ -534,15 +554,9 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
   }
 
   /* Highlight, driven from either direction - the plan or the lists below it.
-     An overlay rather than a thicker stroke, because a stroke that grows moves
-     the wall it is drawn on and the room appears to twitch. */
-  .mp-room.is-hot .mp-wall {
-    fill: var(--color-sm-green-mid);
-    fill-opacity: 0.32;
-    stroke: var(--color-sm-green);
-  }
-
-  .mp-room.is-hot .mp-name {
+     It lands on the zone rather than on an outline, so a hovered room lights
+     its floor and the walls stay drawn over the top of it. */
+  .mp-label.is-hot .mp-name {
     fill: var(--color-sm-green-dark);
   }
 

@@ -93,3 +93,25 @@ if (main && labels) {
     history.replaceState(null, '', url);
   });
 }
+
+/**
+ * The zones switch, alongside the labels one. Zones and labels are separate
+ * because they answer different questions - "where does the tape go" and "what
+ * is this room called" - and while the geometry is being checked the honest
+ * default for both is off.
+ */
+const zones = document.getElementById('mp-zones') as HTMLInputElement | null;
+
+if (main && zones) {
+  const on = new URLSearchParams(location.search).get('zones') === '1';
+  zones.checked = on;
+  main.classList.toggle('zones-on', on);
+
+  zones.addEventListener('change', () => {
+    main.classList.toggle('zones-on', zones.checked);
+    const url = new URL(location.href);
+    if (zones.checked) url.searchParams.set('zones', '1');
+    else url.searchParams.delete('zones');
+    history.replaceState(null, '', url);
+  });
+}

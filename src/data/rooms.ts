@@ -54,7 +54,19 @@ export type Room = {
    * assignment is still unknown says so in `note`.
    */
   studios: string[];
-  /** Outline in the drawing's coordinates, clockwise. */
+  /**
+   * The room's ZONE - its tape-marked area on the floor, in the drawing's
+   * coordinates, clockwise.
+   *
+   * This is not the room's walls, and the difference is the thing that made
+   * the first version of /map confusing. Woodshop 1 and Woodshop 2 have no
+   * wall between them at all; they are one room with tape on the floor, and
+   * the drawing's key is a list of tape colours for exactly that reason.
+   * Drawing these as outlines drew walls that do not exist.
+   *
+   * The walls live in data/walls.ts, traced separately. A zone is painted on
+   * the floor under them.
+   */
   shape: Pt[];
   /** Label anchor, when the shape's centre is the wrong place for it. */
   label?: Pt;
@@ -274,7 +286,11 @@ export const ROOMS: Room[] = [
  * quarter is empty ground, which is the correct thing for it to say.
  */
 /**
- * The building's own outline, per floor - the thing the rooms sit inside.
+ * The floorplate, per floor - the ground the rooms and walls sit on.
+ *
+ * Only its FILL is used now; the exterior walls come out of data/walls.ts with
+ * all the others, which is what lets a doorway through an exterior wall be a
+ * gap rather than a special case.
  *
  * Traced the same way as the rooms but off a different signal: the exterior
  * walls are the only dark runs on the drawing longer than about 300px, so
