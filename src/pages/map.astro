@@ -29,7 +29,8 @@ import {
   type Room,
 } from '../data/rooms';
 import { STUDIOS } from '../data/studios';
-import { WALLS_DOWNSTAIRS, WALLS_UPSTAIRS, type Wall } from '../data/walls';
+import { WALLS_DOWNSTAIRS, WALLS_UPSTAIRS } from '../data/walls';
+import { wallPlan } from '../lib/wall-plan';
 
 const TOOL = toolById('map');
 
@@ -111,29 +112,15 @@ function place(room: Room) {
   };
 }
 
-const WALLS: Record<Floor, Wall[]> = {
-  upstairs: WALLS_UPSTAIRS,
-  downstairs: WALLS_DOWNSTAIRS,
-};
-
 /**
- * A wall thin enough to vanish is given a floor thickness.
- *
- * The drawing is not consistent about weight: its exterior walls are 7-9px of
- * solid black and its interior partitions are a single pixel. At the size this
- * plan renders, one pixel of the drawing is about two thirds of a screen pixel,
- * so the partitions came out as a grey suggestion and the shell as a slab.
- *
- * Both are walls in the building, so evening the thin ones up is more truthful
- * than reproducing the drawing's own inconsistency. The shell keeps its real
- * weight, which is worth keeping - an exterior wall really is heavier.
+ * The drawn plan, per floor: the traced rectangles put through lib/wall-plan,
+ * which is where every decision about how a wall LOOKS lives. Two weights, one
+ * line per run of wall, corners closed, doorways untouched.
  */
-const MIN_WALL = 4;
-function wallBox([x, y, w, h]: Wall) {
-  if (w < MIN_WALL) { x -= (MIN_WALL - w) / 2; w = MIN_WALL; }
-  if (h < MIN_WALL) { y -= (MIN_WALL - h) / 2; h = MIN_WALL; }
-  return { x, y, w, h };
-}
+const PLAN: Record<Floor, ReturnType<typeof wallPlan>> = {
+  upstairs: wallPlan(WALLS_UPSTAIRS, FLOOR_SHELL.upstairs),
+  downstairs: wallPlan(WALLS_DOWNSTAIRS, FLOOR_SHELL.downstairs),
+};
 
 const PLACED = Object.fromEntries(
   FLOORS.map((f) => [f, roomsOnFloor(f).map(place)]),
@@ -241,13 +228,19 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
                 </polygon>
               ))}
 
-              {/* THE WALLS. Traced from the drawing; the gaps in them are the
+              {/* THE WALLS. Two weights and nothing else: the outside of the
+                  building, and everything else. The gaps in them are the
                   doorways, because a door is the absence of a wall and there
                   is nothing else it could honestly be drawn as here. */}
-              {WALLS[floor].map((wall) => {
-                const b = wallBox(wall);
-                return <rect class="mp-brick" x={b.x} y={b.y} width={b.w} height={b.h} />;
-              })}
+              {PLAN[floor].map((seg) => (
+                <line
+                  class:list={['mp-brick', seg.kind === 'ext' ? 'is-ext' : 'is-int']}
+                  x1={seg.x1}
+                  y1={seg.y1}
+                  x2={seg.x2}
+                  y2={seg.y2}
+                />
+              ))}
 
               {/* The labels, over everything. Kept in their own pass so the
                   walls cannot be drawn on top of a room's own name. */}
@@ -483,8 +476,26 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
      reason the wall trace was worth doing, and it is what the zone outlines
      were quietly breaking - a tape colour round a room drew a wall that is not
      there. */
+  /* Exactly two weights. An exterior wall is twice an interior one, which is
+     enough that "this is the building" and "this is a partition" are different
+     facts rather than a shade of the same one.
+
+     `butt` caps are not a detail: a square cap overshoots by half the wall's
+     width at both ends, which would shave about 10px off every doorway on the
+     plan and close the narrow ones outright. Corners are closed by joinEnds()
+     pulling each wall onto the centre line of the one it meets, so the
+     crossing wall's own width fills the junction. */
   .mp-brick {
-    fill: var(--color-sm-ink);
+    stroke: var(--color-sm-ink);
+    stroke-linecap: butt;
+  }
+
+  .mp-brick.is-ext {
+    stroke-width: 10;
+  }
+
+  .mp-brick.is-int {
+    stroke-width: 5;
   }
 
   /* A zone is paint on the floor. No outline, ever: an outline is what a wall

@@ -116,6 +116,10 @@ Done:
   is listed under *Still to confirm*.
 - Hovering a studio lights every room it is in, on both floors, and hovering a
   room lights its row. One delegated handler over `data-room` / `data-studios`.
+- **Walls, traced and then normalised.** `scripts/trace-floorplan.mjs` pulls
+  291 rectangles off the drawing; `lib/wall-plan.ts` turns them into 93 walls
+  in exactly two weights, on 58 shared lines, with the doorways left as gaps.
+  26 assertions in `npm test`.
 
 Label maker (`/labels`) is built and verified against a print-to-PDF. Most of
 the *Implementation notes* below are about it.
@@ -2082,6 +2086,86 @@ It is a zone and electrical diagram, so the big upstairs shop reads as nearly
 open - which is probably right, but it is not *evidence* that it is right. The
 laser-cut board map in the space is a true wall model and was cut from a vector
 file; that file is the better source if anyone can find it.
+
+**The trace is honest about ink, which is the wrong thing to render.** It
+reports what is drawn: a wall 1px here and 9px there, two stretches of the same
+wall a pixel apart, a notch at every junction, a run broken for reasons that are
+antialiasing rather than architecture. Drawn literally that is a hundred
+unrelated marks, and the plan read as hand-shaky. `lib/wall-plan.ts` is the pass
+that makes it a diagram: two weights, one line per wall, corners that meet - and
+the gaps deliberately left alone, because a gap is a door.
+
+It is pure and takes the floorplate as an argument rather than importing it, so
+`npm test` can run it on three rectangles instead of on the building.
+
+**Exterior is decided geometrically, not by how heavily the line was drawn.**
+The drawing's exterior walls *are* heavier, so thickness nearly works - and
+"nearly" is how a thick interior wall ends up as heavy as the outside of the
+building. A wall is exterior when it runs along the floorplate's own edge, so
+the heavy weight means "this is the building" rather than "this line was drawn
+boldly".
+
+**STITCH is calibrated against a real door.** A doorway on this drawing measures
+about 46px - the gap in the top wall marked "door to outside" runs 1451 to 1497 -
+so the distance that closes a crack has to sit well under that or it quietly
+bricks up the doors, and nothing on the plan would say so. 14 is comfortably
+below a door and comfortably above the two or three pixels a junction costs. The
+gaps that survive on the real building cluster at 35-57, which is the check that
+it is right.
+
+**`butt` caps are load-bearing for the same reason.** A square cap overshoots by
+half the wall's width at each end, which would shave about 10px off every
+doorway and close the narrow ones outright. Corners are closed instead by
+pulling each wall's end onto the centre line of the wall it meets, so the
+crossing wall's own width fills the junction.
+
+**ALIGN is 22, and it is measured.** A partition between two tape zones is drawn
+as the edge of each zone, so one wall arrives as two or three parallel lines up
+to 18px apart - the kitchen's wall came through as three, at x 562, 572 and 580,
+which on the plan is a wall with a stripe in it. Tried at 7, 12, 18 and 22: the
+plan is identical at 18 and 22 except that 22 takes the last two pairs, and once
+merged the closest any two *distinct* walls come is 25px. The window sits in a
+real gap with none of the building inside it.
+
+Walls are grouped against the first member of a cluster rather than the previous
+one. Chaining lets a row of walls each 6px from the last drift fifty pixels from
+where it started, which is how a straight corridor comes out as a shallow
+staircase.
+
+**Stairs are not walls.** A staircase traces as a ladder of treads, and a tread
+is indistinguishable from a partition by shape. At a wall's weight it claims to
+be something you cannot walk through, which on this plan is the one thing a black
+line means - so the ladders come out and the stairs get said in words.
+
+The detector has to gather a tread's *peers first* and then look at their
+spacing. Walking a globally sorted list instead lets any unrelated wall whose
+coordinate happens to fall between two treads break the run, which is exactly
+what hid the east staircase on the first attempt. The test is otherwise tight on
+purpose: three or more parallels, evenly and closely spaced, over the same
+stretch, and all about the same length. That last clause is what rules out real
+walls - the four parallels beside the kitchen measure 131, 30, 192 and 23, and
+no staircase is built like that.
+
+**A wall that meets nothing is not a wall.** What is left after the treads go is
+almost all building, plus a few marks that traced like a partition and are not
+one: the edge of a machine, a zone box drawn on the floor, the top of the
+Material Storage bay. Every real wall runs into another wall or into the outside
+of the building, because that is what makes a room; these ran into nothing. Five
+of them, and dropping them is what took the last of the hand-drawn look off.
+
+**A hole in the outside of the building too big to be a door is a hole in the
+trace.** The garage's wall is beige on the source, not black, so the trace never
+saw it and the upstairs plan was open across 247px of its top right - a building
+with a side missing. `OPENING_MAX` is 120: a door here is about 46px and the
+widest real opening on either floor is the recessed entrance at 106, so the
+garage closes and both of those stay open. Exterior coverage goes 93.5% -> 99%.
+
+**Two orderings in that pipeline are not interchangeable.** The shell is
+repaired *before* the orphan check, because an interior wall whose only
+neighbour is a stretch of exterior wall the trace missed is a real wall and in
+the other order has nothing to touch. And the collinear merge runs *last*,
+because a repaired hole arrives as a second segment butted against the traced
+one - the same wall drawn twice, which is the thing this module exists to stop.
 
 **Labels are a switch, and it starts off.** While the geometry is being checked
 the drawing shows walls and nothing else - no names, codes, studio icons, tape
