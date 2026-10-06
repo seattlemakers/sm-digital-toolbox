@@ -189,7 +189,6 @@ function tooltip(id: string): string {
                       class="mp-room"
                       d={path(r.points)}
                       data-kind={spot(r.id).kind}
-                      data-via={spot(r.id).studios.length > 0 ? 'own' : 'zone'}
                       data-spot={r.id}
                       style={litStyle(spot(r.id))}
                     >
@@ -383,10 +382,18 @@ function tooltip(id: string): string {
   /* The plan takes the room it needs and the list takes what is left, with a
      floor under the list: below about 18rem the studio column starts wrapping
      its own names, and a wrapped name is the one thing in here that has to be
-     read straight. */
+     read straight.
+
+     The cap is 26rem and was 24, which is a measured pixel rather than a
+     preference. The studio column takes max-content - the widest of it is
+     "screen printing" with its badge, 140px - on every row, so what is left for
+     a name is fixed however wide the window gets. At 24rem "Utility Closet"
+     plus its NOT LABELLED tag needed 173px of a 172px box and wrapped, alone
+     among fifty-seven rows. The extra 2rem costs the plan 5% of its width and
+     leaves every row a line to itself. */
   .mp-pair {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 26rem);
     gap: 1.25rem;
     align-items: start;
   }
@@ -427,47 +434,33 @@ function tooltip(id: string): string {
 
   /* ------------------------------------------------------------ colour ---
 
-     Four tones, and each one says something:
+     Three tones, and no colour at rest:
 
        outside the building   the wrap's own grey
        the floor              mist - and a corridor is left to show it, because
                               a corridor IS the leftover floor
        a room                 white, a plate standing on that floor
-       a studio               the brand wash, the only tint on the plan
 
-     That last line is the whole scheme. Somebody opens this map to find where
-     a discipline lives, so the spaces that house one are the only coloured
-     thing on it and everything else gets out of the way. The drawing's own
-     fills were a map-colouring - the two woodshops have different colours and
-     so do the two ceramics rooms - which is useful while drawing and
-     unreadable once finished.
+     The studios used to be a green wash, which was the plan's one piece of
+     colour and its key. It came off on 2026-10-06, once the list beside it and
+     the hover between them did that job better: the wash said "a studio is in
+     here somewhere" to within a whole room, where hovering a row says exactly
+     which space and in that studio's own colour. Twenty tinted spaces out of
+     fifty-seven is a lot of green to carry for a vaguer answer, and the plan is
+     easier to read as a building without it.
+
+     So colour on this plan now means one thing only - "this is the space you
+     are pointing at" - and the drawing is the walls and the names.
+
+     The drawing's own fills are a map-colouring - the two woodshops have
+     different colours and so do the two ceramics rooms - which is useful while
+     drawing and unreadable once finished, so they are not used either.
 
      Two rooms of the same kind side by side do not merge, because the wall
-     between them is drawn in ink. The wall is the separator; the fill is the
-     meaning. */
+     between them is drawn in ink. The wall is the separator. */
   .mp-room {
     fill: var(--color-sm-paper);
     transition: fill 140ms ease;
-  }
-
-  /* The brand green at a fraction, rather than --color-sm-wash. Wash is a 7%
-     step off white and simply does not register at this size - the first
-     version of this looked like a plan with no colour on it at all. Measured
-     against paper rather than judged: the tint has to survive being one room
-     among forty-three at a quarter of the page. */
-  .mp-room[data-kind='studio'] {
-    fill: var(--color-sm-green-mid);
-    fill-opacity: 0.2;
-  }
-
-  /* A room whose studios are all in its ZONES gets a hint rather than the full
-     tint. The Big Room is enormous and its one studio is the leatherworking
-     corner; the Fab Lab's are the laser and 3D printing ends. Tinted the same
-     as the Sewing Studio, which is a studio wall to wall, those rooms made the
-     plan read as though the whole floor was a shop. Light room, strong zone: the
-     room says making happens in here, the zone says where. */
-  .mp-room[data-kind='studio'][data-via='zone'] {
-    fill-opacity: 0.08;
   }
 
   /* No fill at all: the floorplate shows through, so corridors read as the
@@ -493,12 +486,12 @@ function tooltip(id: string): string {
     pointer-events: all;
   }
 
-  /* A zone that houses a studio is tinted a step past its room and dashed in
-     green, which is what lets the Megastudio show electronics at one end and
-     screen printing at the other without either claiming the room. */
+  /* A zone that houses a studio keeps its green dashes and has lost its tint
+     with the rooms. The boundary is still the thing worth saying - it is what
+     lets the Megastudio show electronics at one end and screen printing at the
+     other - and a dashed outline says it without filling a fifth of the floor.
+     It sits a step stronger than a plain zone's slate dashes. */
   .mp-zone[data-kind='studio'] {
-    fill: var(--color-sm-green-mid);
-    fill-opacity: 0.26;
     stroke: var(--color-sm-green);
     opacity: 0.85;
   }
@@ -602,16 +595,7 @@ function tooltip(id: string): string {
      at the 0.2 the resting studio tint uses is barely a change against white
      paper. At 0.45 the palest of them still registers and the darkest - the
      leatherworking brown - is still something ink can be read over. */
-  .mp-room.is-lit,
-  /* The second selector is the whole reason this rule has two. A room whose
-     studios are all in its zones is tinted by
-     `.mp-room[data-kind][data-via]`, which Astro scopes to four compound parts
-     against this rule's three - so with `.mp-room.is-lit` alone the Fab Lab,
-     the Megastudio and the Garage lit at their resting 0.08 and looked like
-     nothing had happened. `[data-via]` is on every room path, so matching it
-     here levels the count and source order decides, which is what the comment
-     above promised. */
-  .mp-room[data-via].is-lit {
+  .mp-room.is-lit {
     fill: var(--studio, var(--color-sm-green));
     fill-opacity: 0.45;
   }
@@ -774,8 +758,14 @@ function tooltip(id: string): string {
     opacity: 0.55;
   }
 
+  /* It wraps as a unit or not at all. In the narrow column beside the plan,
+     "Utility Closet NOT LABELLED" broke between the two words of the tag and
+     left LABELLED alone on a second line, which reads as a second fact about
+     the room rather than as the end of the first. */
   .mp-flag {
+    display: inline-block;
     margin-left: 0.5rem;
+    white-space: nowrap;
     font-family: var(--font-display);
     font-size: 0.58rem;
     font-weight: 600;
@@ -904,6 +894,37 @@ function tooltip(id: string): string {
 </style>
 
 <script>
+  /* A name may not be wider than the room it names.
+
+     The sizes are the drawing's own and are left alone - they were set with the
+     plan in front of somebody, and in drawing units, so they hold at every page
+     size. What the author cannot check from inside a design tool is how the
+     name sets in OUR face: the drawing is Archivo Narrow and the site is
+     Figtree, which is wider. LABEL_SCALE covers the difference for forty-two of
+     the forty-three, and "Sewing Studio" is the one it does not - 81 units of
+     type in a 74-unit room, which puts three units of it through the wall at
+     each end.
+
+     So this only ever SHRINKS, and only the labels that need it. It measures
+     rather than estimates - getBBox is the real shaped text, in user units, so
+     one pass at load holds at every size the plan is drawn at. A general
+     re-layout would be guessing at a decision somebody already made; a cap is
+     not. */
+  for (const svg of document.querySelectorAll<SVGSVGElement>('svg.mp-plan')) {
+    for (const label of svg.querySelectorAll<SVGTextElement>('text[data-spot]')) {
+      const room = svg.querySelector<SVGGraphicsElement>(`path[data-spot="${label.dataset.spot}"]`);
+      if (!room) continue;
+      const ink = label.getBBox().width;
+      // Two units of air at each end, so a capped name does not simply touch
+      // the wall instead of crossing it.
+      const room_ = room.getBBox().width - 4;
+      if (ink > room_ && room_ > 0) {
+        const size = parseFloat(getComputedStyle(label).fontSize);
+        label.style.fontSize = `${(size * room_) / ink}px`;
+      }
+    }
+  }
+
   /* Hover one, light the other.
 
      Delegated per floor rather than per element: a pair is one plan and about

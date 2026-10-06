@@ -2337,35 +2337,62 @@ deliberately still drawn. Check-in is somewhere you get sent; a landing is where
 you come *out* of the stairs, which is the one thing about a staircase worth
 naming.
 
-**The plan is coloured by use, and that replaced a colouring that could not be
-read.** The drawing's own fills are a map-colouring - adjacent spaces get
-different colours so they can be told apart - so the two woodshops do not share
-one and neither do the two ceramics rooms. Useful while drawing, unreadable when
-finished: every room shouts and none of it means anything.
+**There is no colour on the plan at rest, as of 2026-10-06.** The studios were a
+green wash - `--color-sm-green-mid` at 0.2, with a 0.08 hint for a room whose
+studios were all in its zones, and 0.26 for the zones themselves - and it was
+the plan's key.
 
-Four tones now, and each says something. Outside the building is the wrap's
-grey; the floor is mist; a room is white, a plate standing on that floor; and a
-**studio is the only tinted thing on the plan**, because finding where a
-discipline lives is what somebody opened this map to do. Circulation is given no
-fill at all, so the floorplate shows through and a corridor reads as the space
-between rooms rather than as another room - which is what a corridor is.
+It came off once the list beside it and the hover between them did that job
+better. The wash answered "a studio is in here somewhere" to within a whole
+room; hovering a row says exactly which space, in that studio's own colour.
+Twenty tinted spaces out of fifty-seven is a lot of green to carry for the
+vaguer answer, and the plan reads as a building without it.
+
+So **colour on this plan now means one thing only: "this is the space you are
+pointing at"**. What is left at rest is three tones - the wrap's grey outside
+the building, mist for the floor, white for a room - plus the walls and the
+names. Circulation still gets no fill, so a corridor shows the floorplate
+through it and reads as the space between rooms, which is what it is. A studio
+zone keeps its green dashes: the boundary is worth saying, and an outline says
+it without filling a fifth of the floor.
+
+The drawing's own fills were never used either - they are a map-colouring, so
+the two woodshops have different colours and so do the two ceramics rooms, which
+is useful while drawing and unreadable once finished.
 
 Two rooms of the same kind side by side do not merge, because the wall between
-them is ink. The wall separates; the fill means.
+them is ink. The wall separates.
 
-**`--color-sm-wash` is too weak to be a fill at this size.** It is a 7% step off
-white, and the first version of this looked like a plan with no colour on it at
-all. It is `--color-sm-green-mid` at 0.2 instead. The test is not whether the
-tint is visible on its own but whether it survives being one room among
-forty-three at a quarter of a page.
+**The `data-via` attribute went with the tint**, and with it the compound
+selector the lit rule needed in order to out-weigh it.
 
-**A room whose studios are all in its ZONES gets a hint, not the full tint.**
-The Big Room is enormous and its one studio is the leatherworking corner; the
-Fab Lab's are the laser and 3D printing ends; the Megastudio's are electronics
-and screen printing. Tinted like the Sewing Studio - which is a studio wall to
-wall - those three made the plan read as though the whole floor were a shop. At
-0.08 against the zone's 0.26 the room says making happens in here and the zone
-says where.
+**A name may not be wider than the room it names, and one of forty-three was.**
+The sizes are the drawing's own and are left alone - they were set with the plan
+in front of somebody, in drawing units, so they hold at every page size. What
+the author cannot check from inside a design tool is how a name sets in *our*
+face: the drawing is Archivo Narrow, the site is Figtree, and `LABEL_SCALE`
+covers the difference for forty-two of them. "Sewing Studio" is the one it does
+not - 81 units of type in a 74-unit room, three units through the wall at each
+end.
+
+So a pass at load caps any label to its own room's width, and **only ever
+shrinks**. It measures rather than estimates, because `getBBox` is the real
+shaped text in user units, so one pass holds at every size the plan is drawn at.
+It touches exactly two labels: Sewing Studio 9.68 -> 8.27, and Landing 9.68 ->
+9.47. Re-laying-out a label would be guessing at a decision somebody already
+made; a cap is not.
+
+The check worth re-running after any redraw is the one that found it: every
+label's `getBBox` against its own room's, and against every other label on the
+floor. Zero outside their room, zero overlapping.
+
+**The list column caps at 26rem, and the 2rem it gained is a measured pixel.**
+The studio column takes max-content on every row - the widest is "screen
+printing" with its badge, 140px - so what is left for a name is fixed however
+wide the window gets. At 24rem "Utility Closet" plus its NOT LABELLED tag needed
+173px of a 172px box and wrapped, alone among fifty-seven rows. The tag also
+needs `white-space: nowrap`, or it breaks between its own two words and leaves
+LABELLED on a line by itself, reading as a second fact about the room.
 
 **Circulation is matched by name, and the drawing corroborates it.** The list is
 Stairs, Hallway, Landing, Check-in. Without being asked, the author gave all four
