@@ -32,15 +32,15 @@ import { FLOORPLAN, FLOORS, type Floor, type Room, type Zone } from './floorplan
 export const STUDIOS_IN: Record<string, string[]> = {
   // --- upstairs ------------------------------------------------------------
   'U1.1': ['metalworking'],
-  'U1.2': ['cnc'],
+  'U1.2': ['cnc-routing'],
   // Metal Studios is the container; both halves are zones, so the parent
   // carries nothing - the same as the Garage, the Fab Lab and the Megastudio.
   // A room that is entirely subdivided is named for what it holds rather than
   // for any one of the things it holds.
-  'U3.1': ['lapidary'],
+  'U3.1': ['jewelry'],
   'U3.2': ['metalworking'],
   'U5': ['woodshop'],
-  'U5.1': ['cnc'],
+  'U5.1': ['cnc-routing'],
   'U6': ['woodshop'],
   'U10.1': ['electronics'],
   'U10.2': ['screen-printing'],

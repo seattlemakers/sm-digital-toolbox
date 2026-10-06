@@ -2105,18 +2105,28 @@ load-bearing in two places outside either file: they key `STUDIOS_IN` in
 rooms.ts, and they name the badge PNGs that `crop-studio-badges.mjs` cuts
 against its own hardcoded list. A rename is three edits and a re-run.
 
-**Three names are open, and they are written into the new file rather than
-carried in somebody's head:**
+**Two of the three open names were settled on 2026-10-06, and settling them is
+what made the fork real.** `lapidary` became **jewelry** - the brand sheet draws
+the mark as "Jewelry" and the room it sits in is the Jewelry Studio, so the
+studio list was the only thing in the building saying otherwise - and `cnc`
+became **cnc routing**. studios.ts keeps both old names, because they are what
+its calendar would tag. The two lists now genuinely differ, which is the first
+proof the fork was worth having rather than a copy waiting to be re-merged.
 
-- **lapidary.** The brand sheet draws the mark as "Jewelry" and the room it sits
-  in is the Jewelry Studio. Nothing but the studio list says "lapidary". Almost
-  certainly a rename, held only against the chance they are two studios.
-- **cnc.** The calendar tags it `cnc` and `cnc-routing`, the second being the
-  superset - but what the studio is *called* is a different question from either
-  tag. Worth settling with the fact that one studio currently covers two zones,
-  the Big CNC in the Garage and the CNC in Woodshop 2: if those are different
-  things it is a split rather than a rename.
-- **computer lab.** On the plan and on the brand sheet, never on a schedule.
+**Both were full renames, slug included**, which is three edits and a file
+move each: the entry here, its key in `STUDIOS_IN`, and the badge PNG, which is
+named by slug. `crop-studio-badges.mjs`'s `SLUGS` is **positional** - `SLUGS[i]`
+is zipped with the rings found on the sheet - so a rename there is in place and
+the list must never be reordered. The badges are now named by *this* list's
+slugs, so studios.ts points at `jewelry.png` and `cnc-routing.png` while calling
+those studios lapidary and cnc. Nothing there renders a badge; the paths are
+kept honest so they do not rot.
+
+**Still open: cnc routing covers two zones** - the Big CNC in the Garage (U1.2)
+and the CNC in Woodshop 2 (U5.1). If those are two studios rather than one
+studio in two places, that is a split rather than the rename it has just had.
+And **computer lab** is on the plan and the brand sheet and has never had a
+class.
 
 **A zone is a named area inside a room, with no wall between them**, and that is
 the distinction the old tape colours were reaching for and never quite had.

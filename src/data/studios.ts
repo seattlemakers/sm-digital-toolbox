@@ -41,6 +41,11 @@ export type Studio = {
    * scripts/crop-studio-badges.mjs. A placeholder raster, and the only mark
    * there is for computer lab and leatherworking - the vector set has neither,
    * which is why leatherworking's `icon` is still a spool of thread.
+   *
+   * Nothing in here renders it: /map does, off data/space-studios.ts. The
+   * files are named by THAT list's slugs, which parted from this one's on
+   * 2026-10-06 - `lapidary` here is `jewelry` there, and `cnc` is
+   * `cnc-routing`. Same two marks, two names for them, on purpose.
    */
   badge: string;
   /**
@@ -67,7 +72,7 @@ export const STUDIOS: Studio[] = [
   { slug: 'woodshop',        name: 'woodshop',        icon: '/brand/icons/woodshop.svg', badge: '/brand/studios/woodshop.png', colour: '#ffb61b',        eventCategories: ['woodworking'] },
   { slug: 'sewing',          name: 'sewing',          icon: '/brand/icons/sewing.svg', badge: '/brand/studios/sewing.png', colour: '#92318c',          eventCategories: ['sewing'] },
   { slug: 'electronics',     name: 'electronics',     icon: '/brand/icons/electronics.svg', badge: '/brand/studios/electronics.png', colour: '#29a641',     eventCategories: ['electronics'], preferEvent: 'Programmable LEDs' },
-  { slug: 'cnc',             name: 'cnc',             icon: '/brand/icons/cnc.svg', badge: '/brand/studios/cnc.png', colour: '#945612',             eventCategories: ['cnc', 'cnc-routing'] },
+  { slug: 'cnc',             name: 'cnc',             icon: '/brand/icons/cnc.svg', badge: '/brand/studios/cnc-routing.png', colour: '#945612',             eventCategories: ['cnc', 'cnc-routing'] },
   { slug: 'ceramics',        name: 'ceramics',        icon: '/brand/icons/ceramics.svg', badge: '/brand/studios/ceramics.png', colour: '#e85579',        eventCategories: ['ceramics'] },
   { slug: 'screen-printing', name: 'screen printing', icon: '/brand/icons/screen-printing.svg', badge: '/brand/studios/screen-printing.png', colour: '#43b0a5', eventCategories: ['print-making'] },
   { slug: 'arts-crafts',     name: 'arts & crafts',   icon: '/brand/icons/arts-crafts.svg', badge: '/brand/studios/arts-crafts.png', colour: '#9cc001',     eventCategories: ['crafts'] },
@@ -83,7 +88,7 @@ export const STUDIOS: Studio[] = [
   { slug: 'av-studio',       name: 'a/v studio',      icon: '/brand/icons/av-studio.svg', badge: '/brand/studios/av-studio.png', colour: '#3563a6',       eventCategories: [] },
   // The sheet draws this one as "Jewelry". Kept as lapidary until somebody
   // confirms they are the same studio rather than two.
-  { slug: 'lapidary',        name: 'lapidary',        icon: '/brand/icons/lapidary.svg', badge: '/brand/studios/lapidary.png', colour: '#a90c5c',        eventCategories: [] },
+  { slug: 'lapidary',        name: 'lapidary',        icon: '/brand/icons/lapidary.svg', badge: '/brand/studios/jewelry.png', colour: '#a90c5c',        eventCategories: [] },
 ];
 
 export const STUDIO_BY_SLUG = new Map(STUDIOS.map((s) => [s.slug, s]));

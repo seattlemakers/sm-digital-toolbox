@@ -30,18 +30,23 @@
  * and saves owning a list of exceptions - "3D", "A/V", "CNC" - anywhere a
  * studio is printed.
  *
- * OPEN, as of 2026-10-06. Each is one line here once somebody decides:
+ * SETTLED on 2026-10-06, and this is the first place the two lists part:
  *
- *   lapidary     The brand sheet draws this mark as "Jewelry" and the room it
- *                sits in is the Jewelry Studio. Nothing but this file says
- *                "lapidary". It is almost certainly a rename to jewelry, held
- *                only in case they are two studios rather than one.
- *   cnc          The calendar tags it `cnc` and `cnc-routing`, the second being
- *                the superset. Whether the studio is *called* CNC routing is a
- *                separate question from either tag - and note that one studio
- *                currently covers two zones, the Big CNC in the Garage and the
- *                CNC in Woodshop 2. If those are different things it is a
- *                split, not a rename.
+ *   jewelry      Was "lapidary", which nothing but the studio list ever said -
+ *                the brand sheet draws the mark as "Jewelry" and the room it
+ *                sits in is the Jewelry Studio. studios.ts still says lapidary,
+ *                because that is the word its calendar would use if the studio
+ *                ever got a tag.
+ *   cnc routing  Was "cnc". The calendar emits both `cnc` and `cnc-routing`,
+ *                the second being the superset; this is the name the building
+ *                uses.
+ *
+ * STILL OPEN:
+ *
+ *   cnc routing  covers TWO zones - the Big CNC in the Garage (U1.2) and the
+ *                CNC in Woodshop 2 (U5.1). If those are different studios
+ *                rather than one studio in two places, this is a split rather
+ *                than the rename it has just had.
  *   computer lab On the plan and on the brand sheet; has never had a class.
  */
 export type SpaceStudio = {
@@ -69,7 +74,7 @@ export const SPACE_STUDIOS: SpaceStudio[] = [
   { slug: 'woodshop',        name: 'woodshop',        badge: '/brand/studios/woodshop.png',        colour: '#ffb61b' },
   { slug: 'sewing',          name: 'sewing',          badge: '/brand/studios/sewing.png',          colour: '#92318c' },
   { slug: 'electronics',     name: 'electronics',     badge: '/brand/studios/electronics.png',     colour: '#29a641' },
-  { slug: 'cnc',             name: 'cnc',             badge: '/brand/studios/cnc.png',             colour: '#945612' },
+  { slug: 'cnc-routing',     name: 'cnc routing',     badge: '/brand/studios/cnc-routing.png',     colour: '#945612' },
   { slug: 'ceramics',        name: 'ceramics',        badge: '/brand/studios/ceramics.png',        colour: '#e85579' },
   { slug: 'screen-printing', name: 'screen printing', badge: '/brand/studios/screen-printing.png', colour: '#43b0a5' },
   { slug: 'arts-crafts',     name: 'arts & crafts',   badge: '/brand/studios/arts-crafts.png',     colour: '#9cc001' },
@@ -77,7 +82,7 @@ export const SPACE_STUDIOS: SpaceStudio[] = [
   { slug: 'metalworking',    name: 'metalworking',    badge: '/brand/studios/metalworking.png',    colour: '#8e7479' },
   { slug: 'computer-lab',    name: 'computer lab',    badge: '/brand/studios/computer-lab.png',    colour: '#5a41ab' },
   { slug: 'av-studio',       name: 'a/v studio',      badge: '/brand/studios/av-studio.png',       colour: '#3563a6' },
-  { slug: 'lapidary',        name: 'lapidary',        badge: '/brand/studios/lapidary.png',        colour: '#a90c5c' },
+  { slug: 'jewelry',         name: 'jewelry',         badge: '/brand/studios/jewelry.png',         colour: '#a90c5c' },
 ];
 
 export const SPACE_STUDIO_BY_SLUG = new Map(SPACE_STUDIOS.map((s) => [s.slug, s]));
