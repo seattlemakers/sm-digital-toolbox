@@ -1,112 +1,32 @@
 ---
 /**
- * Where everything is: the building, one floor at a time, with the studios
- * placed in the rooms that hold them.
+ * Where everything is: the building, one floor at a time.
  *
- * The plan is drawn from data/rooms.ts rather than being an image with hotspots
- * over it. That costs a coordinate list and buys three things an image cannot:
- * the rooms are text (so they are searchable and legible at any size), the tape
- * colours are the same tokens the key uses, and a room's studios come out of
- * studios.ts - so this page and the calendar cannot disagree about what a
- * studio is called or which icon it carries.
+ * The plan is drawn from data/floorplan.svg rather than being an image with
+ * hotspots over it. That costs an extractor and buys three things an image
+ * cannot: the walls are geometry (so they stay sharp at any size and the plan
+ * can be measured), the floorplate is derived from the drawing's own outline,
+ * and anything placed on top - rooms, studios, a route - sits in the same
+ * coordinate system as the building rather than being pinned to pixels.
  *
- * The room labels are laid out here, in the frontmatter, rather than by the
- * browser. SVG has no text wrapping, so a room name either gets measured
- * against its own room's width at build time or runs out over the wall.
+ * STRIPPED BACK on 2026-10-05. The page used to carry a zone layer, a label
+ * layer, two switches, a room list per floor and a studio index. All of it was
+ * driving off room shapes that were thrown away with the old traced floorplan,
+ * so every one of those was a control over an empty layer or a list beside a
+ * drawing it could not point at. They come back as the rooms are placed against
+ * this drawing, and not before: a switch that toggles nothing is worse than no
+ * switch, because it says the feature is broken rather than absent.
+ *
+ * data/rooms.ts and data/studios.ts are untouched - the names, codes, tape
+ * colours, studio assignments and open questions are all still there, waiting
+ * for geometry to hang them on.
  */
 import Base from '../layouts/Base.astro';
 import { toolById, pageTitle } from '../data/tools';
-import {
-  FLOOR_NAME,
-  ROOMS,
-  roomsOnFloor,
-  roomsForStudio,
-  studiosInRoom,
-  studiosWithoutRoom,
-  type Floor,
-  type Pt,
-  type Room,
-} from '../data/rooms';
-import { STUDIOS } from '../data/studios';
+import { FLOOR_NAME, ROOMS } from '../data/rooms';
 import { FLOORPLAN, FLOORS, STROKE, type Layer } from '../data/floorplan';
 
 const TOOL = toolById('map');
-
-const bbox = (pts: Pt[]) => {
-  const xs = pts.map((p) => p[0]);
-  const ys = pts.map((p) => p[1]);
-  const x0 = Math.min(...xs), x1 = Math.max(...xs);
-  const y0 = Math.min(...ys), y1 = Math.max(...ys);
-  return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
-};
-
-/**
- * Greedy wrap against a character budget. The 0.53 is Figtree semibold's
- * average advance as a fraction of its size - close enough to keep a name
- * inside its own walls, and the labels drop a size rather than relying on it
- * being exact.
- */
-function wrap(text: string, maxChars: number): string[] {
-  if (maxChars < 3) return [text];
-  const out: string[] = [];
-  let line = '';
-  for (const word of text.split(' ')) {
-    const next = line ? `${line} ${word}` : word;
-    if (next.length <= maxChars || !line) line = next;
-    else { out.push(line); line = word; }
-  }
-  if (line) out.push(line);
-  return out;
-}
-
-/** White on a dark chip, ink on a pale one. The tape colours span both. */
-function onColour(hex: string): string {
-  const n = parseInt(hex.slice(1), 16);
-  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#1a1a1a' : '#ffffff';
-}
-
-/** Everything the renderer needs for one room, measured once. */
-function place(room: Room) {
-  const b = bbox(room.shape!);
-  const studios = studiosInRoom(room);
-  const anchor = room.label ?? [b.cx, b.cy];
-
-  // Name size steps down with the room, so a bathroom does not shout as loudly
-  // as the woodshop and a small room's name still fits between its own walls.
-  const size = b.w < 130 || b.h < 100 ? 17 : b.w < 230 ? 20 : 23;
-  const lines = wrap(room.name, Math.floor((b.w - 16) / (0.53 * size)));
-
-  // Icons ride under the name. They are the thing you scan for, so they get the
-  // room's height before the name does - a room too short for both drops them.
-  const icon = Math.min(46, b.h - lines.length * size * 1.15 - 22, b.w / Math.max(studios.length, 1) - 8);
-  const showIcons = studios.length > 0 && icon >= 22;
-  const iconBlock = showIcons ? icon + 8 : 0;
-
-  const textH = lines.length * size * 1.15;
-  const top = anchor[1] - (textH + iconBlock) / 2;
-  const iconRowW = showIcons ? studios.length * icon + (studios.length - 1) * 6 : 0;
-
-  return {
-    room,
-    studios,
-    points: room.shape!.map((p) => p.join(',')).join(' '),
-    b,
-    size,
-    lines,
-    lineY: lines.map((_, i) => top + size * 0.85 + i * size * 1.15),
-    cx: anchor[0],
-    showIcons,
-    icon,
-    iconY: top + textH + 8,
-    iconX: studios.map((_, i) => anchor[0] - iconRowW / 2 + i * (icon + 6)),
-    chip: room.code
-      ? { x: (room.chip?.[0] ?? b.x0) + 7, y: (room.chip?.[1] ?? b.y0) + 7,
-          w: Math.max(26, room.code.length * 11 + 12), h: 22,
-          fill: room.tape ?? '#f5d29c', ink: onColour(room.tape ?? '#f5d29c') }
-      : null,
-  };
-}
 
 /**
  * The drawing's three layers, in the order they are painted.
@@ -117,63 +37,19 @@ function place(room: Room) {
  * building rather than inside it.
  */
 const LAYERS: Layer[] = ['stairs', 'exterior', 'interior'];
-
-/**
- * Rooms that can be drawn. Empty until the zones are redrawn against
- * floorplan.svg - see the note on `Room.shape`. The page is built so that an
- * unplaced room is simply absent from the drawing and still present in the
- * list, rather than the zone layer being switched off wholesale.
- */
-const PLACED = Object.fromEntries(
-  FLOORS.map((f) => [f, roomsOnFloor(f).filter((r) => r.shape).map(place)]),
-) as Record<Floor, ReturnType<typeof place>[]>;
-
-const ORPHANS = studiosWithoutRoom();
-
-/**
- * Rooms whose note asks a question. A question mark is the marker rather than a
- * flag of its own: these notes are written for a person to read on the page,
- * and a second field saying "this one is unresolved" would be a fact kept in
- * two places that could disagree. It deliberately catches rooms that already
- * have a studio - the MegaStudio has screen printing in it AND an open question
- * about what else does, and filtering on an empty studio list missed exactly
- * those.
- */
-const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
 ---
 
 <Base title={pageTitle(TOOL)} description={TOOL.blurb} shellWidth="72rem">
   <div class="sm-crumb-row">
     <a class="sm-back" href="/">← All tools</a>
-    <span class="sm-stamp">Interbay · 2 floors · {ROOMS.length} rooms</span>
+    <span class="sm-stamp">Interbay · 2 floors</span>
   </div>
 
-  <main class="sm-sheet labels-off" id="mp-main">
+  <main class="sm-sheet">
     <header class="sm-hero">
       <h1 class="sm-h1">{TOOL.name}</h1>
       <p class="sm-lead">{TOOL.blurb}</p>
     </header>
-
-    {/* Walls-only is the default while the geometry is being checked. Labels
-        are a switch rather than a deletion, and the switch writes `?labels=1`
-        so the labelled version is a link somebody can send. The room names are
-        still in each room's <title>, so hovering names it without putting a
-        word back on the drawing. */}
-    <div class="mp-controls no-print">
-      <label class="mp-switch">
-        <input type="checkbox" id="mp-zones" />
-        <span>Zones</span>
-      </label>
-      <label class="mp-switch">
-        <input type="checkbox" id="mp-labels" />
-        <span>Labels</span>
-      </label>
-      <span class="mp-controls-note">
-        Walls only. Hover a room to name it. Zones are the tape-coloured areas
-        from the key, which are not the same as rooms — the two woodshops have
-        no wall between them.
-      </span>
-    </div>
 
     {
       FLOORS.map((floor) => (
@@ -205,35 +81,13 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
               <g transform={`translate(0 ${FLOORPLAN[floor].offsetY})`}>
                 {/* The floorplate. Everything inside the building stands on it,
                     so a corridor reads as a corridor: lighter than the ground
-                    outside and darker than a room. */}
+                    outside and darker than a room will be. */}
                 <polygon
                   class="mp-shell"
                   points={FLOORPLAN[floor].outline.map((q) => q.join(',')).join(' ')}
                 />
 
-                {/* ZONES, under the walls. The tape-coloured areas off the old
-                    drawing's key, and not the same thing as rooms: Woodshop 1
-                    and Woodshop 2 have no wall between them, they are one room
-                    with tape on the floor. So a zone is painted ON the floor -
-                    flat, no outline - and a wall is a wall. */}
-                {PLACED[floor].map((p) => (
-                  <polygon
-                    class="mp-zone"
-                    points={p.points}
-                    data-room={p.room.slug}
-                    data-studios={p.room.studios.join(' ')}
-                    style={p.room.tape ? `--tape: ${p.room.tape}` : undefined}
-                  >
-                    <title>
-                      {p.room.name}
-                      {p.room.code ? ` (${p.room.code})` : ''}
-                      {p.studios.length ? ` \u2014 ${p.studios.map((s) => s.name).join(', ')}` : ''}
-                      {p.room.note ? ` \u2014 ${p.room.note}` : ''}
-                    </title>
-                  </polygon>
-                ))}
-
-                {/* THE BUILDING, exactly as drawn. Three weights and no others:
+                {/* The building, exactly as drawn. Three weights and no others:
                     the outside, the partitions, and the stairs - lightest,
                     because stairs are a thing you walk on rather than a thing
                     you cannot walk through. The gaps are the doorways. */}
@@ -244,188 +98,23 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
                     stroke-width={STROKE[layer]}
                   />
                 ))}
-
-                {/* The labels, over everything, so a wall cannot be drawn on
-                    top of a room's own name. */}
-                {PLACED[floor].map((p) => (
-                  <g class="mp-label" data-room={p.room.slug} data-studios={p.room.studios.join(' ')}>
-                    {p.lines.map((line, i) => (
-                      <text class="mp-name" x={p.cx} y={p.lineY[i]} style={`font-size: ${p.size}px`}>
-                        {line}
-                      </text>
-                    ))}
-
-                    {p.showIcons &&
-                      p.studios.map((s, i) => (
-                        <image
-                          class="mp-icon"
-                          href={s.icon}
-                          x={p.iconX[i]}
-                          y={p.iconY}
-                          width={p.icon}
-                          height={p.icon}
-                        />
-                      ))}
-
-                    {p.chip && (
-                      <g class="mp-chip">
-                        <rect x={p.chip.x} y={p.chip.y} width={p.chip.w} height={p.chip.h} rx="5" fill={p.chip.fill} />
-                        <text x={p.chip.x + p.chip.w / 2} y={p.chip.y + 16} fill={p.chip.ink}>
-                          {p.room.code}
-                        </text>
-                      </g>
-                    )}
-                  </g>
-                ))}
               </g>
             </svg>
           </div>
-
-          <ul class="mp-rooms">
-            {roomsOnFloor(floor).map((r) => (
-              <li class="mp-row" data-room={r.slug} data-studios={r.studios.join(' ')} tabindex="0">
-                <span
-                  class:list={['mp-code', !r.code && 'is-none']}
-                  style={r.tape ? `--tape: ${r.tape}` : undefined}
-                >
-                  {r.code ?? '·'}
-                </span>
-                <span class="mp-row-body">
-                  <span class="mp-row-name">{r.name}</span>
-                  {r.studios.length > 0 && (
-                    <span class="mp-row-studios">
-                      {studiosInRoom(r).map((s) => (
-                        <span class="mp-tag">
-                          <img src={s.icon} alt="" width="18" height="18" />
-                          {s.name}
-                        </span>
-                      ))}
-                    </span>
-                  )}
-                  {r.note && <i class="mp-row-note">{r.note}</i>}
-                </span>
-              </li>
-            ))}
-          </ul>
         </section>
       ))
     }
 
-    <section class="mp-index">
-      <h2 class="mp-floor-h">Studios<span>{STUDIOS.length} in the calendar</span></h2>
-      <p class="mp-lede">
-        The studio list is <b>data/studios.ts</b> — the same one the calendar and the
-        daily board read. This page only says which room each one is in, so a studio
-        renamed there is renamed here, and a studio with nowhere to send anybody
-        shows up below rather than quietly going missing.
-      </p>
-
-      <ul class="mp-studios">
-        {
-          STUDIOS.map((s) => {
-            const where = roomsForStudio(s.slug);
-            return (
-              <li class:list={['mp-studio', where.length === 0 && 'is-orphan']} data-studio={s.slug} tabindex="0">
-                <img src={s.icon} alt="" width="30" height="30" />
-                <span class="mp-studio-body">
-                  <span class="mp-studio-name">{s.name}</span>
-                  <span class="mp-studio-where">
-                    {where.length === 0
-                      ? 'no room yet'
-                      : where.map((r) => `${r.name}${r.code ? ` · ${r.code}` : ''}`).join('  +  ')}
-                  </span>
-                </span>
-              </li>
-            );
-          })
-        }
-      </ul>
-
-      {
-        (ORPHANS.length > 0 || OPEN_QUESTIONS.length > 0) && (
-          <div class="mp-todo">
-            <h3>Still to confirm</h3>
-            <ul>
-              {ORPHANS.length > 0 && (
-                <li>
-                  <b>{ORPHANS.map((s) => s.name).join(', ')}</b> — no room on the plan
-                  yet. Which room, or rooms, do these live in?
-                </li>
-              )}
-              {OPEN_QUESTIONS.map((r) => (
-                <li>
-                  <b>{r.name}</b> — {r.note}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )
-      }
-    </section>
+    <p class="mp-note">
+      {ROOMS.length} rooms and their studios are recorded in <b>data/rooms.ts</b>,
+      with nowhere yet to draw them — the shapes went with the old traced
+      floorplan. They go back on as they are placed against this drawing.
+    </p>
   </main>
 </Base>
 
-<script>
-  import '../scripts/map';
-</script>
-
 <style>
-  /* ------------------------------------------------------ walls only --- */
-
-  /* Everything that is not a wall comes off the drawing: names, codes, studio
-     icons, the tape, and the tint that says a room houses a studio. What is
-     left is the geometry, which is the only thing you can judge while any of
-     the rest is competing for the same space. The rooms are still there and
-     still carry their <title>, so the plan stays readable by pointing at it. */
-  .labels-off .mp-name,
-  .labels-off .mp-icon,
-  .labels-off .mp-chip {
-    display: none;
-  }
-
-  .mp-controls {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.6rem 1rem;
-    margin-bottom: 1.75rem;
-  }
-
-  .mp-switch {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    font-family: var(--font-display);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-    color: var(--color-sm-slate);
-    cursor: pointer;
-  }
-
-  .mp-switch input {
-    accent-color: var(--color-sm-green);
-    width: 1rem;
-    height: 1rem;
-  }
-
-  .mp-controls-note {
-    font-size: 0.8125rem;
-    color: var(--color-sm-slate);
-  }
-
-  /* With anything switched on, the note describes a state that is no longer
-     true, so it goes rather than sitting there being wrong. */
-  #mp-main:not(.labels-off) .mp-controls-note,
-  #mp-main.zones-on .mp-controls-note {
-    visibility: hidden;
-  }
-
-  /* ---------------------------------------------------------- the plans --- */
-
-  .mp-floor + .mp-floor,
-  .mp-index {
+  .mp-floor + .mp-floor {
     margin-top: 3.25rem;
   }
 
@@ -450,11 +139,9 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
   }
 
   /* Three tones, darkest outwards: the ground outside the building, the floor
-     inside it, then the rooms. That ordering is what makes a corridor read as
-     a corridor - it is lighter than the street and darker than a room, which
-     is exactly what it is. With the wrap and the shell both on mist, the
-     corridors WERE the street, and the plan looked like a scatter of rooms
-     rather than a building containing them. */
+     inside it, then the rooms once there are any. That ordering is what makes a
+     corridor read as a corridor - lighter than the street and darker than a
+     room, which is exactly what it is. */
   .mp-plan-wrap {
     padding: 0.75rem;
     background: #e3e7e4;
@@ -467,19 +154,24 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
     height: auto;
   }
 
-  /* The building. A heavy ink outline, because this is the one line on the
-     plan that is load-bearing in both senses: everything else is a partition,
-     and a partition that reads as heavily as an exterior wall tells you
-     nothing about which one you cannot walk through. */
+  .mp-north path {
+    fill: var(--color-sm-slate);
+    opacity: 0.55;
+  }
+
+  .mp-north text {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    text-anchor: middle;
+    fill: var(--color-sm-slate);
+    opacity: 0.55;
+  }
+
   .mp-shell {
     fill: var(--color-sm-mist);
   }
 
-  /* The walls, and the only thing on the plan drawn in ink. If it is black you
-     cannot walk through it; if it is not, you can. That rule is the whole
-     reason the wall trace was worth doing, and it is what the zone outlines
-     were quietly breaking - a tape colour round a room drew a wall that is not
-     there. */
   /* The building, and the only thing on the plan drawn in ink. If it is dark
      you cannot walk through it - except the stairs, which are drawn lightest of
      the three for exactly that reason: a staircase is a thing you walk on.
@@ -518,242 +210,18 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
     opacity: 0.75;
   }
 
-  /* A zone is paint on the floor. No outline, ever: an outline is what a wall
-     looks like. It still takes the pointer with no fill at all, which is what
-     lets a room be hovered on the bare plan. */
-  .mp-zone {
-    fill: transparent;
-    pointer-events: all;
-    transition: fill 140ms ease;
-  }
-
-  .zones-on .mp-zone {
-    fill: var(--tape, #aab4ae);
-    fill-opacity: 0.34;
-  }
-
-  /* After .zones-on, so the highlight wins on source order - the two weigh the
-     same and the hover has to beat the resting state. */
-  .mp-zone.is-hot {
-    fill: var(--color-sm-green-mid);
-    fill-opacity: 0.5;
-  }
-
-  .mp-north path {
-    fill: var(--color-sm-slate);
-    opacity: 0.55;
-  }
-
-  .mp-north text {
-    font-family: var(--font-display);
-    font-size: 22px;
-    font-weight: 700;
-    text-anchor: middle;
-    fill: var(--color-sm-slate);
-    opacity: 0.55;
-  }
-
-  /* --------------------------------------------------------- the rooms --- */
-
-  .mp-label {
-    pointer-events: none;
-  }
-
-  .mp-name {
-    font-family: var(--font-display);
-    font-weight: 700;
-    text-anchor: middle;
-    fill: var(--color-sm-ink);
-    paint-order: stroke;
-    pointer-events: none;
-  }
-
-  .labels-off .mp-name {
-    display: none;
-  }
-
-  .mp-icon {
-    pointer-events: none;
-  }
-
-  .mp-chip text {
-    font-family: var(--font-display);
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    text-anchor: middle;
-  }
-
-  /* Highlight, driven from either direction - the plan or the lists below it.
-     It lands on the zone rather than on an outline, so a hovered room lights
-     its floor and the walls stay drawn over the top of it. */
-  .mp-label.is-hot .mp-name {
-    fill: var(--color-sm-green-dark);
-  }
-
-  /* --------------------------------------------------------- the lists --- */
-
-  .mp-rooms,
-  .mp-studios {
-    display: grid;
-    gap: 0.15rem;
-    margin-top: 1rem;
-  }
-
-  .mp-rooms {
-    grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
-  }
-
-  .mp-row,
-  .mp-studio {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.7rem;
-    padding: 0.5rem 0.6rem;
-    border-radius: 9px;
-    transition: background-color 140ms ease;
-  }
-
-  .mp-row.is-hot,
-  .mp-studio.is-hot,
-  .mp-row:focus-visible,
-  .mp-studio:focus-visible {
-    background: var(--color-sm-wash);
-    outline: none;
-  }
-
-  /* The code is the thing actually written on the door frame, in the colour
-     actually taped to it, so it is set as the tape rather than described. */
-  .mp-code {
-    flex: 0 0 auto;
-    min-width: 2.4rem;
-    padding: 0.18rem 0.35rem;
-    border-radius: 6px;
-    background: var(--tape, var(--color-sm-line));
-    font-family: var(--font-display);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    text-align: center;
-    color: var(--color-sm-ink);
-  }
-
-  .mp-code.is-none {
-    background: transparent;
-    color: var(--color-sm-line);
-  }
-
-  .mp-row-body,
-  .mp-studio-body {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    min-width: 0;
-  }
-
-  .mp-row-name,
-  .mp-studio-name {
-    font-family: var(--font-display);
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--color-sm-ink);
-  }
-
-  .mp-row-studios {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem 0.6rem;
-  }
-
-  .mp-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.28rem;
-    font-size: 0.8125rem;
-    color: var(--color-sm-green-dark);
-  }
-
-  .mp-row-note,
-  .mp-studio-where {
-    font-size: 0.8125rem;
-    font-style: normal;
-    line-height: 1.45;
-    color: var(--color-sm-slate);
-  }
-
-  .mp-row-note {
-    font-style: italic;
-  }
-
-  /* ------------------------------------------------------- the studios --- */
-
-  .mp-lede {
+  .mp-note {
     max-width: 62ch;
-    margin-bottom: 1rem;
+    margin-top: 2.5rem;
     font-size: 0.9375rem;
     line-height: 1.65;
     color: var(--color-sm-slate);
   }
 
-  .mp-studios {
-    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-  }
-
-  .mp-studio img {
-    flex: 0 0 auto;
-    margin-top: 0.1rem;
-  }
-
-  /* A studio with no room is the one thing this page exists to surface, so it
-     is marked on the studio itself as well as listed again below - a reader
-     scanning the grid should not have to reach the footnote to find it. */
-  .mp-studio.is-orphan .mp-studio-where {
-    font-weight: 600;
-    color: var(--color-sm-alert);
-  }
-
-  .mp-studio.is-orphan img {
-    opacity: 0.45;
-  }
-
-  .mp-todo {
-    margin-top: 1.75rem;
-    padding: 1.1rem 1.25rem;
-    background: var(--color-sm-mist);
-    border-left: 4px solid var(--color-sm-green-mid);
-    border-radius: 0 10px 10px 0;
-  }
-
-  .mp-todo h3 {
-    margin-bottom: 0.5rem;
-    font-family: var(--font-display);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-    color: var(--color-sm-slate);
-  }
-
-  .mp-todo ul {
-    display: grid;
-    gap: 0.45rem;
-  }
-
-  .mp-todo li {
-    font-size: 0.9rem;
-    line-height: 1.6;
-    color: var(--color-sm-ink-2);
-  }
-
   @media (max-width: 40rem) {
-    .mp-rooms,
-    .mp-studios {
-      grid-template-columns: 1fr;
-    }
-
+    /* The plan is the one thing here that cannot usefully shrink any further,
+       so at phone width it gets the sheet's own gutters back. */
     .mp-plan-wrap {
-      /* The plan is the one thing here that cannot usefully shrink any
-         further, so at phone width it gets the sheet's own gutters back. */
       margin: 0 calc(var(--pad-x) * -1);
       padding: 0.6rem;
       border-radius: 0;
