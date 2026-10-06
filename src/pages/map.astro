@@ -633,8 +633,18 @@ function tooltip(id: string): string {
      A space that IS a studio lights in that studio's own colour, which is what
      makes the badge in the list and the shape on the plan one object. Anything
      else - a corridor, a kitchen, a room that merely contains studios - falls
-     back to the plan's green through the var()'s own default, so the colour
-     means "this discipline" rather than "something is hovered".
+     back to grey through the var()'s own default.
+
+     That fallback was the brand green until 2026-10-06 and grey is the better
+     answer, because the green was saying something. Fifteen of the fifty-seven
+     spaces have no studio at all, and lighting them in the one colour this site
+     uses to mean "a studio" made the plan's loudest signal the one thing it is
+     not about. Grey means only "this is what you are pointing at", which is all
+     a hover on the kitchen has to say.
+
+     It is slate rather than ink, so it stays clear of the ??? studio, which is
+     ink and has every right to be the darker of the two - something does work
+     in the Fume Room.
 
      The fill is heavier than the resting tint, and it has to be: these are
      fourteen brand colours of wildly different lightness, and woodshop's gold
@@ -642,12 +652,12 @@ function tooltip(id: string): string {
      paper. At 0.45 the palest of them still registers and the darkest - the
      leatherworking brown - is still something ink can be read over. */
   .mp-room.is-lit {
-    fill: var(--studio, var(--color-sm-green));
+    fill: var(--studio, var(--color-sm-slate));
     fill-opacity: 0.45;
   }
 
   .mp-zone.is-lit {
-    fill: var(--studio, var(--color-sm-green));
+    fill: var(--studio, var(--color-sm-slate));
     fill-opacity: 0.5;
     opacity: 1;
   }
@@ -859,11 +869,11 @@ function tooltip(id: string): string {
   }
 
   /* Below .has-studio, which it has to beat on a row that has one. Same rule
-     as the plan: the studio's own colour, green for everything else. Lighter
+     as the plan: the studio's own colour, grey for everything else. Lighter
      than the plan's wash, because a table row is a long thin band of it next
      to type rather than a shape on a drawing. */
   .mp-table tr.is-lit {
-    background: color-mix(in srgb, var(--studio, var(--color-sm-green-mid)) 26%, transparent);
+    background: color-mix(in srgb, var(--studio, var(--color-sm-slate)) 26%, transparent);
   }
 
   .mp-todo {

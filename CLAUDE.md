@@ -2043,10 +2043,20 @@ the cursor - the same reason the zone highlight is an overlay.
 
 **A space that IS a studio lights in that studio's own colour.** Everything else
 - a corridor, the kitchen, a room that merely *contains* studios - falls back to
-the plan's green through the `var(--studio, ...)` default, which keeps the
-colour meaning "this discipline" rather than "something is hovered". The Fab
-Lab, the Megastudio and the Garage are deliberately in the second group: each
-holds two disciplines and is not either of them.
+**grey** through the `var(--studio, ...)` default. The Fab Lab, the Megastudio
+and the Garage are deliberately in the second group: each holds two disciplines
+and is not either of them.
+
+That fallback was the brand green until 2026-10-06, and grey is the better
+answer because the green was saying something. Fifteen of the fifty-seven spaces
+have no studio at all, and lighting them in the one colour this site uses to
+mean "a studio" made the plan's loudest signal the one thing it is not about.
+Grey means only "this is what you are pointing at", which is all a hover on the
+kitchen has to say.
+
+It is `--color-sm-slate` rather than ink, which keeps it clear of the **???**
+studio - that one is ink and has every right to be the darker of the two, since
+something does work in the Fume Room.
 
 **The lit fill is 0.45, not the 0.2 the resting studio tint uses**, and the
 reason is the palette rather than taste. These are fourteen brand colours of
