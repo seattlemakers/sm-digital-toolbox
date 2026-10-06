@@ -43,6 +43,10 @@
  *   leather      Was "leatherworking", then "leather studio". studios.ts keeps
  *                the first, because it is also the calendar tag.
  *   a/v          Was "a/v studio".
+ *   software     Was "computer lab", which named the room rather than the
+ *                practice - and the room it is in is the Computer Lab, so the
+ *                page read the same two words twice. It covers what is
+ *                actually taught in there: CAD, vector design and code.
  *
  * Those last two dropped the word "studio" on 2026-10-06, and the rooms they
  * are in did not: D1.2 is still the Leather Studio and D3 is still the A/V
@@ -59,7 +63,8 @@
  *
  * STILL OPEN:
  *
- *   computer lab On the plan and on the brand sheet; has never had a class.
+ *   software     On the plan and on the brand sheet, and on no calendar tag,
+ *                so /calendar has nothing to show for it.
  */
 export type SpaceStudio = {
   slug: string;
@@ -68,7 +73,7 @@ export type SpaceStudio = {
   /**
    * The colour badge at public/brand/studios/<slug>.png, cut from the brand
    * sheet. A placeholder raster: it is the only mark that exists at all for
-   * computer lab and the leather studio, which the vector set has neither of.
+   * software and the leather studio, which the vector set has neither of.
    * `unknown` is the exception and is a drawn SVG - it is not on the sheet.
    */
   badge: string;
@@ -93,7 +98,7 @@ export const SPACE_STUDIOS: SpaceStudio[] = [
   { slug: 'arts-crafts',     name: 'arts & crafts',   badge: '/brand/studios/arts-crafts.png',     colour: '#9cc001' },
   { slug: 'leather-studio',  name: 'leather',         badge: '/brand/studios/leather-studio.png',  colour: '#853321' },
   { slug: 'metalworking',    name: 'metalworking',    badge: '/brand/studios/metalworking.png',    colour: '#8e7479' },
-  { slug: 'computer-lab',    name: 'computer lab',    badge: '/brand/studios/computer-lab.png',    colour: '#5a41ab' },
+  { slug: 'software',        name: 'software',        badge: '/brand/studios/software.png',        colour: '#5a41ab' },
   { slug: 'av-studio',       name: 'a/v',             badge: '/brand/studios/av-studio.png',       colour: '#3563a6' },
   { slug: 'jewelry',         name: 'jewelry',         badge: '/brand/studios/jewelry.png',         colour: '#a90c5c' },
   // A space whose studio nobody has named yet. It is an entry rather than an

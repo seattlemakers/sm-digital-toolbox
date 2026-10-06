@@ -45,8 +45,8 @@ export type Studio = {
    * Nothing in here renders it: /map does, off data/space-studios.ts. The
    * files are named by THAT list's slugs, which parted from this one's on
    * 2026-10-06 - `lapidary` here is `jewelry` there, `cnc` is `cnc-routing`,
-   * and `leatherworking` is `leather-studio`. Same marks, two names for them,
-   * on purpose.
+   * `leatherworking` is `leather-studio` and `computer-lab` is `software`.
+   * Same marks, two names for them, on purpose.
    */
   badge: string;
   /**
@@ -85,7 +85,7 @@ export const STUDIOS: Studio[] = [
   { slug: 'metalworking',    name: 'metalworking',    icon: '/brand/icons/metalworking.svg', badge: '/brand/studios/metalworking.png', colour: '#8e7479',    eventCategories: [] },
   // On the brand sheet and on the plan (room U16), and on no calendar tag -
   // so it has nothing to show on /calendar yet, exactly like metalworking.
-  { slug: 'computer-lab',    name: 'computer lab',    icon: '/brand/icons/event.svg', badge: '/brand/studios/computer-lab.png', colour: '#5a41ab', eventCategories: [] },
+  { slug: 'computer-lab',    name: 'computer lab',    icon: '/brand/icons/event.svg', badge: '/brand/studios/software.png', colour: '#5a41ab', eventCategories: [] },
   { slug: 'av-studio',       name: 'a/v studio',      icon: '/brand/icons/av-studio.svg', badge: '/brand/studios/av-studio.png', colour: '#3563a6',       eventCategories: [] },
   // The sheet draws this one as "Jewelry". Kept as lapidary until somebody
   // confirms they are the same studio rather than two.

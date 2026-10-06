@@ -54,7 +54,7 @@ export const STUDIOS_IN: Record<string, string[]> = {
   'U10.2': ['screen-printing'],
   'U15.1': ['3d-printing'],
   'U15.2': ['laser-cutting'],
-  'U16': ['computer-lab'],
+  'U16': ['software'],
 
   // --- downstairs ----------------------------------------------------------
   // D1.1 is the Builder Studios, which are rented rather than taught in, so no

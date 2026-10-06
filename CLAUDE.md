@@ -2136,12 +2136,16 @@ load-bearing in two places outside either file: they key `STUDIOS_IN` in
 rooms.ts, and they name the badge PNGs that `crop-studio-badges.mjs` cuts
 against its own hardcoded list. A rename is three edits and a re-run.
 
-**Three names were settled on 2026-10-06, and settling them is what made the
+**Five names were settled on 2026-10-06, and settling them is what made the
 fork real.** `lapidary` became **jewelry** - the brand sheet draws the mark as
 "Jewelry" and the room it sits in is the Jewelry Studio, so the studio list was
 the only thing in the building saying otherwise - `cnc` became **cnc routing**,
-and `leatherworking` became **leather studio**. studios.ts keeps all three old
-names, because they are what its calendar tags. The two lists now genuinely
+`leatherworking` became **leather studio** and then just **leather**, and
+`computer-lab` became **software** - which names the practice rather than the
+room, and stops the page printing "Computer Lab - computer lab". It covers what
+is actually taught in there: CAD, vector design and code. (`a/v studio` lost its
+second word the same day, for the same reason D3 is the A/V Room.) studios.ts
+keeps every old name, because they are what its calendar tags. The two lists now genuinely
 differ, which is the proof the fork was worth having rather than a copy waiting
 to be re-merged.
 

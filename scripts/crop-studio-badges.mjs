@@ -16,7 +16,7 @@ import zlib from 'node:zlib';
 import { readPng } from './lib-png.mjs';
 
 const SLUGS = [
-  'electronics', 'laser-cutting', 'ceramics', 'computer-lab', 'metalworking',
+  'electronics', 'laser-cutting', 'ceramics', 'software', 'metalworking',
   'screen-printing', 'sewing', 'jewelry', 'leather-studio', '3d-printing',
   'av-studio', 'arts-crafts', 'woodshop', 'cnc-routing',
 ];
