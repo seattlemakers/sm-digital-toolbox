@@ -120,8 +120,14 @@ const CIRCULATION = /^(Stairs|Hallway|Landing|Check-in)$/;
  *
  * The Check-in desk is circulation too and is NOT in here: it is somewhere you
  * are sent, so it has to be findable by name.
+ *
+ * It matches ZONES as well as rooms, which it did not until 2026-10-06 - the
+ * Big Room's Storage corner is the one zone that wants it, and a zone keeps its
+ * dashed boundary either way. Only the name goes.
+ *
+ * Anchored, so "Ceramics Storage" is a room that keeps its name.
  */
-const UNDRAWN = /^(Stairs|Hallway|Landing|.*\bCloset)$/;
+const UNDRAWN = /^(Stairs|Hallway|Landing|Storage|.*\bCloset)$/;
 
 /** Every room and zone the drawing carries, with its floor and its studios. */
 export type Spot = (Room | Zone) & {
@@ -167,7 +173,7 @@ export const SPOTS: Spot[] = FLOORS.flatMap((floor) => {
         floor,
         shape: 'zone' as const,
         kind: kindOf(z.name, studios),
-        drawn: true,
+        drawn: !UNDRAWN.test(z.name),
         studios,
       };
     }),
@@ -206,6 +212,7 @@ export function undrawnOn(floor: Floor): string {
       .replace(/.*\bCloset$/, 'closet')
       .replace('Hallway', 'hallway')
       .replace('Landing', 'landing')
+      .replace('Storage', 'storage')
       .replace('Stairs', 'staircase'),
   );
   const counts = new Map<string, number>();
