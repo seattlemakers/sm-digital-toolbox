@@ -62,6 +62,7 @@ export type SpaceStudio = {
    * The colour badge at public/brand/studios/<slug>.png, cut from the brand
    * sheet. A placeholder raster: it is the only mark that exists at all for
    * computer lab and the leather studio, which the vector set has neither of.
+   * `unknown` is the exception and is a drawn SVG - it is not on the sheet.
    */
   badge: string;
   /**
@@ -88,6 +89,16 @@ export const SPACE_STUDIOS: SpaceStudio[] = [
   { slug: 'computer-lab',    name: 'computer lab',    badge: '/brand/studios/computer-lab.png',    colour: '#5a41ab' },
   { slug: 'av-studio',       name: 'a/v studio',      badge: '/brand/studios/av-studio.png',       colour: '#3563a6' },
   { slug: 'jewelry',         name: 'jewelry',         badge: '/brand/studios/jewelry.png',         colour: '#a90c5c' },
+  // A space whose studio nobody has named yet. It is an entry rather than an
+  // empty one so the plan and the list can still say "something works in here"
+  // - a different claim from the blank a room with no studio gets, and the
+  // only one that is true of the Fume Room.
+  //
+  // Its badge is DRAWN, at /brand/studios/unknown.svg, because it is not on
+  // the brand sheet. Do not add this slug to crop-studio-badges.mjs: that
+  // script zips its list against the fourteen rings it finds on the sheet and
+  // throws if the counts differ.
+  { slug: 'unknown',         name: '???',             badge: '/brand/studios/unknown.svg',         colour: '#1a1a1a' },
 ];
 
 export const SPACE_STUDIO_BY_SLUG = new Map(SPACE_STUDIOS.map((s) => [s.slug, s]));

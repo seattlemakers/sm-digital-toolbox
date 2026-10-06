@@ -46,6 +46,10 @@ export const STUDIOS_IN: Record<string, string[]> = {
   // Darkroom, which is a room of its own rather than a part of that zone -
   // burning screens is the one step that needs its own four walls.
   'U7': ['screen-printing'],
+  'U8': ['woodshop'],
+  // Something works in here and nobody has said what. That is a different
+  // claim from the blank a room with no studio gets, and the only true one.
+  'U9': ['unknown'],
   'U10.1': ['electronics'],
   'U10.2': ['screen-printing'],
   'U15.1': ['3d-printing'],

@@ -2118,6 +2118,19 @@ in the building call the room are different questions, and forcing one answer
 onto both is what produced the names below. Forked 2026-10-06; `/map` reads
 only the new one, every other page only the old one.
 
+**"???" is a studio, and that is the point.** The Fume Room has something
+working in it that nobody has named, which is a different claim from the blank a
+room with no studio gets - one says "not a studio", the other says "a studio we
+cannot name". Rather than invent a name or lose the fact, `unknown` is a real
+entry: name `???`, colour the brand ink, and a badge **drawn** at
+`/brand/studios/unknown.svg` rather than cut from the sheet, because it is not
+on the sheet. Its geometry is measured off the others so it sits in a row with
+them - 184 square, disc radius 84.5 on a centre of 91.5, a 4-unit ring.
+
+**Do not add that slug to `crop-studio-badges.mjs`.** It zips `SLUGS` against
+the rings it finds on the sheet and throws when the counts differ, so a
+fifteenth entry breaks the generator for the fourteen that are real.
+
 **The slugs are the one thing the fork did not change**, because they are
 load-bearing in two places outside either file: they key `STUDIOS_IN` in
 rooms.ts, and they name the badge PNGs that `crop-studio-badges.mjs` cuts

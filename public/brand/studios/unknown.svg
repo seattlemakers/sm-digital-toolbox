@@ -1,0 +1,10 @@
+<!-- The badge for a space whose studio nobody has named yet.
+
+     Drawn rather than cut from the brand sheet, because it is not on it. The
+     geometry is measured off the others so it sits in a row with them: 184
+     square, disc radius 84.5 on a centre of 91.5, a 4-unit ring. Transparent
+     outside the disc and white inside, which is what the cut badges are. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 184 184" width="184" height="184" role="img" aria-label="No studio named">
+  <circle cx="91.5" cy="91.5" r="84.5" fill="#ffffff"/>
+  <circle cx="91.5" cy="91.5" r="82.5" fill="none" stroke="#1a1a1a" stroke-width="4"/>
+</svg>
