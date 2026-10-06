@@ -23,8 +23,9 @@
  */
 import Base from '../layouts/Base.astro';
 import { toolById, pageTitle } from '../data/tools';
-import { FLOOR_NAME, ROOMS } from '../data/rooms';
-import { FLOORPLAN, FLOORS, STROKE, type Layer } from '../data/floorplan';
+import { OPEN_QUESTIONS, SPOTS, studiosWithoutSpot } from '../data/rooms';
+import { FLOORPLAN, FLOORS, STROKE, type Floor, type Layer } from '../data/floorplan';
+import { STUDIO_BY_SLUG } from '../data/studios';
 
 const TOOL = toolById('map');
 
@@ -37,6 +38,17 @@ const TOOL = toolById('map');
  * building rather than inside it.
  */
 const LAYERS: Layer[] = ['stairs', 'exterior', 'interior'];
+
+/** What each floor is called on the page. The geometry is the drawing's. */
+const FLOOR_NAME: Record<Floor, { title: string; sub: string }> = {
+  upstairs: { title: 'Upstairs', sub: '2nd floor' },
+  downstairs: { title: 'Downstairs', sub: '1st floor' },
+};
+
+const spotsOn = (floor: Floor) => SPOTS.filter((s) => s.floor === floor);
+const path = (points: readonly (readonly number[])[]) =>
+  `M${points.map((p) => p.join(' ')).join(' L')} Z`;
+const ORPHANS = studiosWithoutSpot();
 ---
 
 <Base title={pageTitle(TOOL)} description={TOOL.blurb} shellWidth="72rem">
@@ -79,18 +91,46 @@ const LAYERS: Layer[] = ['stairs', 'exterior', 'interior'];
               </g>
 
               <g transform={`translate(0 ${FLOORPLAN[floor].offsetY})`}>
-                {/* The floorplate. Everything inside the building stands on it,
-                    so a corridor reads as a corridor: lighter than the ground
-                    outside and darker than a room will be. */}
+                {/* The floorplate, under everything. */}
                 <polygon
                   class="mp-shell"
                   points={FLOORPLAN[floor].outline.map((q) => q.join(',')).join(' ')}
                 />
 
-                {/* The building, exactly as drawn. Three weights and no others:
-                    the outside, the partitions, and the stairs - lightest,
-                    because stairs are a thing you walk on rather than a thing
-                    you cannot walk through. The gaps are the doorways. */}
+                {/* ROOMS. The fills are the drawing's own: adjacent rooms are
+                    given different colours so they can be told apart, which is
+                    a map-colouring rather than a key - two woodshops do not
+                    share one. Held well back, because the thing you are looking
+                    for is a name and the thing that orients you is a wall. */}
+                {FLOORPLAN[floor].rooms.map((r) => (
+                  <path
+                    class="mp-room"
+                    d={path(r.points)}
+                    style={r.fill ? `--room: ${r.fill}` : undefined}
+                    data-spot={r.id}
+                    data-studios={(SPOTS.find((s) => s.id === r.id)?.studios ?? []).join(' ')}
+                  >
+                    <title>{r.name}</title>
+                  </path>
+                ))}
+
+                {/* ZONES, dashed. A zone has no wall between it and its room -
+                    that is what makes it a zone - so it cannot be drawn as one.
+                    A dashed line is the convention for a boundary you can walk
+                    straight through, which is exactly what this is. */}
+                {FLOORPLAN[floor].zones.map((z) => (
+                  <path
+                    class="mp-zone"
+                    d={path(z.points)}
+                    data-spot={z.id}
+                    data-studios={(SPOTS.find((s) => s.id === z.id)?.studios ?? []).join(' ')}
+                  >
+                    <title>{z.name}</title>
+                  </path>
+                ))}
+
+                {/* The building. Three weights and no others; the gaps are the
+                    doorways. */}
                 {LAYERS.map((layer) => (
                   <path
                     class={`mp-wall is-${layer}`}
@@ -98,17 +138,86 @@ const LAYERS: Layer[] = ['stairs', 'exterior', 'interior'];
                     stroke-width={STROKE[layer]}
                   />
                 ))}
+
+                {/* The names, over everything, each on the author's own anchor
+                    and broken on their own lines - both are fitted to the room
+                    they sit in, and recomputing either would be guessing at a
+                    decision somebody made with the plan in front of them. */}
+                {FLOORPLAN[floor].rooms.map((r) => (
+                  <text class="mp-name" x={r.at[0]} y={r.at[1]} style={`font-size: ${r.size}px`}>
+                    {r.lines.map((line, i) => (
+                      <tspan x={r.at[0]} dy={i ? r.size : 0}>
+                        {line}
+                      </tspan>
+                    ))}
+                  </text>
+                ))}
+
+                {FLOORPLAN[floor].zones.map((z) => (
+                  <text class="mp-zone-name" x={z.at[0]} y={z.at[1]} style={`font-size: ${z.size}px`}>
+                    {z.lines.map((line, i) => (
+                      <tspan x={z.at[0]} dy={i ? z.size * 1.1 : 0}>
+                        {line}
+                      </tspan>
+                    ))}
+                  </text>
+                ))}
               </g>
             </svg>
           </div>
+          <ul class="mp-spots">
+            {spotsOn(floor).filter((sp) => sp.kind === 'room').map((sp) => (
+              <li class:list={['mp-spot', sp.studios.length > 0 && 'has-studio']} data-spot={sp.id}>
+                <span class="mp-spot-id">{sp.id}</span>
+                <span class="mp-spot-body">
+                  <span class="mp-spot-name">{sp.name}</span>
+                  {spotsOn(floor)
+                    .filter((z) => z.kind === 'zone' && z.room === sp.id)
+                    .map((z) => (
+                      <span class="mp-spot-zone">{z.name}</span>
+                    ))}
+                  {[...sp.studios, ...spotsOn(floor).filter((z) => z.room === sp.id).flatMap((z) => z.studios)]
+                    .map((slug) => (
+                      <span class="mp-tag">
+                        <img src={STUDIO_BY_SLUG.get(slug)!.icon} alt="" width="16" height="16" />
+                        {STUDIO_BY_SLUG.get(slug)!.name}
+                      </span>
+                    ))}
+                  {sp.note && <i class="mp-spot-note">{sp.note}</i>}
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
       ))
     }
 
+    {
+      (ORPHANS.length > 0 || OPEN_QUESTIONS.length > 0) && (
+        <section class="mp-todo">
+          <h2>Still to confirm</h2>
+          <ul>
+            {ORPHANS.length > 0 && (
+              <li>
+                <b>{ORPHANS.map((st) => st.name).join(', ')}</b> — no space on the plan
+                claims {ORPHANS.length === 1 ? 'this studio' : 'these studios'} yet.
+              </li>
+            )}
+            {OPEN_QUESTIONS.map((sp) => (
+              <li>
+                <b>{sp.name}</b> — {sp.note}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
     <p class="mp-note">
-      {ROOMS.length} rooms and their studios are recorded in <b>data/rooms.ts</b>,
-      with nowhere yet to draw them — the shapes went with the old traced
-      floorplan. They go back on as they are placed against this drawing.
+      {SPOTS.filter((sp) => sp.kind === 'room').length} rooms and
+      {' '}{SPOTS.filter((sp) => sp.kind === 'zone').length} zones, named and shaped by
+      <b>data/floorplan.svg</b>. <b>data/rooms.ts</b> adds only what the drawing
+      cannot know: which studios work where, and what is still unsettled.
     </p>
   </main>
 </Base>
@@ -172,6 +281,53 @@ const LAYERS: Layer[] = ['stairs', 'exterior', 'interior'];
     fill: var(--color-sm-mist);
   }
 
+  /* The drawing's own fills, held well back. At full strength they are the
+     loudest thing on the plan, and they are the least informative - the colours
+     distinguish neighbours rather than classify rooms, since the two woodshops
+     do not share one. What you came for is a name; what orients you is a wall. */
+  .mp-room {
+    fill: var(--room, var(--color-sm-paper));
+    fill-opacity: 0.5;
+    transition: fill-opacity 140ms ease;
+  }
+
+  /* A zone has no wall between it and its room - that is what makes it a zone -
+     so it cannot be drawn as one. Dashes are the convention for a boundary you
+     walk straight through. The dash is in drawing units, so it stays the same
+     size on the plan however the page is scaled. */
+  .mp-zone {
+    fill: none;
+    stroke: var(--color-sm-ink-2);
+    stroke-width: 1.2;
+    stroke-dasharray: 5 4;
+    opacity: 0.75;
+    pointer-events: none;
+  }
+
+  .mp-name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-anchor: middle;
+    text-transform: uppercase;
+    fill: var(--color-sm-ink);
+    pointer-events: none;
+  }
+
+  /* Italic and a step back, so a zone reads as a part of the room it is in
+     rather than as another room. */
+  .mp-zone-name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-style: italic;
+    letter-spacing: 0.02em;
+    text-anchor: middle;
+    text-transform: uppercase;
+    fill: var(--color-sm-ink-2);
+    opacity: 0.9;
+    pointer-events: none;
+  }
+
   /* The building, and the only thing on the plan drawn in ink. If it is dark
      you cannot walk through it - except the stairs, which are drawn lightest of
      the three for exactly that reason: a staircase is a thing you walk on.
@@ -210,6 +366,111 @@ const LAYERS: Layer[] = ['stairs', 'exterior', 'interior'];
     opacity: 0.75;
   }
 
+  /* ---------------------------------------------------------- the lists --- */
+
+  .mp-spots {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: 0.15rem;
+    margin-top: 1.1rem;
+  }
+
+  .mp-spot {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 9px;
+  }
+
+  /* The drawing's id, which is how a space is referred to in conversation and
+     in rooms.ts. Monospace because it is a key rather than a word. */
+  .mp-spot-id {
+    flex: 0 0 auto;
+    min-width: 2.1rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 5px;
+    background: var(--color-sm-line);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--color-sm-slate);
+  }
+
+  .mp-spot.has-studio .mp-spot-id {
+    background: var(--color-sm-wash);
+    color: var(--color-sm-green-dark);
+  }
+
+  .mp-spot-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+    min-width: 0;
+  }
+
+  .mp-spot-name {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-sm-ink);
+  }
+
+  .mp-spot-zone {
+    font-size: 0.8125rem;
+    font-style: italic;
+    color: var(--color-sm-slate);
+  }
+
+  .mp-spot-zone::before {
+    content: '↳ ';
+  }
+
+  .mp-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    font-size: 0.8125rem;
+    color: var(--color-sm-green-dark);
+  }
+
+  .mp-spot-note {
+    font-size: 0.8125rem;
+    font-style: italic;
+    line-height: 1.5;
+    color: var(--color-sm-slate);
+  }
+
+  .mp-todo {
+    margin-top: 3rem;
+    padding: 1.1rem 1.25rem;
+    background: var(--color-sm-mist);
+    border-left: 4px solid var(--color-sm-green-mid);
+    border-radius: 0 10px 10px 0;
+  }
+
+  .mp-todo h2 {
+    margin-bottom: 0.5rem;
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-sm-slate);
+  }
+
+  .mp-todo ul {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .mp-todo li {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--color-sm-ink-2);
+  }
+
   .mp-note {
     max-width: 62ch;
     margin-top: 2.5rem;
@@ -225,6 +486,10 @@ const LAYERS: Layer[] = ['stairs', 'exterior', 'interior'];
       margin: 0 calc(var(--pad-x) * -1);
       padding: 0.6rem;
       border-radius: 0;
+    }
+
+    .mp-spots {
+      grid-template-columns: 1fr;
     }
   }
 </style>

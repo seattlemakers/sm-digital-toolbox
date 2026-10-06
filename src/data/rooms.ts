@@ -1,283 +1,140 @@
 /**
- * The rooms of the building, and which studios live in each.
+ * What the drawing cannot know about each space.
  *
- * WHY THIS IS A SEPARATE LIST FROM data/studios.ts
- *   A studio is a discipline the calendar tags events with. A room is a place
- *   with walls, a door and a colour of tape on its frame. They are not the same
- *   list and they never line up one-to-one: the woodshop is two rooms, the
- *   MegaStudio holds several disciplines at once, and the kitchen, darkroom and
- *   utilities are rooms that host no studio at all. Flattening the two into one
- *   list would force a lie in one direction or the other.
+ * The floorplan now names and shapes every room and zone itself, so this file
+ * stopped being a list of rooms on 2026-10-05 and became a list of *notes* on
+ * them, keyed by the drawing's own ids. Everything that was duplicated - the
+ * name, the outline, which floor it is on - is gone, because the drawing is the
+ * one place it is stated and a second copy is a second copy.
  *
- *   So `studios` here is an array of slugs pointing INTO studios.ts, which stays
- *   the single source of truth for what a studio is called and what icon it
- *   carries. Nothing about a studio is repeated here.
+ * What is left is the two things a floorplan genuinely cannot say: which
+ * studios work in a space, and what we are still unsure about.
  *
- * WHERE THE GEOMETRY IS
- *   Not here. The building is drawn by hand in data/floorplan.svg and read by
- *   data/floorplan.ts; this file carries only what a room IS. That split is new
- *   as of 2026-10-05 and it is the right way round - the walls were previously
- *   recovered from a raster and the rooms were rectangles fitted to the same
- *   raster, so the two were tangled together and both were approximations.
- * */
-import { STUDIO_BY_SLUG, type Studio } from './studios';
-import type { Floor, Pt } from './floorplan';
+ * ROOMS AND ZONES BOTH TAKE A KEY, and which one gets the studio is the whole
+ * point of having both. "Laser Cutting Studio" is a zone inside the Fab Lab, so
+ * laser-cutting is pinned to `U15.2` and not to `U15` - the map can then say
+ * "the Fab Lab, laser end" rather than just "the Fab Lab". Where a room has no
+ * zones, the studio goes on the room.
+ *
+ * STUDIO SLUGS POINT INTO studios.ts, which stays the single source of truth
+ * for what a studio is called and which icon it carries. A slug that does not
+ * resolve throws at module load, which fails the build - a typo would otherwise
+ * render as a space with a missing icon and no name beside it, which looks like
+ * a styling bug and is not one. An id that is not in the drawing throws too, so
+ * a room renamed or removed in a redraw cannot leave an orphaned note behind.
+ */
+import { STUDIO_BY_SLUG } from './studios';
+import { FLOORPLAN, FLOORS, type Floor, type Room, type Zone } from './floorplan';
 
-export type { Floor, Pt };
-
-export type Room = {
-  slug: string;
-  /** What the room is called. The old CAD drawing's wording until told otherwise. */
-  name: string;
-  floor: Floor;
-  /**
-   * Studio slugs housed here, pointing into studios.ts. Many-to-many on both
-   * sides: the woodshop is in two rooms, and one room can hold several studios.
-   * An empty array means "no studio in here", which is true of the kitchen and
-   * the bathrooms - it is NOT the same as "not filled in yet", so a room whose
-   * assignment is still unknown says so in `note`.
-   */
-  studios: string[];
-  /**
-   * The room's ZONE - its tape-marked area on the floor, clockwise.
-   *
-   * EVERY ROOM IS MISSING THIS as of 2026-10-05, and that is deliberate rather
-   * than unfinished. The shapes were derived from the old CAD drawing and were
-   * expressed in its pixels; the building is now drawn by hand in
-   * data/floorplan.svg, in a coordinate system that shares nothing with it and
-   * a layout that is not the same shape. Keeping the old numbers would have
-   * rendered every zone somewhere plausible-looking and wrong, which is worse
-   * than rendering none.
-   *
-   * A zone is still not a room and not a wall - Woodshop 1 and Woodshop 2 have
-   * no wall between them, they are one room with tape on the floor - so these
-   * come back by being drawn against the new plan, not by being inferred from
-   * it. Until then a room is a row in the list and nothing on the drawing.
-   */
-  shape?: Pt[];
-  /** Label anchor, when the shape's centre is the wrong place for it. */
-  label?: Pt;
-  /** Anything the drawing says about the room that the name does not. */
+export type Place = {
+  /** Studio slugs working in this space. Empty is a fact, not a gap. */
+  studios?: string[];
+  /** Anything worth saying that the plan does not. A `?` marks it unresolved. */
   note?: string;
 };
 
-export const ROOMS: Room[] = [
+export const PLACES: Record<string, Place> = {
   // --- upstairs ------------------------------------------------------------
-  //
-  // Confirmed against data/floorplan.svg on 2026-10-05, from a marked-up export
-  // of it. This is the real building; everything upstairs before this described
-  // the old CAD layout and has been replaced rather than edited - that plan had
-  // the laser, 3D printing, electronics and the VOC booths up here, and this one
-  // has none of them.
-  //
-  // NOT a room: the staff desk, which sits open beside the west stairs. It is a
-  // landmark rather than a space - "past the staff desk" is a direction, and
-  // forcing it into this list would make it a place with no walls.
-  {
-    slug: 'garage', name: 'Garage', floor: 'upstairs',
-    studios: [],
-    note: 'Metal is getting an area at the back, so some metalworking happens here too.',
+  'U1': { note: 'The big roll-up door. Metalshop 1 and the big CNC are zones inside it.' },
+  'U1.1': { studios: ['metalworking'] },
+  'U1.2': { studios: ['cnc'] },
+  'U3': { studios: ['metalworking'], note: 'Jewelry bench is in here too — does lapidary belong on this room?' },
+  'U4': { note: 'Open to the room rather than walled off; a landmark more than a space.' },
+  'U5': { studios: ['woodshop'] },
+  'U5.1': { studios: ['cnc'] },
+  'U6': { studios: ['woodshop'] },
+  'U10': { note: 'The big flexible room. Electronics and screen printing are zones in it.' },
+  'U10.1': { studios: ['electronics'] },
+  'U10.2': { studios: ['screen-printing'] },
+  'U15': { note: '3D printing and laser cutting are zones in it.' },
+  'U15.1': { studios: ['3d-printing'] },
+  'U15.2': { studios: ['laser-cutting'] },
+  'U16': {
+    note: 'The brand icon sheet has a Computer Lab mark and studios.ts has no such studio — add one?',
   },
-  {
-    slug: 'compressor-room', name: 'Compressor Room', floor: 'upstairs',
-    studios: [],
-  },
-  {
-    // The jewellery bench and the metal machines share this one. Deliberately
-    // not "Metal Shop": metal also has an area at the back of the garage, and
-    // two rooms called metal something is the one thing a wayfinding map cannot
-    // afford. See *Naming rooms* in CLAUDE.md.
-    slug: 'machine-shop', name: 'Machine Shop', floor: 'upstairs',
-    studios: ['metalworking', 'lapidary'],
-    note: 'Jewelry bench and the metal machines. Welding is in the garage, not here.',
-  },
-  {
-    slug: 'woodshop-2', name: 'Woodshop 2', floor: 'upstairs',
-    studios: ['woodshop'],
-  },
-  {
-    slug: 'woodshop-1', name: 'Woodshop 1', floor: 'upstairs',
-    studios: ['woodshop'],
-  },
-  {
-    slug: 'sanding-room', name: 'Sanding Room', floor: 'upstairs',
-    studios: [],
-  },
-  {
-    slug: 'fume-room', name: 'Fume Room', floor: 'upstairs',
-    studios: [],
-  },
-  {
-    slug: 'darkroom-2', name: 'Darkroom', floor: 'upstairs',
-    studios: [],
-    note: 'There is a darkroom on the downstairs list too. Is that still there, or did it move up here?',
-  },
-  {
-    // Kept as drawn. A proper name is the best kind for a room that hosts
-    // changing things, and in a building where every discipline area is called
-    // a studio, a generic one would be ambiguous in a way this is not.
-    slug: 'megastudio', name: 'Megastudio', floor: 'upstairs',
-    studios: [],
-    note: 'The big flexible room. What lives in here now?',
-  },
-  {
-    slug: 'restroom-2-west', name: 'Restroom', floor: 'upstairs',
-    studios: [], note: 'All genders.',
-  },
-  {
-    slug: 'restroom-2-east', name: 'Restroom', floor: 'upstairs',
-    studios: [], note: 'All genders.',
-  },
-  {
-    slug: 'fab-lab', name: 'Fab Lab', floor: 'upstairs',
-    studios: [],
-  },
-  {
-    slug: 'computer-lab', name: 'Computer Lab', floor: 'upstairs',
-    studios: [],
-    note: 'The brand icon sheet has a Computer Lab mark; studios.ts has no such studio yet.',
-  },
-  {
-    slug: 'closet-2', name: 'Closet', floor: 'upstairs',
-    studios: [],
-  },
-  {
-    slug: 'stairs-2-west', name: 'Stairs', floor: 'upstairs',
-    studios: [],
-  },
-  {
-    slug: 'stairs-2-east', name: 'Stairs', floor: 'upstairs',
-    studios: [],
-  },
+  'U11': { note: 'All genders.' },
+  'U12': { note: 'All genders.' },
 
   // --- downstairs ----------------------------------------------------------
-  //
-  // NOT yet confirmed against the new drawing. These came off the old CAD plan,
-  // which this building's layout does not match - the names are probably mostly
-  // right and the arrangement is probably not. They stay until the downstairs
-  // export comes back marked up, because a wrong-but-close list is a better
-  // starting point for that than an empty one.
-  {
-    slug: 'kitchen', name: 'Kitchen', floor: 'downstairs',
-    studios: [],
-  },
-  {
-    slug: 'av-studio', name: 'A/V Studio', floor: 'downstairs',
-    studios: ['av-studio'], note: 'Green screen.',
-  },
-  {
-    slug: 'bathroom-1-west', name: "Women's Bathroom", floor: 'downstairs',
-    studios: [], note: 'With a shower.',
-  },
-  {
-    slug: 'bathroom-1-east', name: "Men's Bathroom", floor: 'downstairs',
-    studios: [], note: 'With a shower.',
-  },
-  {
-    slug: 'sewing', name: 'Sewing', floor: 'downstairs',
-    studios: ['sewing'],
-    note: 'Leatherworking too? It shares a calendar tag with sewing.',
-  },
-  {
-    slug: 'crafts', name: 'Crafts', floor: 'downstairs',
-    studios: ['arts-crafts'], note: 'Kits and general craft supplies.',
-  },
-  {
-    slug: 'stairs-1-east', name: 'Stairs', floor: 'downstairs',
-    studios: [], note: 'Up to Foyer 2, the metal shop and the garage.',
-  },
-  {
-    slug: 'stairs-1-west', name: 'Stairs', floor: 'downstairs',
-    studios: [], note: 'Up to Classroom 2 and the MegaStudio.',
-  },
-  {
-    // The entrance is a re-entrant notch in the building's bottom-left corner;
-    // the foyer wraps round the inside of it. Simplified to the two walls that
-    // matter for finding the door.
-    slug: 'foyer-1', name: 'Foyer 1', floor: 'downstairs',
-    studios: [],
-    note: 'The door to the street, and the project feature area.',
-  },
-  {
-    slug: 'front-desk', name: 'Front Desk', floor: 'downstairs',
-    studios: [], note: 'Reception. Sign in here.',
-  },
-  {
-    slug: 'lounge', name: 'Lounge', floor: 'downstairs',
-    studios: [],
-  },
-  {
-    slug: 'office', name: 'Office', floor: 'downstairs',
-    studios: [],
-  },
-  {
-    slug: 'darkroom', name: 'Darkroom', floor: 'downstairs',
-    studios: [],
-  },
-  {
-    slug: 'storage-1', name: 'Storage 1', floor: 'downstairs',
-    studios: [], note: 'Makerspace storage.',
-  },
-  {
-    slug: 'utilities', name: 'Utilities', floor: 'downstairs',
-    studios: [],
-  },
-  {
-    slug: 'classroom-1', name: 'Classroom 1', floor: 'downstairs',
-    studios: [],
-    note: 'Event space, classroom and rentable space. Member storage at the back.',
-  },
-];
-
-/** What each floor is called on the page. The geometry is floorplan.ts's. */
-export const FLOOR_NAME: Record<Floor, { title: string; sub: string }> = {
-  upstairs: { title: 'Upstairs', sub: '2nd floor' },
-  downstairs: { title: 'Downstairs', sub: '1st floor' },
+  'D1': { note: 'Five zones, including the event space and the mini makerspace.' },
+  'D1.1': { note: 'Which studios are the maker studios? Nothing on the plan says.' },
+  'D1.2': { studios: ['leatherworking'] },
+  'D3': { studios: ['av-studio'] },
+  'D10': { studios: ['sewing'], note: 'Does leatherworking also happen here? It shares a calendar tag with sewing.' },
+  'D12': { studios: ['ceramics'] },
+  'D14': { studios: ['ceramics'] },
+  'D15': { studios: ['ceramics'] },
+  'D16': { studios: ['ceramics'] },
+  'D7': { note: 'The street door. Check in here.' },
 };
 
-export const ROOM_BY_SLUG = new Map(ROOMS.map((r) => [r.slug, r]));
+/** Every room and zone the drawing carries, with its floor and its notes. */
+export type Spot = (Room | Zone) & {
+  floor: Floor;
+  kind: 'room' | 'zone';
+  /** For a zone, the room it sits in. */
+  room?: string;
+  studios: string[];
+  note?: string;
+};
 
-export function roomsOnFloor(floor: Floor): Room[] {
-  return ROOMS.filter((r) => r.floor === floor);
+export const SPOTS: Spot[] = FLOORS.flatMap((floor) => [
+  ...FLOORPLAN[floor].rooms.map((r) => ({
+    ...r,
+    floor,
+    kind: 'room' as const,
+    studios: PLACES[r.id]?.studios ?? [],
+    note: PLACES[r.id]?.note,
+  })),
+  ...FLOORPLAN[floor].zones.map((z) => ({
+    ...z,
+    floor,
+    kind: 'zone' as const,
+    studios: PLACES[z.id]?.studios ?? [],
+    note: PLACES[z.id]?.note,
+  })),
+]);
+
+export const SPOT_BY_ID = new Map(SPOTS.map((s) => [s.id, s]));
+
+/** Where a studio works. A zone answers with the room it is in, too. */
+export function spotsForStudio(slug: string): Spot[] {
+  return SPOTS.filter((s) => s.studios.includes(slug));
 }
 
-/** Rooms housing a studio, in plan order. Empty for a studio with no room. */
-export function roomsForStudio(slug: string): Room[] {
-  return ROOMS.filter((r) => r.studios.includes(slug));
-}
-
-/** The studios in a room, resolved against studios.ts. */
-export function studiosInRoom(room: Room): Studio[] {
-  return room.studios.map((s) => STUDIO_BY_SLUG.get(s)!);
+/** "Fab Lab, laser cutting studio" - a zone says which room it is in. */
+export function placeOf(spot: Spot): string {
+  if (spot.kind === 'room') return spot.name;
+  const room = SPOT_BY_ID.get(spot.room!);
+  return room ? `${room.name}, ${spot.name.toLowerCase()}` : spot.name;
 }
 
 /**
- * Studios that no room claims yet. Rendered on the page rather than swallowed:
- * the whole point of keeping these two lists apart is that the gap between them
- * is visible, and a studio with nowhere to send somebody is the one thing this
- * page cannot do its job without.
+ * Studios that no space claims. Rendered rather than swallowed: the whole point
+ * of keeping the drawing and the studio list apart is that the distance between
+ * them is visible, and a studio with nowhere to send somebody is the one thing
+ * this map cannot do its job without.
  */
-export function studiosWithoutRoom(): Studio[] {
-  const placed = new Set(ROOMS.flatMap((r) => r.studios));
+export function studiosWithoutSpot() {
+  const placed = new Set(SPOTS.flatMap((s) => s.studios));
   return [...STUDIO_BY_SLUG.values()].filter((s) => !placed.has(s.slug));
 }
 
-/**
- * Throws rather than rendering a room pointing at a studio that does not exist.
- * A slug typo here would otherwise show as a room with a missing icon and no
- * name beside it, which looks like a styling bug and is not one. Runs at module
- * load, so it fails the build.
- */
-for (const room of ROOMS) {
-  for (const slug of room.studios) {
-    if (!STUDIO_BY_SLUG.has(slug)) {
-      throw new Error(`rooms.ts: room "${room.slug}" names studio "${slug}", which is not in studios.ts`);
-    }
+/** Spaces whose note asks a question, so the open ones stay visible. */
+export const OPEN_QUESTIONS = SPOTS.filter((s) => s.note?.includes('?'));
+
+// A note on a space the drawing does not have is a note about a building that
+// no longer exists - far more likely after a redraw than a typo here.
+for (const id of Object.keys(PLACES)) {
+  if (!SPOT_BY_ID.has(id)) {
+    throw new Error(`rooms.ts: "${id}" is not a room or zone in floorplan.svg`);
   }
 }
 
-const seen = new Set<string>();
-for (const room of ROOMS) {
-  if (seen.has(room.slug)) throw new Error(`rooms.ts: duplicate room slug "${room.slug}"`);
-  seen.add(room.slug);
+for (const spot of SPOTS) {
+  for (const slug of spot.studios) {
+    if (!STUDIO_BY_SLUG.has(slug)) {
+      throw new Error(`rooms.ts: "${spot.id}" names studio "${slug}", which is not in studios.ts`);
+    }
+  }
 }

@@ -24,6 +24,17 @@
  * It parses only M/L/H/V/Z absolute, and throws on anything else. A future
  * export that introduces a curve should fail loudly here rather than quietly
  * dropping a wall.
+ *
+ * THE DRAWING ALSO NAMES THE ROOMS, as of 2026-10-05, and that changed what
+ * data/rooms.ts is for. Rooms and zones arrive as `#room-U5` / `#zone-U15.2`
+ * with a label layer beside them, so the drawing is now the source of truth for
+ * what a room is called and what shape it is. rooms.ts keeps only what the
+ * drawing cannot know: which studios are in a room, and the open questions.
+ *
+ * A zone is a named area INSIDE a room - "Laser Cutting Studio" within the Fab
+ * Lab, "Big CNC" within the Garage. That is the relationship the old tape
+ * colours were reaching for and never quite had: the building divides into
+ * rooms, and a room divides into zones that have no walls between them.
  */
 import { readFileSync } from 'node:fs';
 
@@ -100,9 +111,86 @@ function outline(d) {
   return out;
 }
 
+/** Every `<path id="room-X" fill d>` or `<path id="zone-X" data-room d>`. */
+function shapes(kind) {
+  const out = [];
+  const re = new RegExp(`<path id="${kind}-([^"]+)"([^>]*)>`, 'g');
+  for (const m of svg.matchAll(re)) {
+    const attrs = m[2];
+    const d = attrs.match(/\sd="([^"]+)"/);
+    if (!d) throw new Error(`floorplan.svg: ${kind} "${m[1]}" has no path data`);
+    out.push({
+      id: m[1],
+      fill: attrs.match(/fill="([^"]+)"/)?.[1] ?? null,
+      room: attrs.match(/data-room="([^"]+)"/)?.[1] ?? null,
+      points: outline(d[1]),
+    });
+  }
+  return out;
+}
+
+/**
+ * The label layer, which is where the names live.
+ *
+ * Joined with a space across tspans, because a two-line label is two of them -
+ * without it "U2: Compressor" and "Room" come back as "CompressorRoom". The
+ * `U2: ` prefix is the drawing's own cross-reference and comes off; the id is
+ * already on the element.
+ *
+ * The x/y is the author's chosen anchor and is kept. A centroid would be the
+ * obvious alternative and is worse: on an L-shaped room it lands in the wall,
+ * and these have been placed by somebody looking at the plan.
+ */
+function labels() {
+  const out = {};
+  for (const m of svg.matchAll(/<text id="z?label-([^"]+)"([^>]*)>([\s\S]*?)<\/text>/g)) {
+    const id = m[1];
+    const attrs = m[2];
+
+    // The author broke each name into lines that fit its own room, so the
+    // tspans are kept as lines rather than joined. Re-wrapping here would be
+    // guessing at a decision somebody has already made while looking at the
+    // plan - and the first version did join them, which is how "U2: Compressor"
+    // and "Room" came back as "CompressorRoom".
+    const lines = [...m[3].matchAll(/<tspan[^>]*>([\s\S]*?)<\/tspan>/g)]
+      .map((t) => t[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+
+    // Room labels read "U2: Compressor" on their first line; zone labels put
+    // the id on a line of its own. Both lose it.
+    const head = lines[0].replace(new RegExp(`^${id.replace('.', '\\.')}:?\\s*`), '').trim();
+    if (head) lines[0] = head;
+    else lines.shift();
+
+    out[id] = {
+      lines,
+      name: lines.join(' '),
+      at: [Number(attrs.match(/\sx="([-\d.]+)"/)[1]), Number(attrs.match(/\sy="([-\d.]+)"/)[1])],
+      size: Number(attrs.match(/font-size="([\d.]+)"/)?.[1] ?? 11),
+    };
+  }
+  return out;
+}
+
+const LABEL = labels();
+const named = (s, what) => {
+  const l = LABEL[s.id];
+  if (!l) throw new Error(`floorplan.svg: ${what} "${s.id}" has no label`);
+  return { ...s, name: l.name, lines: l.lines, at: l.at, size: l.size };
+};
+
+const ROOMS = shapes('room').map((s) => named(s, 'room'));
+const ZONES = shapes('zone').map((s) => named(s, 'zone'));
+
+for (const z of ZONES) {
+  if (!ROOMS.some((r) => r.id === z.room)) {
+    throw new Error(`floorplan.svg: zone "${z.id}" names room "${z.room}", which is not drawn`);
+  }
+}
+
 const FLOORS = [
-  { key: 'upstairs', group: 'upstairs', prefix: 'up' },
-  { key: 'downstairs', group: 'downstairs', prefix: 'down' },
+  { key: 'upstairs', group: 'upstairs', prefix: 'up', side: 'U' },
+  { key: 'downstairs', group: 'downstairs', prefix: 'down', side: 'D' },
 ];
 
 const floors = FLOORS.map((f) => {
@@ -117,6 +205,8 @@ const floors = FLOORS.map((f) => {
     ...f,
     d,
     offsetY,
+    rooms: ROOMS.filter((r) => r.id.startsWith(f.side)),
+    zones: ZONES.filter((z) => z.id.startsWith(f.side)),
     outline: outline(d.exterior),
     box: {
       x0: Math.min(...all.map((p) => p.x)),
@@ -147,6 +237,9 @@ const view = (f) => {
 
 const q = (s) => JSON.stringify(s);
 
+const shape = (s) =>
+  `      { id: ${q(s.id)}, name: ${q(s.name)},${s.room ? ` room: ${q(s.room)},` : ''} fill: ${q(s.fill)},\n        lines: ${q(s.lines)}, at: [${s.at.join(', ')}], size: ${s.size},\n        points: [${s.points.map((p) => `[${p.join(', ')}]`).join(', ')}] },`;
+
 process.stdout.write(`/**
  * The building, drawn rather than traced.
  *
@@ -171,6 +264,30 @@ export const STROKE: Record<Layer, number> = {
   stairs: 1.5,
 };
 
+/**
+ * A room, as the drawing names and shapes it. The fill is the author's own
+ * colour-coding of what kind of space it is, and "at" is where they put the
+ * label - which beats a computed centroid, since on an L-shaped room that lands
+ * in a wall.
+ */
+export type Room = {
+  id: string;
+  name: string;
+  /** The author's own line breaks, which are fitted to this room's width. */
+  lines: string[];
+  fill: string | null;
+  points: Pt[];
+  at: Pt;
+  size: number;
+};
+
+/**
+ * A named area inside a room - "Laser Cutting Studio" within the Fab Lab, "Big
+ * CNC" within the Garage. No wall divides a zone from its room or from its
+ * siblings, and that is exactly what makes it a zone rather than a room.
+ */
+export type Zone = Room & { room: string };
+
 export type FloorPlan = {
   /** The drawing stacks the floors; this is the second one's own shift. */
   offsetY: number;
@@ -179,6 +296,8 @@ export type FloorPlan = {
   /** Both floors share a width and a height, so they render at one scale. */
   viewBox: string;
   d: Record<Layer, string>;
+  rooms: Room[];
+  zones: Zone[];
 };
 
 export const FLOORPLAN: Record<Floor, FloorPlan> = {
@@ -195,6 +314,12 @@ ${f.outline.map((p) => `      [${p[0]}, ${p[1]}],`).join('\n')}
       interior: ${q(f.d.interior)},
       stairs: ${q(f.d.stairs)},
     },
+    rooms: [
+${f.rooms.map(shape).join('\n')}
+    ],
+    zones: [
+${f.zones.map(shape).join('\n')}
+    ],
   },`,
   )
   .join('\n')}
@@ -205,6 +330,6 @@ export const FLOORS: Floor[] = ['upstairs', 'downstairs'];
 
 for (const f of floors) {
   process.stderr.write(
-    `${f.key}: outline ${f.outline.length} points, box ${round(f.box.x0)},${round(f.box.y0)} -> ${round(f.box.x1)},${round(f.box.y1)}\n`,
+    `${f.key}: ${f.rooms.length} rooms, ${f.zones.length} zones, outline ${f.outline.length} points, box ${round(f.box.x0)},${round(f.box.y0)} -> ${round(f.box.x1)},${round(f.box.y1)}\n`,
   );
 }

@@ -105,22 +105,16 @@ Done:
 Space map (`/map`) is built and verified in the browser, added 2026-09-29.
 
 Done:
-- **The building is drawn, not traced.** `src/data/floorplan.svg` is authored
-  by hand; `scripts/read-floorplan.mjs` reads it into `src/data/floorplan.ts`.
-  Three weights - exterior, interior, stairs - and 47 pen-ups that are the
-  doorways. It replaced a raster trace on 2026-10-05; see *The map* below.
-- `src/data/rooms.ts` carries 33 rooms, their tape codes and which studios each
-  one houses - names and meaning only. The zone shapes are **gone**: they were
-  in the old trace's pixels and the new drawing shares neither its coordinates
-  nor its shape. They come back by being drawn against it.
-- `rooms.ts` points into `studios.ts` by slug and repeats nothing about a
-  studio, so the map, the calendar and the board cannot disagree about what a
-  studio is called or which icon it carries. A bad slug throws at build.
-- The gaps are rendered rather than hidden: ceramics, leatherworking and
-  lapidary say "no room yet", and any room whose note carries a question mark
-  is listed under *Still to confirm*.
-- Hovering a studio lights every room it is in, on both floors, and hovering a
-  room lights its row. One delegated handler over `data-room` / `data-studios`.
+- **The building is drawn, named and zoned, not traced.**
+  `src/data/floorplan.svg` is authored by hand and carries everything:
+  **43 rooms, 12 zones**, their names, their shapes, the walls and the label
+  positions. `scripts/read-floorplan.mjs` reads the lot into
+  `src/data/floorplan.ts`. It replaced a raster trace on 2026-10-05.
+- `src/data/rooms.ts` is no longer a list of rooms. It is a list of *notes* on
+  them, keyed by the drawing's own ids, carrying the only two things a plan
+  cannot state: which studios work in a space, and what is still unsettled.
+- Three weights of wall - exterior, interior, stairs - and the doorways are
+  pen-ups in the path data rather than anything marked.
 
 Label maker (`/labels`) is built and verified against a print-to-PDF. Most of
 the *Implementation notes* below are about it.
@@ -1981,25 +1975,56 @@ it.
 
 ### The map
 
-**Rooms and studios are two lists, and flattening them would force a lie.** A
-studio is a discipline the calendar tags events with; a room is a place with
-walls, a door and a colour of tape on the frame. They never line up one-to-one -
-the woodshop is two rooms, the MegaStudio holds several disciplines at once, and
-the kitchen, the darkroom and the utilities cupboard host no studio at all. So
-`rooms.ts` carries an array of studio *slugs* and repeats nothing else about
-them; `studios.ts` stays the single source of truth for names and icons. A slug
-that does not resolve throws at module load, which fails the build - a typo
-would otherwise render as a room with a missing icon and no name beside it,
-which looks like a styling bug and is not one.
+**The drawing states the building; rooms.ts states what it cannot.** As of
+2026-10-05 `floorplan.svg` carries every room and zone - id, name, outline, fill
+and label position - so `rooms.ts` stopped being a list of rooms and became a
+list of notes on them, keyed by the drawing's ids. Everything that was in both
+is gone from one: the name, the shape, the floor. A room renamed in a redraw is
+renamed everywhere, because it is written down once.
 
-**Zones are not rooms and rooms are not walls.** The old drawing's key is a list
-of *tape colours*, because much of this building is open shop floor with tape
-marking the areas out: Woodshop 1 and Woodshop 2 have no wall between them at
-all. The first version of this page stroked each zone as an outline, which drew
-walls that are not there. Three layers: the floorplate, the zones painted flat
-on it with no outline, and the building in ink over the top. **If it is dark you
-cannot walk through it** - with the stairs the deliberate exception, drawn
-lightest of the three because a staircase is a thing you walk *on*.
+What is left in rooms.ts is the two things a plan genuinely cannot say: **which
+studios work in a space**, and **what is still unsettled**. Both throw at module
+load if they go stale - an id that is not in the drawing, or a studio slug that
+is not in studios.ts - which fails the build rather than rendering a space with
+a missing icon and no name beside it, a thing that looks like a styling bug and
+is not one. The id check is the one that earns its keep after a redraw.
+
+**A zone is a named area inside a room, with no wall between them**, and that is
+the distinction the old tape colours were reaching for and never quite had.
+"Laser Cutting Studio" is a zone within the Fab Lab; "Big CNC" is a zone within
+the Garage. The building divides into rooms, and a room divides into zones.
+
+So **a studio pins to the zone when there is one, and to the room otherwise** -
+laser-cutting is on `U15.2`, not on `U15`. The map can then answer "the Fab Lab,
+laser end" rather than just "the Fab Lab", and the Megastudio can hold
+electronics and screen printing without either claiming the whole room.
+
+**Zones are drawn dashed, because a dash is the convention for a boundary you
+walk straight through** - which is exactly what a zone edge is. Drawing one as a
+solid line would assert a wall that is not there, which is the original sin this
+page committed and spent three rewrites undoing.
+
+**The label lines and anchors are the author's, and recomputing either is
+guessing at a decision somebody made with the plan in front of them.** The first
+version joined the tspans into one string and re-wrapped - which is how "U2:
+Compressor" and "Room" came back as `CompressorRoom`, and why the extractor now
+keeps the lines. The anchor is kept for the same reason plus a sharper one: a
+centroid lands in the wall on an L-shaped room, and several of these are L
+shaped.
+
+**The room fills are a map-colouring, not a key.** Adjacent rooms are given
+different colours so they can be told apart; the two woodshops do not share one
+and neither do the two ceramics rooms, so nothing can be read off the colour
+itself. They render at half opacity because at full strength they are the
+loudest thing on a plan whose point is the names and the walls.
+
+**A backtick in a doc comment inside a generator's output template closes the
+template.** `read-floorplan.mjs` writes its output as one big template literal,
+and two words quoted in backticks inside the generated file's own header comment
+turned into a syntax error at the top of the script - reported at the line the
+template *opens*, which is nowhere near the problem. Reword rather than escape;
+escaped backticks inside a template that is itself writing JavaScript are a
+puzzle for the next person.
 
 **The walls were traced out of a raster once, and that is over.** Deleted on
 2026-10-05: `scripts/trace-floorplan.mjs` (dark-run masking, furniture rejected
@@ -2056,25 +2081,6 @@ to the wall enclosing it, so drawn on top its treads cross the wall and poke out
 the other side - which reads as the stair being in front of the building rather
 than inside it.
 
-**The room zones are deliberately absent, not unfinished.** They were fitted to
-the old raster and expressed in its pixels; the new drawing shares neither its
-coordinate system nor its outline. Keeping the numbers would have put every zone
-somewhere plausible-looking and wrong, which is worse than drawing none, so
-`Room.shape` is optional and nothing has one. An unplaced room is a row in the
-list and nothing on the plan - the zone layer is not switched off wholesale, so
-the first room drawn against the new plan simply appears.
-
-**The tape colours are read off the key's own swatches**, walking down the
-swatch column and reporting each solid run, rather than sampled from a room's
-stroke. They stand for real tape on real door frames, so they are wayfinding
-rather than decoration - "the room with the yellow tape" is a direction somebody
-can follow. Still true, and still the reason the codes are worth carrying.
-
-**Labels are a switch, and it starts off.** While the geometry is being checked
-the drawing shows the building and nothing else, because none of the rest can be
-judged at the same time as the thing underneath it. The switch writes
-`?labels=1`, which makes the labelled version a link; `?zones=1` is its pair.
-
 **Both floors share one viewBox width and height, and the empty strip is the
 point.** The upstairs plate runs further left than the downstairs one. Given its
 own extents each floor would fill its frame and the building would appear to
@@ -2087,30 +2093,12 @@ it landed inside whichever room owns the top-left corner and was painted over.
 The frame starts 46 units left of the building instead, which is where `GUTTER`
 in the extractor comes from.
 
-**SVG has no text wrapping, so room labels are laid out in the frontmatter.** A
-name is measured against its own room's width at build time and wrapped greedily
-at a size that steps down with the room; the studio icons take what height is
-left, and a room too short for both drops the icons rather than the name. The
-0.53 is Figtree semibold's average advance as a fraction of its size - close
-enough that the size step, not the estimate, keeps a name between its own walls.
-Dormant until the zones are redrawn, and kept because that is the hard part.
-
-**A code chip at the shape's top-left corner is only inside rectangles.** On the
-old plan the laser room was an L and the lounge was angled at the entrance; for
-both, the bounding box's top-left was in the room next door and the chip
-rendered there. `Room.chip` exists for that case. Worth remembering when the
-zones are redrawn, because it will happen again on any room that is not a box.
-
 **An open question is a `?` in the note, not a flag of its own.** The notes are
 written to be read on the page, and a second field saying "this one is
 unresolved" would be the same fact in two places, free to disagree. The first
 version filtered on *rooms with no studio at all*, which missed exactly the
 interesting ones - the MegaStudio has screen printing in it **and** an open
 question about what else does.
-
-**The live highlight is an overlay on the zone, not a thicker wall.** A stroke
-that grows moves the wall it is drawn on, and the room appears to twitch under
-the cursor - the same reasoning as /today's live frame.
 
 ### The rest
 

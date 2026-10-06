@@ -22,6 +22,30 @@ export const STROKE: Record<Layer, number> = {
   stairs: 1.5,
 };
 
+/**
+ * A room, as the drawing names and shapes it. The fill is the author's own
+ * colour-coding of what kind of space it is, and "at" is where they put the
+ * label - which beats a computed centroid, since on an L-shaped room that lands
+ * in a wall.
+ */
+export type Room = {
+  id: string;
+  name: string;
+  /** The author's own line breaks, which are fitted to this room's width. */
+  lines: string[];
+  fill: string | null;
+  points: Pt[];
+  at: Pt;
+  size: number;
+};
+
+/**
+ * A named area inside a room - "Laser Cutting Studio" within the Fab Lab, "Big
+ * CNC" within the Garage. No wall divides a zone from its room or from its
+ * siblings, and that is exactly what makes it a zone rather than a room.
+ */
+export type Zone = Room & { room: string };
+
 export type FloorPlan = {
   /** The drawing stacks the floors; this is the second one's own shift. */
   offsetY: number;
@@ -30,6 +54,8 @@ export type FloorPlan = {
   /** Both floors share a width and a height, so they render at one scale. */
   viewBox: string;
   d: Record<Layer, string>;
+  rooms: Room[];
+  zones: Zone[];
 };
 
 export const FLOORPLAN: Record<Floor, FloorPlan> = {
@@ -48,9 +74,100 @@ export const FLOORPLAN: Record<Floor, FloorPlan> = {
     ],
     d: {
       exterior: "M333.5 340 H285 M187 340 H181 V29.6 H854.7 V340 H360.9",
-      interior: "M290 29.6 V198.3 M290 216.7 V340 M290 244.9 H320.3 V315.6 M320.3 334 V340 M290 96.5 H319.8 M338.2 96.5 H394.2 M394.2 29.6 V205 H336 M375.6 252.2 H394.2 V312.9 M320.3 301 H326 M344.4 301 H394.2 M394.2 312.9 H759.3 M442.2 181.8 H627.7 M442.2 169 V186 M394.2 177 H411.5 M411.5 168 V185.3 M548.1 29.6 V132.3 M548.1 150.7 V212.3 M548.1 230.7 V269.3 M548.1 287.7 V312.9 M548.1 83.5 H579.8 M598.2 83.5 H627.7 M627.7 29.6 V87.5 M627.7 109.3 V242 M548.1 113.3 H627.7 M548.1 242 H627.7 M627.7 155 H677.15 M627.7 198.3 H677.15 M674 155 V158.6 M674 177 V198.3 M695.55 155 H749.45 M742.3 155 V207 M695.55 198.3 H742.3 M698.7 155 V158.6 M698.7 177 V198.3 M742.3 225.4 V233.4 H762.7 M759.3 233.4 V312.9 M767.85 155 H854.7 M791.6 180.2 V199.55 M791.6 217.95 V233.4 M791.6 180.2 H829.5 V233.4 M781.1 233.4 H854.7",
+      interior: "M181 190.3 H239 M290 29.6 V198.3 M290 216.7 V340 M290 244.9 H320.3 V315.6 M320.3 334 V340 M290 96.5 H319.8 M338.2 96.5 H394.2 M394.2 29.6 V205 H336 M375.6 252.2 H394.2 V312.9 M320.3 301 H326 M344.4 301 H394.2 M394.2 312.9 H759.3 M442.2 181.8 H627.7 M442.2 169 V186 M394.2 177 H411.5 M411.5 168 V185.3 M548.1 29.6 V132.3 M548.1 150.7 V212.3 M548.1 230.7 V269.3 M548.1 287.7 V312.9 M548.1 83.5 H579.8 M598.2 83.5 H627.7 M627.7 29.6 V87.5 M627.7 109.3 V242 M548.1 113.3 H627.7 M548.1 242 H627.7 M627.7 155 H677.15 M627.7 198.3 H677.15 M674 155 V158.6 M674 177 V198.3 M695.55 155 H749.45 M742.3 155 V207 M695.55 198.3 H742.3 M698.7 155 V158.6 M698.7 177 V198.3 M742.3 225.4 V233.4 H762.7 M759.3 233.4 V312.9 M767.85 155 H854.7 M791.6 180.2 V199.55 M791.6 217.95 V233.4 M791.6 180.2 H829.5 V233.4 M781.1 233.4 H854.7",
       stairs: "M290 245 H320.3 V314 H290 Z M290 251.3 H320.3 M290 257.6 H320.3 M290 263.9 H320.3 M290 270.2 H320.3 M290 276.5 H320.3 M290 282.8 H320.3 M290 289.1 H320.3 M290 295.4 H320.3 M290 301.7 H320.3 M290 308 H320.3 M791.6 155 H829.5 V180.2 H791.6 Z M797.9 155 V180.2 M804.2 155 V180.2 M810.5 155 V180.2 M816.8 155 V180.2 M823.1 155 V180.2 M829.5 180.2 H854.7 V233.4 H829.5 Z M829.5 186.5 H854.7 M829.5 192.8 H854.7 M829.5 199.1 H854.7 M829.5 205.4 H854.7 M829.5 211.7 H854.7 M829.5 218 H854.7 M829.5 224.3 H854.7 M829.5 230.6 H854.7",
     },
+    rooms: [
+      { id: "U1", name: "Garage", fill: "#a9c4b0",
+        lines: ["Garage"], at: [235.5, 225], size: 11,
+        points: [[181, 29.6], [290, 29.6], [290, 340], [181, 340]] },
+      { id: "U2", name: "Compressor Room", fill: "#a9c4b0",
+        lines: ["Compressor","Room"], at: [342.1, 61.1], size: 10,
+        points: [[290, 29.6], [394.2, 29.6], [394.2, 96.5], [290, 96.5]] },
+      { id: "U3", name: "Metalshop 2", fill: "#c3bad8",
+        lines: ["Metalshop 2"], at: [342.1, 154.7], size: 11,
+        points: [[290, 96.5], [394.2, 96.5], [394.2, 205], [290, 205]] },
+      { id: "U4", name: "Staff Desk", fill: "#d9c6a5",
+        lines: ["Staff Desk"], at: [357, 229], size: 11,
+        points: [[290, 205], [394.2, 205], [394.2, 301], [320.3, 301], [320.3, 244.9], [290, 244.9]] },
+      { id: "U5", name: "Woodshop 2", fill: "#d9c6a5",
+        lines: ["Woodshop 2"], at: [471.7, 109], size: 11,
+        points: [[394.2, 29.6], [548.1, 29.6], [548.1, 181.8], [442.2, 181.8], [442.2, 177], [394.2, 177]] },
+      { id: "U6", name: "Woodshop 1", fill: "#a9c4b0",
+        lines: ["Woodshop 1"], at: [470.6, 250.6], size: 11,
+        points: [[394.2, 177], [442.2, 177], [442.2, 181.8], [548.1, 181.8], [548.1, 312.9], [394.2, 312.9]] },
+      { id: "U7", name: "Darkroom", fill: "#a9c4b0",
+        lines: ["Darkroom"], at: [587.9, 60.6], size: 11,
+        points: [[548.1, 29.6], [627.7, 29.6], [627.7, 83.5], [548.1, 83.5]] },
+      { id: "U8", name: "Sanding Room", fill: "#c3bad8",
+        lines: ["Sanding","Room"], at: [587.9, 145.7], size: 10,
+        points: [[548.1, 113.3], [627.7, 113.3], [627.7, 181.8], [548.1, 181.8]] },
+      { id: "U9", name: "Fume Room", fill: "#d9c6a5",
+        lines: ["Fume Room"], at: [587.9, 215.9], size: 11,
+        points: [[548.1, 181.8], [627.7, 181.8], [627.7, 242], [548.1, 242]] },
+      { id: "U15", name: "Fab Lab", fill: "#c3bad8",
+        lines: ["Fab Lab"], at: [693.5, 262], size: 11,
+        points: [[627.7, 198.3], [742.3, 198.3], [742.3, 233.4], [759.3, 233.4], [759.3, 312.9], [548.1, 312.9], [548.1, 242], [627.7, 242]] },
+      { id: "U10", name: "Megastudio", fill: "#d9c6a5",
+        lines: ["Megastudio"], at: [700.9, 80], size: 11,
+        points: [[627.7, 29.6], [854.7, 29.6], [854.7, 155], [627.7, 155]] },
+      { id: "U11", name: "Restroom", fill: "#a9c4b0",
+        lines: ["Restroom"], at: [650.9, 179], size: 6.5,
+        points: [[627.7, 155], [674, 155], [674, 198.3], [627.7, 198.3]] },
+      { id: "U12", name: "Restroom", fill: "#a9c4b0",
+        lines: ["Restroom"], at: [720.5, 179], size: 6.5,
+        points: [[698.7, 155], [742.3, 155], [742.3, 198.3], [698.7, 198.3]] },
+      { id: "U14", name: "Closet", fill: "#d9c6a5",
+        lines: ["Closet"], at: [810.5, 210.2], size: 9.5,
+        points: [[791.6, 180.2], [829.5, 180.2], [829.5, 233.4], [791.6, 233.4]] },
+      { id: "U16", name: "Computer Lab", fill: "#a9c4b0",
+        lines: ["Computer Lab"], at: [807, 290.7], size: 11,
+        points: [[759.3, 233.4], [854.7, 233.4], [854.7, 340], [759.3, 340]] },
+      { id: "U18", name: "Stairs", fill: "#d2cdbf",
+        lines: ["Stairs"], at: [305, 332.6], size: 7.2,
+        points: [[290, 244.9], [320.3, 244.9], [320.3, 340], [290, 340]] },
+      { id: "U19", name: "Check-in", fill: "#e6e2d6",
+        lines: ["Check-in"], at: [357.2, 324.5], size: 11,
+        points: [[320.3, 301], [394.2, 301], [394.2, 340], [320.3, 340]] },
+      { id: "U20", name: "Hallway", fill: "#e6e2d6",
+        lines: ["Hallway"], at: [576.8, 330.5], size: 11,
+        points: [[394.2, 312.9], [759.3, 312.9], [759.3, 340], [394.2, 340]] },
+      { id: "U21", name: "Hallway", fill: "#e6e2d6",
+        lines: ["Hallway"], at: [587.9, 102.4], size: 11,
+        points: [[548.1, 83.5], [627.7, 83.5], [627.7, 113.3], [548.1, 113.3]] },
+      { id: "U13", name: "Hallway", fill: "#e6e2d6",
+        lines: ["Hallway"], at: [686.4, 178.5], size: 4,
+        points: [[674, 155], [698.7, 155], [698.7, 198.3], [674, 198.3]] },
+      { id: "U22", name: "Landing", fill: "#e6e2d6",
+        lines: ["Landing"], at: [767, 198.2], size: 11,
+        points: [[742.3, 155], [791.6, 155], [791.6, 233.4], [742.3, 233.4]] },
+      { id: "U23", name: "Stairs", fill: "#d2cdbf",
+        lines: ["Stairs"], at: [810.5, 169.9], size: 6.5,
+        points: [[791.6, 155], [854.7, 155], [854.7, 233.4], [829.5, 233.4], [829.5, 180.2], [791.6, 180.2]] },
+    ],
+    zones: [
+      { id: "U1.1", name: "Metalshop 1", room: "U1", fill: null,
+        lines: ["Metalshop","1"], at: [235.5, 104.8], size: 7,
+        points: [[181, 29.6], [290, 29.6], [290, 190.3], [181, 190.3]] },
+      { id: "U1.2", name: "Big CNC", room: "U1", fill: null,
+        lines: ["Big","CNC"], at: [206, 290.8], size: 7,
+        points: [[181, 252.5], [231, 252.5], [231, 340], [181, 340]] },
+      { id: "U5.1", name: "CNC", room: "U5", fill: null,
+        lines: ["CNC"], at: [417.2, 51.2], size: 7,
+        points: [[394.2, 29.6], [440.1, 29.6], [440.1, 75.5], [394.2, 75.5]] },
+      { id: "U10.1", name: "Electronics Studio", room: "U10", fill: null,
+        lines: ["Electronics","Studio"], at: [700.9, 104.8], size: 7,
+        points: [[627.7, 29.6], [774, 29.6], [774, 155], [627.7, 155]] },
+      { id: "U10.2", name: "Screen Printing Studio", room: "U10", fill: null,
+        lines: ["Screen","Printing","Studio"], at: [814.4, 83.3], size: 7,
+        points: [[774, 29.6], [854.7, 29.6], [854.7, 155], [774, 155]] },
+      { id: "U15.1", name: "3D Printing Studio", room: "U15", fill: null,
+        lines: ["3D Printing","Studio"], at: [587.9, 272.3], size: 7,
+        points: [[548.1, 242], [627.7, 242], [627.7, 312.9], [548.1, 312.9]] },
+      { id: "U15.2", name: "Laser Cutting Studio", room: "U15", fill: null,
+        lines: ["Laser Cutting","Studio"], at: [693.5, 284.8], size: 7,
+        points: [[627.7, 198.3], [742.3, 198.3], [742.3, 233.4], [759.3, 233.4], [759.3, 312.9], [627.7, 312.9]] },
+    ],
   },
   downstairs: {
     offsetY: 50,
@@ -68,9 +185,91 @@ export const FLOORPLAN: Record<Floor, FloorPlan> = {
     ],
     d: {
       exterior: "M290 379 H854.4 V384.4 L802.4 436.4 L810.7 444.7 M830.1 464.1 L854.4 488.4 V693.2 H290 V379",
-      interior: "M547.3 379 V562.4 H563.55 M497.1 406.6 V490.6 M497.1 518.2 V550.2 H547.3 M581.95 562.4 H670.2 M598.2 379 V562.4 M598.2 455.7 H670.2 M598.2 500.9 H670.2 M670.2 379 V418.3 M670.2 436.7 V479.8 M670.2 498.2 V539.3 M670.2 557.7 V562.4 M290 561.8 H329.5 M290 636.6 H316.8 M316.8 586.2 H329.5 M395.1 586.2 H409.15 M427.55 586.2 H474 M492.4 586.2 H503.95 M497.7 586.2 V605 H528.6 V586.2 M522.35 586.2 H626.65 M645.05 586.2 H717.7 M736.1 586.2 H741.7 M741.7 598 H758 M776.4 598 H782 V586.2 H854.4 M316.8 586.2 V666.9 M316.8 685.3 V693.2 M395.1 586.2 V693.2 M468.7 586.2 V693.2 M559.2 586.2 V666.9 M559.2 685.3 V693.2 M468.7 659 H651.8 M651.8 586.2 V666.9 M651.8 685.3 V693.2 M741.7 586.2 V666.9 M741.7 685.3 V693.2 M802.4 436.4 L743 495.8 V525.3 H711.4 M817.3 379 L820.5 384.5 M829.7 400.4 L832.9 405.9 M854.4 488.4 L810.8 532 M791.6 541 V532 H827.6 M791.6 559.4 V562.5 M791.6 562.5 H829",
+      interior: "M547.3 379 V562.4 H563.55 M497.1 406.6 V493.6 M497.1 521.2 V550.2 H547.3 M581.95 562.4 H670.2 M598.2 379 V562.4 M598.2 455.7 H670.2 M598.2 500.9 H670.2 M670.2 379 V418.3 M670.2 436.7 V479.8 M670.2 498.2 V539.3 M670.2 557.7 V562.4 M290 561.8 H329.5 M290 636.6 H316.8 M316.8 586.2 H329.5 M395.1 586.2 H409.15 M427.55 586.2 H474 M492.4 586.2 H503.95 M497.7 586.2 V605 H528.6 V586.2 M522.35 586.2 H626.65 M645.05 586.2 H717.7 M736.1 586.2 H741.7 M741.7 598 H758 M776.4 598 H782 V586.2 H854.4 M316.8 586.2 V666.9 M316.8 685.3 V693.2 M395.1 586.2 V693.2 M468.7 586.2 V693.2 M559.2 586.2 V666.9 M559.2 685.3 V693.2 M468.7 659 H651.8 M651.8 586.2 V666.9 M651.8 685.3 V693.2 M741.7 586.2 V666.9 M741.7 685.3 V693.2 M802.4 436.4 L743 495.8 V525.3 H711.4 M817.3 379 L820.5 384.5 M829.7 400.4 L832.9 405.9 M854.4 488.4 L810.8 532 M791.6 541 V532 H827.6 M791.6 559.4 V562.5 M791.6 562.5 H829",
       stairs: "M290 586.2 H316.8 V636.6 H290 Z M290 592.5 H316.8 M290 598.8 H316.8 M290 605.1 H316.8 M290 611.4 H316.8 M290 617.7 H316.8 M290 624 H316.8 M290 630.3 H316.8 M316.8 561.8 H329.5 V586.2 H316.8 Z M323.15 561.8 V586.2 M829 518 H854.4 V562.5 H829 Z M829 524.3 H854.4 M829 530.6 H854.4 M829 536.9 H854.4 M829 543.2 H854.4 M829 549.5 H854.4 M829 555.8 H854.4 M798 562.5 H829 V586.2 H798 Z M804.3 562.5 V586.2 M810.6 562.5 V586.2 M816.9 562.5 V586.2 M823.2 562.5 V586.2",
     },
+    rooms: [
+      { id: "D1", name: "Big Room", fill: "#d9c6a5",
+        lines: ["Big Room"], at: [428.1, 474], size: 11,
+        points: [[290, 379], [547.3, 379], [547.3, 586.2], [395.1, 586.2], [395.1, 693.2], [316.8, 693.2], [316.8, 586.2], [329.5, 586.2], [329.5, 562.4], [290, 562.4]] },
+      { id: "D2", name: "Utility Closet", fill: "#a9c4b0",
+        lines: ["Utility","Closet"], at: [572.7, 468.1], size: 10,
+        points: [[547.3, 379], [598.2, 379], [598.2, 562.4], [547.3, 562.4]] },
+      { id: "D3", name: "A/V Room", fill: "#d9c6a5",
+        lines: ["A/V Room"], at: [634.2, 421.3], size: 11,
+        points: [[598.2, 379], [670.2, 379], [670.2, 455.7], [598.2, 455.7]] },
+      { id: "D4", name: "Kitchen", fill: "#c3bad8",
+        lines: ["Kitchen"], at: [634.2, 482.3], size: 11,
+        points: [[598.2, 455.7], [670.2, 455.7], [670.2, 500.9], [598.2, 500.9]] },
+      { id: "D5", name: "Office", fill: "#d9c6a5",
+        lines: ["Office"], at: [634.2, 535.7], size: 11,
+        points: [[598.2, 500.9], [670.2, 500.9], [670.2, 562.4], [598.2, 562.4]] },
+      { id: "D6", name: "Lounge", fill: "#a9c4b0",
+        lines: ["Lounge"], at: [720, 444], size: 11,
+        points: [[670.2, 379], [817.3, 379], [832.9, 405.9], [802.4, 436.4], [743, 495.8], [670.2, 495.8]] },
+      { id: "D7", name: "Lobby", fill: "#d9c6a5",
+        lines: ["Lobby"], at: [790, 518.2], size: 9,
+        points: [[802.4, 436.4], [854.4, 488.4], [810.8, 532], [791.6, 532], [791.6, 586.2], [782, 586.2], [782, 598], [741.7, 598], [741.7, 586.2], [670.2, 586.2], [670.2, 495.8], [743, 495.8]] },
+      { id: "D20", name: "Closet", fill: "#d9c6a5",
+        lines: ["Closet"], at: [841, 389], size: 5,
+        points: [[817.3, 379], [854.4, 379], [854.4, 384.4], [832.9, 405.9]] },
+      { id: "D8", name: "Closet", fill: "#c3bad8",
+        lines: ["Closet"], at: [810.3, 550.5], size: 9.3,
+        points: [[791.6, 532], [829, 532], [829, 562.5], [791.6, 562.5]] },
+      { id: "D9", name: "Closet", fill: "#c3bad8",
+        lines: ["Closet"], at: [303.4, 667.1], size: 6.2,
+        points: [[290, 636.6], [316.8, 636.6], [316.8, 693.2], [290, 693.2]] },
+      { id: "D10", name: "Sewing Studio", fill: "#d9c6a5",
+        lines: ["Sewing Studio"], at: [431.9, 643.7], size: 11,
+        points: [[395.1, 586.2], [468.7, 586.2], [468.7, 693.2], [395.1, 693.2]] },
+      { id: "D11", name: "Men's Restroom", fill: "#a9c4b0",
+        lines: ["Men's","Restroom"], at: [514, 620.7], size: 10,
+        points: [[468.7, 586.2], [497.7, 586.2], [497.7, 605], [528.6, 605], [528.6, 586.2], [559.2, 586.2], [559.2, 659], [468.7, 659]] },
+      { id: "D19", name: "Closet", fill: "#d9c6a5",
+        lines: ["Closet"], at: [513.2, 598.3], size: 7.4,
+        points: [[497.7, 586.2], [528.6, 586.2], [528.6, 605], [497.7, 605]] },
+      { id: "D12", name: "Kiln Room", fill: "#c3bad8",
+        lines: ["Kiln Room"], at: [514, 680.1], size: 11,
+        points: [[468.7, 659], [559.2, 659], [559.2, 693.2], [468.7, 693.2]] },
+      { id: "D13", name: "Women's Restroom", fill: "#d9c6a5",
+        lines: ["Women's","Restroom"], at: [605.5, 620.7], size: 10,
+        points: [[559.2, 586.2], [651.8, 586.2], [651.8, 659], [559.2, 659]] },
+      { id: "D14", name: "Ceramics Storage", fill: "#a9c4b0",
+        lines: ["Ceramics","Storage"], at: [605.5, 674.4], size: 8.5,
+        points: [[559.2, 659], [651.8, 659], [651.8, 693.2], [559.2, 693.2]] },
+      { id: "D15", name: "Ceramics 1", fill: "#c3bad8",
+        lines: ["Ceramics 1"], at: [696.8, 643.7], size: 11,
+        points: [[651.8, 586.2], [741.7, 586.2], [741.7, 693.2], [651.8, 693.2]] },
+      { id: "D16", name: "Ceramics 2", fill: "#e2b7a6",
+        lines: ["Ceramics 2"], at: [799.5, 645.7], size: 11,
+        points: [[741.7, 598], [782, 598], [782, 586.2], [854.4, 586.2], [854.4, 693.2], [741.7, 693.2]] },
+      { id: "D18", name: "Stairs", fill: "#d2cdbf",
+        lines: ["Stairs"], at: [303, 577.6], size: 10,
+        points: [[290, 561.8], [329.5, 561.8], [329.5, 586.2], [316.8, 586.2], [316.8, 636.6], [290, 636.6]] },
+      { id: "D22", name: "Hallway", fill: "#e6e2d6",
+        lines: ["Hallway"], at: [608.7, 578.3], size: 11,
+        points: [[547.3, 562.4], [670.2, 562.4], [670.2, 586.2], [547.3, 586.2]] },
+      { id: "D23", name: "Stairs", fill: "#d2cdbf",
+        lines: ["Stairs"], at: [841.5, 507.5], size: 7,
+        points: [[810.8, 532], [854.4, 488.4], [854.4, 586.2], [791.6, 586.2], [791.6, 562.5], [829, 562.5], [829, 532]] },
+    ],
+    zones: [
+      { id: "D1.1", name: "Maker Studios", room: "D1", fill: null,
+        lines: ["Maker","Studios"], at: [522.2, 438], size: 7,
+        points: [[497.1, 379], [547.3, 379], [547.3, 507.4], [497.1, 507.4]] },
+      { id: "D1.3", name: "Storage", room: "D1", fill: null,
+        lines: ["Storage"], at: [522.2, 527.5], size: 7,
+        points: [[497.1, 507.4], [547.3, 507.4], [547.3, 550.2], [497.1, 550.2]] },
+      { id: "D1.2", name: "Leatherworking Studio", room: "D1", fill: null,
+        lines: ["Leatherworking","Studio"], at: [355.9, 634.5], size: 7,
+        points: [[316.8, 586.2], [395.1, 586.2], [395.1, 693.2], [316.8, 693.2]] },
+      { id: "D1.4", name: "Event Space", room: "D1", fill: null,
+        lines: ["Event Space"], at: [428.1, 485.7], size: 7,
+        points: [[359, 379], [497.1, 379], [497.1, 561.8], [359, 561.8]] },
+      { id: "D1.5", name: "Mini Makerspace", room: "D1", fill: null,
+        lines: ["Mini","Makerspace"], at: [324.5, 464.8], size: 7,
+        points: [[290, 379], [359, 379], [359, 561.8], [290, 561.8]] },
+    ],
   },
 };
 
