@@ -40,9 +40,16 @@
  *   cnc routing  Was "cnc". The calendar emits both `cnc` and `cnc-routing`,
  *                the second being the superset; this is the name the building
  *                uses.
- *   leather      Was "leatherworking". studios.ts keeps that, because it is
- *   studio       also the calendar tag; the room it is in is still called the
- *                Leatherworking Studio in the drawing.
+ *   leather      Was "leatherworking", then "leather studio". studios.ts keeps
+ *                the first, because it is also the calendar tag.
+ *   a/v          Was "a/v studio".
+ *
+ * Those last two dropped the word "studio" on 2026-10-06, and the rooms they
+ * are in did not: D1.2 is still the Leather Studio and D3 is still the A/V
+ * Room. A studio name and a room name are different things and the page prints
+ * them side by side - "Leather Studio - leather studio" was one word of
+ * repetition saying nothing, and "Leather Studio - leather" reads as the room
+ * and what is done in it.
  *
  * CONFIRMED on 2026-10-06: cnc routing covers BOTH its zones - the Big CNC in
  * the Garage (U1.2) and the CNC in Woodshop 2 (U5.1). It is one studio working
@@ -84,10 +91,10 @@ export const SPACE_STUDIOS: SpaceStudio[] = [
   { slug: 'ceramics',        name: 'ceramics',        badge: '/brand/studios/ceramics.png',        colour: '#e85579' },
   { slug: 'screen-printing', name: 'screen printing', badge: '/brand/studios/screen-printing.png', colour: '#43b0a5' },
   { slug: 'arts-crafts',     name: 'arts & crafts',   badge: '/brand/studios/arts-crafts.png',     colour: '#9cc001' },
-  { slug: 'leather-studio',  name: 'leather studio',  badge: '/brand/studios/leather-studio.png',  colour: '#853321' },
+  { slug: 'leather-studio',  name: 'leather',         badge: '/brand/studios/leather-studio.png',  colour: '#853321' },
   { slug: 'metalworking',    name: 'metalworking',    badge: '/brand/studios/metalworking.png',    colour: '#8e7479' },
   { slug: 'computer-lab',    name: 'computer lab',    badge: '/brand/studios/computer-lab.png',    colour: '#5a41ab' },
-  { slug: 'av-studio',       name: 'a/v studio',      badge: '/brand/studios/av-studio.png',       colour: '#3563a6' },
+  { slug: 'av-studio',       name: 'a/v',             badge: '/brand/studios/av-studio.png',       colour: '#3563a6' },
   { slug: 'jewelry',         name: 'jewelry',         badge: '/brand/studios/jewelry.png',         colour: '#a90c5c' },
   // A space whose studio nobody has named yet. It is an entry rather than an
   // empty one so the plan and the list can still say "something works in here"

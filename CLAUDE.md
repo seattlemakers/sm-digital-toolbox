@@ -2145,12 +2145,18 @@ names, because they are what its calendar tags. The two lists now genuinely
 differ, which is the proof the fork was worth having rather than a copy waiting
 to be re-merged.
 
-**A studio's name and its room's name are allowed to differ, and one pair
-does.** D1.2 reads "Leatherworking Studio - leather studio", because the room
-name is the drawing's and the studio name is this list's. Changing the room
-means changing `floorplan.svg`, which is an export from a design tool - so it
-belongs in the original drawing rather than in the file here, or the next export
-silently puts it back.
+**A studio's name and its room's name are allowed to differ, and two pairs
+do.** The room name is the drawing's and the studio name is this list's, and the
+page prints them side by side - which is what showed that "Leather Studio -
+leather studio" and "A/V Room - a/v studio" were each a word of repetition
+saying nothing. Both studios dropped "studio" on 2026-10-06 and the rooms kept
+theirs, so the pair now reads as the room and what is done in it.
+
+Changing a *room* name means changing `floorplan.svg`, which is an export from a
+design tool - so it belongs in the original drawing rather than in the file
+here, or the next export silently puts it back. Changing a *studio* name is one
+line and nothing else, as long as the slug stays: `leather-studio` and
+`av-studio` still key `STUDIOS_IN` and still name the badge PNGs.
 
 **Both were full renames, slug included**, which is three edits and a file
 move each: the entry here, its key in `STUDIOS_IN`, and the badge PNG, which is
