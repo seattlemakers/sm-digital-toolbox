@@ -2077,21 +2077,28 @@ Fourteen colours is a lot to put on one page. As a rule each one identifies its
 row without competing with the badge beside it, which is where the colour is
 already doing its work.
 
-**Dividing a room into two zones can need only one of them drawn.** Metalshop 2
-is a third jewelry studio and two thirds metalshop, and drawing both as zones
-would have put a zone called "Metalshop 2" inside a room called Metalshop 2 -
-printing the name twice, on top of itself, because both labels sit near the
-same centre. Only the jewelry third is a zone; the metalshop two thirds are
-named by the room, which is what a room is for.
+**When a room is entirely subdivided, rename the room.** Metalshop 2 is a third
+jewelry studio and two thirds metalshop, and the first attempt drew only the
+jewelry third as a zone - because a zone called "Metalshop 2" inside a room
+called Metalshop 2 prints the name twice, on top of itself, both labels sitting
+near the same centre.
 
-**Carving a room moves its label, and that is not overriding the author.** The
-anchor they chose was for an undivided room, and at x=342.1 it put METALSHOP 2
-across the jewelry third - the two labels genuinely overlapped. Recentred on
-the two thirds it now describes (324.7 to 394.2, centre 359.5). Checked by
-intersecting every label's `getBBox` against every other on the floor rather
-than by looking: zero overlapping pairs, and that test is worth re-running after
-any zone is added, because a label collision is obvious on a big room and
-invisible on a small one.
+That was solving the symptom. The room is now **Metal Studios** and both halves
+are zones, which is the same shape as the Garage, the Fab Lab and the
+Megastudio: **a room that is entirely subdivided is named for what it holds
+rather than for any one of the things it holds**, and carries no studio of its
+own. The duplicate name disappears because there is no longer a duplicate.
+
+Worth remembering next time a room needs splitting: the question is not which
+zone to leave undrawn, it is whether the room's name still describes the whole
+room once part of it belongs to something else.
+
+**Label collisions are invisible until measured.** Carving U3 put METALSHOP 2
+straight across the jewelry third, and the three labels now stacked in that one
+108-unit-tall room each had to be placed by hand. The check is to intersect
+every label's `getBBox` against every other on the floor - zero overlapping
+pairs - and it is worth re-running after any zone is added, because a collision
+is obvious on a big room and unnoticeable on a small one.
 
 **A studio is not a room, and the list exists to let that be true.** It is
 wherever its work happens - one room, two rooms, a zone inside somebody else's
@@ -2122,8 +2129,10 @@ why; the real fix belongs in the original drawing.
    runs (854.4,488.4) to (810.8,532) at slope -1 and therefore crosses x=829 at
    513.8; stopping at 518 would have left the wall hanging four units short of
    the thing it is supposed to meet.
-2. **The jewelry third of Metalshop 2.** `zone-U3.1` over the left third of
-   U3 (290 to 324.7 of 290-394.2), with its label.
+2. **The subdivision of Metal Studios.** U3 renamed from "Metalshop 2", split
+   into `zone-U3.1` (jewelry, the left third) and `zone-U3.2` (metalshop, the
+   right two thirds) at x=324.7, with all three labels repositioned to stack
+   inside a room only 108 units tall. The room's own outline is untouched.
 
 Finding which staircase it was is worth recording as a method, because there are
 four and they look alike at a glance. Each was rendered on its own at high

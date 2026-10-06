@@ -38,13 +38,13 @@ export const PLACES: Record<string, Place> = {
   'U1': { note: 'The big roll-up door. Metalshop 1 and the big CNC are zones inside it.' },
   'U1.1': { studios: ['metalworking'] },
   'U1.2': { studios: ['cnc'] },
-  // The jewelry bench has the left third; the metalshop keeps the rest. The
-  // room's own label already sits in that right two thirds, so the metalshop
-  // side is named by the room and needs no zone of its own - a zone called
-  // "Metalshop 2" inside a room called Metalshop 2 would just print the name
-  // twice, on top of itself.
-  'U3': { studios: ['metalworking'] },
+  // Metal Studios is the container; both halves are zones. The parent carries
+  // no studio of its own, the same as the Garage, the Fab Lab and the
+  // Megastudio - a room that is entirely subdivided is named for what it holds
+  // rather than for any one of them.
+  'U3': {},
   'U3.1': { studios: ['lapidary'] },
+  'U3.2': { studios: ['metalworking'] },
   'U4': { note: 'Open to the room rather than walled off; a landmark more than a space.' },
   'U5': { studios: ['woodshop'] },
   'U5.1': { studios: ['cnc'] },
