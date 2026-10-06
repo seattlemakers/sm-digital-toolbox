@@ -42,6 +42,10 @@ export const STUDIOS_IN: Record<string, string[]> = {
   'U5': ['woodshop'],
   'U5.1': ['cnc-routing'],
   'U6': ['woodshop'],
+  // Screen printing works in two places: its zone in the Megastudio, and the
+  // Darkroom, which is a room of its own rather than a part of that zone -
+  // burning screens is the one step that needs its own four walls.
+  'U7': ['screen-printing'],
   'U10.1': ['electronics'],
   'U10.2': ['screen-printing'],
   'U15.1': ['3d-printing'],
