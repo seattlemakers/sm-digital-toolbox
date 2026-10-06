@@ -23,7 +23,7 @@
  */
 import Base from '../layouts/Base.astro';
 import { toolById, pageTitle } from '../data/tools';
-import { OPEN_QUESTIONS, SPOTS, placeOf, spotsForStudio, studiosWithoutSpot, undrawnOn } from '../data/rooms';
+import { OPEN_QUESTIONS, SPOTS, placeOf, spotsForStudio, studiosWithoutSpot } from '../data/rooms';
 import { FLOORPLAN, FLOORS, STROKE, type Floor, type Layer } from '../data/floorplan';
 import { STUDIOS, STUDIO_BY_SLUG } from '../data/studios';
 
@@ -45,7 +45,6 @@ const FLOOR_NAME: Record<Floor, { title: string; sub: string }> = {
   downstairs: { title: 'Downstairs', sub: '1st floor' },
 };
 
-const spotsOn = (floor: Floor) => SPOTS.filter((s) => s.floor === floor);
 const spot = (id: string) => SPOTS.find((s) => s.id === id)!;
 
 /**
@@ -57,6 +56,25 @@ const LABEL_SCALE = 0.88;
 const path = (points: readonly (readonly number[])[]) =>
   `M${points.map((p) => p.join(' ')).join(' L')} Z`;
 const ORPHANS = studiosWithoutSpot();
+
+/**
+ * Everything the room list used to say about a space, in its hover title.
+ *
+ * The list was cut on 2026-10-05 and this is where its contents went. Writing
+ * it anywhere else would have repeated the plan - the names are already drawn
+ * on it - but the studios and the notes are not, and "Private studios,
+ * available to rent" had already gone missing once when the panel it was
+ * riding on stopped rendering.
+ */
+function tooltip(id: string): string {
+  const sp = SPOTS.find((s) => s.id === id)!;
+  const studios = sp.studios.map((slug) => STUDIO_BY_SLUG.get(slug)!.name);
+  return [
+    sp.name,
+    studios.length ? ` — ${studios.join(', ')}` : '',
+    sp.note ? ` — ${sp.note}` : '',
+  ].join('');
+}
 ---
 
 <Base title={pageTitle(TOOL)} description={TOOL.blurb} shellWidth="72rem">
@@ -118,7 +136,7 @@ const ORPHANS = studiosWithoutSpot();
                     data-via={spot(r.id).studios.length > 0 ? 'own' : 'zone'}
                     data-spot={r.id}
                   >
-                    <title>{r.name}</title>
+                    <title>{tooltip(r.id)}</title>
                   </path>
                 ))}
 
@@ -133,7 +151,7 @@ const ORPHANS = studiosWithoutSpot();
                     data-kind={spot(z.id).kind}
                     data-spot={z.id}
                   >
-                    <title>{z.name}</title>
+                    <title>{tooltip(z.id)}</title>
                   </path>
                 ))}
 
@@ -185,41 +203,6 @@ const ORPHANS = studiosWithoutSpot();
               </g>
             </svg>
           </div>
-          <ul class="mp-spots">
-            {spotsOn(floor).filter((sp) => sp.shape === 'room' && sp.drawn).map((sp) => (
-              <li class="mp-spot" data-kind={sp.kind} data-spot={sp.id}>
-                <span class="mp-spot-id">{sp.id}</span>
-                <span class="mp-spot-body">
-                  <span class="mp-spot-name">{sp.name}</span>
-                  {spotsOn(floor)
-                    .filter((z) => z.shape === 'zone' && z.room === sp.id)
-                    .map((z) => (
-                      <span class="mp-spot-zone">
-                        {z.name}
-                        {z.note && <i>{z.note}</i>}
-                      </span>
-                    ))}
-                  {[...sp.studios, ...spotsOn(floor).filter((z) => z.room === sp.id).flatMap((z) => z.studios)]
-                    .map((slug) => (
-                      <span class="mp-tag">
-                        <img src={STUDIO_BY_SLUG.get(slug)!.badge} alt="" width="20" height="20" />
-                        {STUDIO_BY_SLUG.get(slug)!.name}
-                      </span>
-                    ))}
-                  {sp.note && <i class="mp-spot-note">{sp.note}</i>}
-                </span>
-              </li>
-            ))}
-          </ul>
-
-          {/* Said once, rather than fourteen times on the drawing. The walls
-              are still there - they come from the wall layer, not from these
-              shapes - so a closet is a walled box and a staircase has its
-              treads. Only the fill and the name are gone. */}
-          <p class="mp-undrawn">
-            Also on this floor: {undrawnOn(floor)} — their walls are on the plan,
-            but they are not named.
-          </p>
         </section>
       ))
     }
@@ -504,110 +487,6 @@ const ORPHANS = studiosWithoutSpot();
     opacity: 0.6;
   }
 
-  /* ---------------------------------------------------------- the lists --- */
-
-  .mp-spots {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
-    gap: 0.15rem;
-    margin-top: 1.1rem;
-  }
-
-  .mp-spot {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.6rem;
-    padding: 0.45rem 0.6rem;
-    border-radius: 9px;
-  }
-
-  /* The drawing's id, which is how a space is referred to in conversation and
-     in rooms.ts. Monospace because it is a key rather than a word. */
-  .mp-spot-id {
-    flex: 0 0 auto;
-    min-width: 2.1rem;
-    padding: 0.1rem 0.3rem;
-    border-radius: 5px;
-    background: var(--color-sm-line);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-align: center;
-    color: var(--color-sm-slate);
-  }
-
-  .mp-spot[data-kind='studio'] .mp-spot-id {
-    background: var(--color-sm-wash);
-    color: var(--color-sm-green-dark);
-  }
-
-  .mp-spot[data-kind='circulation'] {
-    opacity: 0.68;
-  }
-
-  .mp-spot-body {
-    display: flex;
-    flex-direction: column;
-    gap: 0.12rem;
-    min-width: 0;
-  }
-
-  .mp-spot-name {
-    font-family: var(--font-display);
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--color-sm-ink);
-  }
-
-  .mp-spot-zone {
-    font-size: 0.8125rem;
-    font-style: italic;
-    color: var(--color-sm-slate);
-  }
-
-  .mp-spot-zone::before {
-    content: '↳ ';
-  }
-
-  /* A zone's note had nowhere to go until the last open question was answered
-     and the "still to confirm" block - which only ever showed notes with a
-     question mark in them - stopped rendering. That took "Private studios,
-     available to rent" off the page while leaving it in the data, which is the
-     quiet half of a fact going missing. */
-  .mp-spot-zone i {
-    font-style: normal;
-    opacity: 0.8;
-  }
-
-  .mp-spot-zone i::before {
-    content: ' — ';
-  }
-
-  /* The same badge the studio list uses, at 20px rather than 16. A vector mark
-     shrinks indefinitely; these are rasters, and at 16 the ring closes into a
-     dot.
-
-     The NAME stays green rather than taking the studio's own colour, and that
-     was measured rather than preferred: as 13px text on white, eight of the
-     fourteen brand colours fail 4.5:1. Woodshop's gold manages 1.76, which is
-     not a contrast problem so much as invisible ink. These colours are drawn
-     as marks and they are legible as marks; the badge beside the name is
-     already carrying the identity, so the word can stay readable. */
-  .mp-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    font-size: 0.8125rem;
-    color: var(--color-sm-green-dark);
-  }
-
-  .mp-spot-note {
-    font-size: 0.8125rem;
-    font-style: italic;
-    line-height: 1.5;
-    color: var(--color-sm-slate);
-  }
-
   /* ------------------------------------------------------- the studios --- */
 
   .mp-studios {
@@ -718,12 +597,6 @@ const ORPHANS = studiosWithoutSpot();
     color: var(--color-sm-ink-2);
   }
 
-  .mp-undrawn {
-    margin-top: 1rem;
-    font-size: 0.8125rem;
-    color: var(--color-sm-slate);
-  }
-
   .mp-note {
     max-width: 62ch;
     margin-top: 2.5rem;
@@ -741,7 +614,6 @@ const ORPHANS = studiosWithoutSpot();
       border-radius: 0;
     }
 
-    .mp-spots,
     .mp-studio-list {
       grid-template-columns: 1fr;
     }
