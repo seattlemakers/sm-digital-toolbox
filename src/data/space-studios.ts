@@ -26,9 +26,12 @@
  * scripts/crop-studio-badges.mjs cuts from the brand sheet against its own
  * hardcoded list. Renaming one is three edits and a re-run of that script.
  *
- * NAMES ARE LOWERCASE, which is the brand deck's own styling for these chips
- * and saves owning a list of exceptions - "3D", "A/V", "CNC" - anywhere a
- * studio is printed.
+ * NAMES ARE WRITTEN AS THEY SHOULD BE READ, capitals and all. studios.ts keeps
+ * everything lowercase, which is the brand deck's styling for its chips and
+ * saves the calendar owning a list of exceptions - "3D", "A/V", "CNC" - in a
+ * second place. This list has no such problem: it is read in one page, beside
+ * room names that are already Title Case, so the exceptions can simply be
+ * typed. Nothing transforms these, so what is here is what prints.
  *
  * SETTLED on 2026-10-06, and this is the first place the two lists part:
  *
@@ -87,20 +90,20 @@ export type SpaceStudio = {
 };
 
 export const SPACE_STUDIOS: SpaceStudio[] = [
-  { slug: 'laser-cutting',   name: 'laser cutting',   badge: '/brand/studios/laser-cutting.png',   colour: '#ef1c26' },
-  { slug: '3d-printing',     name: '3d printing',     badge: '/brand/studios/3d-printing.png',     colour: '#ea5300' },
-  { slug: 'woodshop',        name: 'woodshop',        badge: '/brand/studios/woodshop.png',        colour: '#ffb61b' },
-  { slug: 'sewing',          name: 'sewing',          badge: '/brand/studios/sewing.png',          colour: '#92318c' },
-  { slug: 'electronics',     name: 'electronics',     badge: '/brand/studios/electronics.png',     colour: '#29a641' },
-  { slug: 'cnc-routing',     name: 'cnc routing',     badge: '/brand/studios/cnc-routing.png',     colour: '#945612' },
-  { slug: 'ceramics',        name: 'ceramics',        badge: '/brand/studios/ceramics.png',        colour: '#e85579' },
-  { slug: 'screen-printing', name: 'screen printing', badge: '/brand/studios/screen-printing.png', colour: '#43b0a5' },
-  { slug: 'arts-crafts',     name: 'arts & crafts',   badge: '/brand/studios/arts-crafts.png',     colour: '#9cc001' },
-  { slug: 'leather-studio',  name: 'leather',         badge: '/brand/studios/leather-studio.png',  colour: '#853321' },
-  { slug: 'metalworking',    name: 'metalworking',    badge: '/brand/studios/metalworking.png',    colour: '#8e7479' },
-  { slug: 'software',        name: 'software',        badge: '/brand/studios/software.png',        colour: '#5a41ab' },
-  { slug: 'av-studio',       name: 'a/v',             badge: '/brand/studios/av-studio.png',       colour: '#3563a6' },
-  { slug: 'jewelry',         name: 'jewelry',         badge: '/brand/studios/jewelry.png',         colour: '#a90c5c' },
+  { slug: 'laser-cutting',   name: 'Laser Cutting',   badge: '/brand/studios/laser-cutting.png',   colour: '#ef1c26' },
+  { slug: '3d-printing',     name: '3D Printing',     badge: '/brand/studios/3d-printing.png',     colour: '#ea5300' },
+  { slug: 'woodshop',        name: 'Woodshop',        badge: '/brand/studios/woodshop.png',        colour: '#ffb61b' },
+  { slug: 'sewing',          name: 'Sewing',          badge: '/brand/studios/sewing.png',          colour: '#92318c' },
+  { slug: 'electronics',     name: 'Electronics',     badge: '/brand/studios/electronics.png',     colour: '#29a641' },
+  { slug: 'cnc-routing',     name: 'CNC Routing',     badge: '/brand/studios/cnc-routing.png',     colour: '#945612' },
+  { slug: 'ceramics',        name: 'Ceramics',        badge: '/brand/studios/ceramics.png',        colour: '#e85579' },
+  { slug: 'screen-printing', name: 'Screen Printing', badge: '/brand/studios/screen-printing.png', colour: '#43b0a5' },
+  { slug: 'arts-crafts',     name: 'Arts & Crafts',   badge: '/brand/studios/arts-crafts.png',     colour: '#9cc001' },
+  { slug: 'leather-studio',  name: 'Leather',         badge: '/brand/studios/leather-studio.png',  colour: '#853321' },
+  { slug: 'metalworking',    name: 'Metalworking',    badge: '/brand/studios/metalworking.png',    colour: '#8e7479' },
+  { slug: 'software',        name: 'Software',        badge: '/brand/studios/software.png',        colour: '#5a41ab' },
+  { slug: 'av-studio',       name: 'A/V',             badge: '/brand/studios/av-studio.png',       colour: '#3563a6' },
+  { slug: 'jewelry',         name: 'Jewelry',         badge: '/brand/studios/jewelry.png',         colour: '#a90c5c' },
   // A space whose studio nobody has named yet. It is an entry rather than an
   // empty one so the plan and the list can still say "something works in here"
   // - a different claim from the blank a room with no studio gets, and the

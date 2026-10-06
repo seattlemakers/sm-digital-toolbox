@@ -1936,6 +1936,9 @@ is safe because the prefix is "Big CNC", not a studio name.
 poster would mean owning a list of exceptions - "3D", "A/V", "CNC" - in a second
 place, and `text-transform: capitalize` renders "a/v studio" inconsistently
 across browsers anyway. It also keeps the sheet in step with the reel's chips.
+(/map is the exception and owns that list of exceptions by simply typing them -
+see *The map*. It can, because it has its own studio file and is read in one
+page.)
 
 **The studio icons work on green with no knockout variant, because they are
 already badges.** Each is dark line art inside a white disc, so the disc is the
@@ -2144,6 +2147,14 @@ them - 184 square, disc radius 84.5 on a centre of 91.5, a 4-unit ring.
 **Do not add that slug to `crop-studio-badges.mjs`.** It zips `SLUGS` against
 the rings it finds on the sheet and throws when the counts differ, so a
 fifteenth entry breaks the generator for the fourteen that are real.
+
+**The map's names are Title Case and the calendar's are lowercase, and that is
+the fork earning its keep.** studios.ts stays lowercase because title-casing it
+would mean owning a list of exceptions - "3D", "A/V", "CNC" - in a second place,
+and because `text-transform: capitalize` renders "a/v studio" differently across
+browsers. space-studios.ts has neither problem: it is read in one page, beside
+room names that are already Title Case, so the exceptions are simply typed and
+nothing transforms them. What is in the file is what prints.
 
 **The slugs are the one thing the fork did not change**, because they are
 load-bearing in two places outside either file: they key `STUDIOS_IN` in

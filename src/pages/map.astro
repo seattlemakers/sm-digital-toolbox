@@ -841,6 +841,13 @@ function tooltip(id: string): string {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
+    /* An inline-flex takes its baseline from its FIRST flex item, and the first
+       one here is an image, whose baseline is its bottom edge. So the pair was
+       hung by the badge's feet on the row's text baseline and sat 3.75px above
+       the middle of the row - measured, because at this size it reads as "very
+       slightly off" rather than as anything nameable. Aligning the box itself
+       rather than its invented baseline puts it within half a pixel. */
+    vertical-align: middle;
     font-size: 0.875rem;
     color: var(--color-sm-ink-2);
   }
