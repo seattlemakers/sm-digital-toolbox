@@ -194,7 +194,10 @@ const ORPHANS = studiosWithoutSpot();
                   {spotsOn(floor)
                     .filter((z) => z.shape === 'zone' && z.room === sp.id)
                     .map((z) => (
-                      <span class="mp-spot-zone">{z.name}</span>
+                      <span class="mp-spot-zone">
+                        {z.name}
+                        {z.note && <i>{z.note}</i>}
+                      </span>
                     ))}
                   {[...sp.studios, ...spotsOn(floor).filter((z) => z.room === sp.id).flatMap((z) => z.studios)]
                     .map((slug) => (
@@ -564,6 +567,20 @@ const ORPHANS = studiosWithoutSpot();
 
   .mp-spot-zone::before {
     content: '↳ ';
+  }
+
+  /* A zone's note had nowhere to go until the last open question was answered
+     and the "still to confirm" block - which only ever showed notes with a
+     question mark in them - stopped rendering. That took "Private studios,
+     available to rent" off the page while leaving it in the data, which is the
+     quiet half of a fact going missing. */
+  .mp-spot-zone i {
+    font-style: normal;
+    opacity: 0.8;
+  }
+
+  .mp-spot-zone i::before {
+    content: ' — ';
   }
 
   /* The same badge the studio list uses, at 20px rather than 16. A vector mark

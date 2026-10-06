@@ -260,8 +260,8 @@ export const FLOORPLAN: Record<Floor, FloorPlan> = {
         points: [[810.8, 532], [854.4, 488.4], [854.4, 586.2], [791.6, 586.2], [791.6, 562.5], [829, 562.5], [829, 532]] },
     ],
     zones: [
-      { id: "D1.1", name: "Maker Studios", room: "D1", fill: null,
-        lines: ["Maker","Studios"], at: [522.2, 438], size: 7,
+      { id: "D1.1", name: "Builder Studios", room: "D1", fill: null,
+        lines: ["Builder","Studios"], at: [522.2, 438], size: 7,
         points: [[497.1, 379], [547.3, 379], [547.3, 507.4], [497.1, 507.4]] },
       { id: "D1.3", name: "Storage", room: "D1", fill: null,
         lines: ["Storage"], at: [522.2, 527.5], size: 7,

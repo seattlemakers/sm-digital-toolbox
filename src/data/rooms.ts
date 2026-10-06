@@ -61,11 +61,14 @@ export const PLACES: Record<string, Place> = {
 
   // --- downstairs ----------------------------------------------------------
   'D1': { note: 'Five zones, including the event space and the mini makerspace.' },
-  'D1.1': { note: 'Which studios are the maker studios? Nothing on the plan says.' },
+  // Rentable space rather than a discipline, so it carries no studio slug -
+  // studios.ts is the list of things the calendar tags classes with, and
+  // "somebody rents this" is not one of them.
+  'D1.1': { note: 'Private studios, available to rent.' },
   'D1.2': { studios: ['leatherworking'] },
   'D1.5': { studios: ['arts-crafts'] },
   'D3': { studios: ['av-studio'] },
-  'D10': { studios: ['sewing'], note: 'Does leatherworking also happen here? It shares a calendar tag with sewing.' },
+  'D10': { studios: ['sewing'] },
   'D12': { studios: ['ceramics'] },
   'D14': { studios: ['ceramics'] },
   'D15': { studios: ['ceramics'] },

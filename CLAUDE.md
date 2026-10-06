@@ -2077,6 +2077,20 @@ Fourteen colours is a lot to put on one page. As a rule each one identifies its
 row without competing with the badge beside it, which is where the colour is
 already doing its work.
 
+**A zone can be rentable space rather than a discipline**, which is why
+`studios` is optional on a Place and why Builder Studios carries a note and no
+slug. studios.ts is the list of things the *calendar* tags classes with, and
+"somebody rents this" is not one of them - putting it there to make the zone
+look complete would have broken the one rule that file exists to hold.
+
+**Answering the last open question took a fact off the page.** The "still to
+confirm" block only ever rendered notes containing a question mark, so when the
+last question was answered the whole block stopped rendering - and took "Private
+studios, available to rent" with it, since a zone's note had nowhere else to go.
+Zone notes render in the room list now. Worth remembering about any panel that
+exists to show *unresolved* things: the day it empties is the day anything
+riding on it disappears.
+
 **When a room is entirely subdivided, rename the room.** Metalshop 2 is a third
 jewelry studio and two thirds metalshop, and the first attempt drew only the
 jewelry third as a zone - because a zone called "Metalshop 2" inside a room
@@ -2136,7 +2150,8 @@ why; the real fix belongs in the original drawing.
    runs (854.4,488.4) to (810.8,532) at slope -1 and therefore crosses x=829 at
    513.8; stopping at 518 would have left the wall hanging four units short of
    the thing it is supposed to meet.
-2. **The subdivision of Metal Studios.** U3 renamed from "Metalshop 2", split
+2. **"Maker Studios" renamed to "Builder Studios"** (`zlabel-D1.1`).
+3. **The subdivision of Metal Studios.** U3 renamed from "Metalshop 2", split
    into `zone-U3.1` (jewelry, the left third) and `zone-U3.2` (metalshop, the
    right two thirds) at x=324.7, with all three labels repositioned to stack
    inside a room only 108 units tall. The room's own outline is untouched.
