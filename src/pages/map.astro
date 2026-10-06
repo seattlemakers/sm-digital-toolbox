@@ -23,7 +23,7 @@
  */
 import Base from '../layouts/Base.astro';
 import { toolById, pageTitle } from '../data/tools';
-import { OPEN_QUESTIONS, SPOTS, studiosWithoutSpot } from '../data/rooms';
+import { OPEN_QUESTIONS, SPOTS, studiosWithoutSpot, undrawnOn } from '../data/rooms';
 import { FLOORPLAN, FLOORS, STROKE, type Floor, type Layer } from '../data/floorplan';
 import { STUDIO_BY_SLUG } from '../data/studios';
 
@@ -110,7 +110,7 @@ const ORPHANS = studiosWithoutSpot();
                     a map-colouring rather than a key - two woodshops do not
                     share one. Held well back, because the thing you are looking
                     for is a name and the thing that orients you is a wall. */}
-                {FLOORPLAN[floor].rooms.map((r) => (
+                {FLOORPLAN[floor].rooms.filter((r) => spot(r.id).drawn).map((r) => (
                   <path
                     class="mp-room"
                     d={path(r.points)}
@@ -151,7 +151,7 @@ const ORPHANS = studiosWithoutSpot();
                     and broken on their own lines - both are fitted to the room
                     they sit in, and recomputing either would be guessing at a
                     decision somebody made with the plan in front of them. */}
-                {FLOORPLAN[floor].rooms.map((r) => (
+                {FLOORPLAN[floor].rooms.filter((r) => spot(r.id).drawn).map((r) => (
                   <text
                     class="mp-name"
                     data-kind={spot(r.id).kind}
@@ -186,7 +186,7 @@ const ORPHANS = studiosWithoutSpot();
             </svg>
           </div>
           <ul class="mp-spots">
-            {spotsOn(floor).filter((sp) => sp.shape === 'room').map((sp) => (
+            {spotsOn(floor).filter((sp) => sp.shape === 'room' && sp.drawn).map((sp) => (
               <li class="mp-spot" data-kind={sp.kind} data-spot={sp.id}>
                 <span class="mp-spot-id">{sp.id}</span>
                 <span class="mp-spot-body">
@@ -208,6 +208,15 @@ const ORPHANS = studiosWithoutSpot();
               </li>
             ))}
           </ul>
+
+          {/* Said once, rather than fourteen times on the drawing. The walls
+              are still there - they come from the wall layer, not from these
+              shapes - so a closet is a walled box and a staircase has its
+              treads. Only the fill and the name are gone. */}
+          <p class="mp-undrawn">
+            Also on this floor: {undrawnOn(floor)} — their walls are on the plan,
+            but they are not named.
+          </p>
         </section>
       ))
     }
@@ -234,7 +243,7 @@ const ORPHANS = studiosWithoutSpot();
     }
 
     <p class="mp-note">
-      {SPOTS.filter((sp) => sp.shape === 'room').length} rooms and
+      {SPOTS.filter((sp) => sp.shape === 'room' && sp.drawn).length} rooms and
       {' '}{SPOTS.filter((sp) => sp.shape === 'zone').length} zones, named and shaped by
       <b>data/floorplan.svg</b>. <b>data/rooms.ts</b> adds only what the drawing
       cannot know: which studios work where, and what is still unsettled.
@@ -559,6 +568,12 @@ const ORPHANS = studiosWithoutSpot();
     font-size: 0.9rem;
     line-height: 1.6;
     color: var(--color-sm-ink-2);
+  }
+
+  .mp-undrawn {
+    margin-top: 1rem;
+    font-size: 0.8125rem;
+    color: var(--color-sm-slate);
   }
 
   .mp-note {

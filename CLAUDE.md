@@ -2018,6 +2018,27 @@ and neither do the two ceramics rooms, so nothing can be read off the colour
 itself. They render at half opacity because at full strength they are the
 loudest thing on a plan whose point is the names and the walls.
 
+**Fourteen of the forty-three spaces are not drawn, and the plan is mostly the
+better for it.** Hallways, staircases and closets are most of the ink and none
+of the answer - nobody opens a map to find the hallway, and a cupboard labelled
+CLOSET tells you only that somebody drew a cupboard. They stay in the data and
+lose their fill and their name.
+
+The reason this costs nothing is that **the walls come from the wall layer, not
+from the room shapes**. A closet is still a walled box exactly where it is, and
+a staircase still has its treads - so a staircase with no label is still
+obviously a staircase, which is the test the label was failing. What the plan
+loses is fourteen names and fourteen fills; what it keeps is the building.
+
+The page says it once underneath instead: *"Also on this floor: one closet, two
+staircases and three hallways."* Numbers as words rather than numerals, because
+mixing them ("one closet, 2 staircases") reads as two different kinds of fact.
+
+The **Landing** and the **Check-in** desk are circulation too and are
+deliberately still drawn. Check-in is somewhere you get sent; a landing is where
+you come *out* of the stairs, which is the one thing about a staircase worth
+naming.
+
 **The plan is coloured by use, and that replaced a colouring that could not be
 read.** The drawing's own fills are a map-colouring - adjacent spaces get
 different colours so they can be told apart - so the two woodshops do not share

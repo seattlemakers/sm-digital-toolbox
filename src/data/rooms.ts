@@ -96,11 +96,33 @@ export type Kind = 'studio' | 'circulation' | 'room';
 
 const CIRCULATION = /^(Stairs|Hallway|Landing|Check-in)$/;
 
+/**
+ * Spaces the plan does not draw or label, though it still knows about them.
+ *
+ * Fourteen of the forty-three spaces are a hallway, a staircase or a closet.
+ * Drawn and named they are most of the ink on the plan and none of the answer:
+ * nobody opens a map to find the hallway, and a cupboard labelled CLOSET tells
+ * you only that somebody drew a cupboard.
+ *
+ * They stay in the data, and the walls are drawn from the wall layer rather
+ * than from these shapes - so a closet is still a walled box on the plan and a
+ * staircase still has its treads, both exactly where they are. What goes is the
+ * fill and the name. A staircase drawn with treads and no label is still
+ * obviously a staircase, which is the test this passes and the label failed.
+ *
+ * The Landing and the Check-in desk are circulation too and are NOT in here.
+ * Check-in is somewhere you are sent; a landing is where you come out of the
+ * stairs, which is the one thing about the stairs worth naming.
+ */
+const UNDRAWN = /^(Stairs|Hallway|.*\bCloset)$/;
+
 /** Every room and zone the drawing carries, with its floor and its notes. */
 export type Spot = (Room | Zone) & {
   floor: Floor;
   shape: 'room' | 'zone';
   kind: Kind;
+  /** False for the hallways, stairs and closets - see UNDRAWN. */
+  drawn: boolean;
   /** For a zone, the room it sits in. */
   room?: string;
   studios: string[];
@@ -128,6 +150,7 @@ export const SPOTS: Spot[] = FLOORS.flatMap((floor) => {
         floor,
         shape: 'room' as const,
         kind: kindOf(r.name, [...studios, ...zoneStudios(r.id)]),
+        drawn: !UNDRAWN.test(r.name),
         studios,
         note: PLACES[r.id]?.note,
       };
@@ -139,6 +162,7 @@ export const SPOTS: Spot[] = FLOORS.flatMap((floor) => {
         floor,
         shape: 'zone' as const,
         kind: kindOf(z.name, studios),
+        drawn: true,
         studios,
         note: PLACES[z.id]?.note,
       };
@@ -169,6 +193,23 @@ export function placeOf(spot: Spot): string {
 export function studiosWithoutSpot() {
   const placed = new Set(SPOTS.flatMap((s) => s.studios));
   return [...STUDIO_BY_SLUG.values()].filter((s) => !placed.has(s.slug));
+}
+
+/** "3 hallways, 2 staircases and a closet" - what the plan leaves unlabelled. */
+export function undrawnOn(floor: Floor): string {
+  const names = SPOTS.filter((s) => s.floor === floor && !s.drawn).map((s) =>
+    s.name.replace(/.*\bCloset$/, 'closet').replace('Hallway', 'hallway').replace('Stairs', 'staircase'),
+  );
+  const counts = new Map<string, number>();
+  for (const n of names) counts.set(n, (counts.get(n) ?? 0) + 1);
+  // Words rather than numerals, because this is a sentence rather than a
+  // count - "one closet, 2 staircases" reads as two different kinds of fact.
+  const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
+  const parts = [...counts].map(([n, c]) =>
+    c === 1 ? `one ${n}` : `${WORDS[c] ?? c} ${n}${n.endsWith('s') ? 'es' : 's'}`,
+  );
+  if (parts.length < 2) return parts.join('');
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
 /** Spaces whose note asks a question, so the open ones stay visible. */
