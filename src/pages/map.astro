@@ -9,23 +9,21 @@
  * and anything placed on top - rooms, studios, a route - sits in the same
  * coordinate system as the building rather than being pinned to pixels.
  *
- * STRIPPED BACK on 2026-10-05. The page used to carry a zone layer, a label
- * layer, two switches, a room list per floor and a studio index. All of it was
- * driving off room shapes that were thrown away with the old traced floorplan,
- * so every one of those was a control over an empty layer or a list beside a
- * drawing it could not point at. They come back as the rooms are placed against
- * this drawing, and not before: a switch that toggles nothing is worse than no
- * switch, because it says the feature is broken rather than absent.
+ * The page is two of those plans, each beside a list of everything it is drawn
+ * from, for checking rather than for finding your way - a room with the wrong
+ * name still looks like a room. Hovering either half lights the other.
  *
- * data/rooms.ts and data/studios.ts are untouched - the names, codes, tape
- * colours, studio assignments and open questions are all still there, waiting
- * for geometry to hang them on.
+ * THREE FILES, and the split is deliberate. data/floorplan.svg draws and names
+ * the building; data/rooms.ts says which studios work in which of its spaces;
+ * data/space-studios.ts is the map's own studio list, forked from
+ * data/studios.ts on 2026-10-06 because that one is shaped by the calendar it
+ * feeds. Nothing on this page reads data/studios.ts any more.
  */
 import Base from '../layouts/Base.astro';
 import { toolById, pageTitle } from '../data/tools';
 import { SPOTS, studiosWithoutSpot, type Spot } from '../data/rooms';
 import { FLOORPLAN, FLOORS, STROKE, type Floor, type Layer } from '../data/floorplan';
-import { STUDIO_BY_SLUG } from '../data/studios';
+import { SPACE_STUDIO_BY_SLUG } from '../data/space-studios';
 
 const TOOL = toolById('map');
 
@@ -97,7 +95,7 @@ const ZONES = SPOTS.filter((s) => s.shape === 'zone');
  */
 function tooltip(id: string): string {
   const sp = SPOTS.find((s) => s.id === id)!;
-  const studios = sp.studios.map((slug) => STUDIO_BY_SLUG.get(slug)!.name);
+  const studios = sp.studios.map((slug) => SPACE_STUDIO_BY_SLUG.get(slug)!.name);
   return studios.length ? `${sp.name} — ${studios.join(', ')}` : sp.name;
 }
 ---
@@ -290,7 +288,7 @@ function tooltip(id: string): string {
                             <span class="mp-dash">—</span>
                           ) : (
                             sp.studios.map((slug) => {
-                              const st = STUDIO_BY_SLUG.get(slug)!;
+                              const st = SPACE_STUDIO_BY_SLUG.get(slug)!;
                               return (
                                 <span class="mp-who-one" style={`--studio: ${st.colour}`}>
                                   <img src={st.badge} alt="" width="22" height="22" />

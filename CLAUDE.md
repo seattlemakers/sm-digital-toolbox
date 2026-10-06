@@ -119,6 +119,8 @@ Done:
   exist as marks for the first time.
 - `src/data/rooms.ts` is no longer a list of rooms. It is one mapping - the
   drawing's own id to the studios that work in that space - and nothing else.
+- `src/data/space-studios.ts` is the map's **own** studio list, forked from
+  `studios.ts` on 2026-10-06. Nothing on `/map` reads `studios.ts` any more.
 - Each floor is **a plan beside its own list** - every room and zone on that
   floor, with its code, its parent and its studio - for review before any of
   this is relied on. The list scrolls in its own box, and hovering either side
@@ -2082,6 +2084,39 @@ list answered "where is the laser cutter", which is the page's eventual job; the
 table answers "is this data right", which is the job in front of it. The two
 functions are what a studio list is built from - `placeOf()` holds the "Fab Lab,
 laser end" rule - and are left in rooms.ts for when it comes back.
+
+**The map has its own studio list, and the fork was the point.** `studios.ts`
+exists to feed the calendar: three of its five fields are bridges to one -
+`eventCategories` (the raw category slugs the site puts on an event anchor),
+`preferEvent` (which class to advertise) and `icon` (the mono vector the reel
+and the door posters need). None of those is a fact about the building, and the
+calendar behind them is being replaced, so several of its names were settled
+against needs that are about to stop existing.
+
+`space-studios.ts` carries four fields - slug, name, badge, colour - which is
+exactly what the map prints. The two lists are **expected to drift**, and that
+is the feature: what a class is tagged on a booking system and what the people
+in the building call the room are different questions, and forcing one answer
+onto both is what produced the names below. Forked 2026-10-06; `/map` reads
+only the new one, every other page only the old one.
+
+**The slugs are the one thing the fork did not change**, because they are
+load-bearing in two places outside either file: they key `STUDIOS_IN` in
+rooms.ts, and they name the badge PNGs that `crop-studio-badges.mjs` cuts
+against its own hardcoded list. A rename is three edits and a re-run.
+
+**Three names are open, and they are written into the new file rather than
+carried in somebody's head:**
+
+- **lapidary.** The brand sheet draws the mark as "Jewelry" and the room it sits
+  in is the Jewelry Studio. Nothing but the studio list says "lapidary". Almost
+  certainly a rename, held only against the chance they are two studios.
+- **cnc.** The calendar tags it `cnc` and `cnc-routing`, the second being the
+  superset - but what the studio is *called* is a different question from either
+  tag. Worth settling with the fact that one studio currently covers two zones,
+  the Big CNC in the Garage and the CNC in Woodshop 2: if those are different
+  things it is a split rather than a rename.
+- **computer lab.** On the plan and on the brand sheet, never on a schedule.
 
 **A zone is a named area inside a room, with no wall between them**, and that is
 the distinction the old tape colours were reaching for and never quite had.

@@ -17,14 +17,15 @@
  * "the Fab Lab, laser end" rather than just "the Fab Lab". Where a room has no
  * zones, the studio goes on the room.
  *
- * STUDIO SLUGS POINT INTO studios.ts, which stays the single source of truth
- * for what a studio is called and which icon it carries. A slug that does not
+ * STUDIO SLUGS POINT INTO space-studios.ts, which is the map's own list and
+ * not the calendar's - see the note at the top of that file. A slug that does
+ * not
  * resolve throws at module load, which fails the build - a typo would otherwise
  * render as a space with a missing icon and no name beside it, which looks like
  * a styling bug and is not one. An id that is not in the drawing throws too, so
  * a room renamed or removed in a redraw cannot leave an orphaned note behind.
  */
-import { STUDIO_BY_SLUG } from './studios';
+import { SPACE_STUDIOS, SPACE_STUDIO_BY_SLUG } from './space-studios';
 import { FLOORPLAN, FLOORS, type Floor, type Room, type Zone } from './floorplan';
 
 /** Which studios work in a space, keyed by the drawing's own id. */
@@ -181,7 +182,7 @@ export function placeOf(spot: Spot): string {
  */
 export function studiosWithoutSpot() {
   const placed = new Set(SPOTS.flatMap((s) => s.studios));
-  return [...STUDIO_BY_SLUG.values()].filter((s) => !placed.has(s.slug));
+  return SPACE_STUDIOS.filter((s) => !placed.has(s.slug));
 }
 
 /** "3 hallways, 2 staircases and a closet" - what the plan leaves unlabelled. */
@@ -211,8 +212,8 @@ for (const id of Object.keys(STUDIOS_IN)) {
 
 for (const spot of SPOTS) {
   for (const slug of spot.studios) {
-    if (!STUDIO_BY_SLUG.has(slug)) {
-      throw new Error(`rooms.ts: "${spot.id}" names studio "${slug}", which is not in studios.ts`);
+    if (!SPACE_STUDIO_BY_SLUG.has(slug)) {
+      throw new Error(`rooms.ts: "${spot.id}" names studio "${slug}", which is not in space-studios.ts`);
     }
   }
 }
