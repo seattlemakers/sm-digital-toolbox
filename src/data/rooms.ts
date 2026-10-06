@@ -63,6 +63,7 @@ export const PLACES: Record<string, Place> = {
   'D1': { note: 'Five zones, including the event space and the mini makerspace.' },
   'D1.1': { note: 'Which studios are the maker studios? Nothing on the plan says.' },
   'D1.2': { studios: ['leatherworking'] },
+  'D1.5': { studios: ['arts-crafts'] },
   'D3': { studios: ['av-studio'] },
   'D10': { studios: ['sewing'], note: 'Does leatherworking also happen here? It shares a calendar tag with sewing.' },
   'D12': { studios: ['ceramics'] },

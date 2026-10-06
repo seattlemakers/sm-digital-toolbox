@@ -110,10 +110,10 @@ Done:
   **43 rooms, 12 zones**, their names, their shapes, the walls and the label
   positions. `scripts/read-floorplan.mjs` reads the lot into
   `src/data/floorplan.ts`. It replaced a raster trace on 2026-10-05.
-- **14 studios, marked out across rooms and zones.** A studio is wherever its
-  work happens: woodshop is two rooms, cnc is two zones in different rooms,
-  ceramics is four rooms, metalworking is a room plus a zone. Two have nowhere
-  yet - arts & crafts and lapidary - and the page says so.
+- **All 14 studios placed, across rooms and zones.** A studio is wherever its
+  work happens: woodshop is two rooms, ceramics is four, cnc is two zones in
+  different rooms, metalworking is a zone in the Garage plus a zone in Metal
+  Studios. None is now without a space.
 - Colour badges for all 14 at `public/brand/studios/`, cut from the brand sheet
   by `scripts/crop-studio-badges.mjs`. **computer lab** and **leatherworking**
   exist as marks for the first time.
@@ -2105,6 +2105,13 @@ wherever its work happens - one room, two rooms, a zone inside somebody else's
 room, or nowhere yet. Listing studios separately from the floors is what lets
 the plan stay honest about rooms while the studio list stays honest about
 studios.
+
+**The Astro whitespace trap caught this page too**, which is the one already
+recorded under *The rest*: `shaped by\n<b>data/floorplan.svg</b>` rendered as
+"shaped bydata/floorplan.svg". It is easy to reintroduce every time a paragraph
+is rewrapped, so the rule is worth restating - an element boundary that falls on
+a line break eats the space, and the fix is to keep the tag flush against its
+neighbouring word rather than to add `&nbsp;`.
 
 **The stale scoped-style trap caught this page twice more.** The studio list
 came out as unstyled inline text with the data perfectly correct, and separately
