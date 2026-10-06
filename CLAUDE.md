@@ -2298,10 +2298,11 @@ to do nothing, not the last - every instance has looked like a specificity bug
 and none has been one. The tell is that `document.styleSheets` does not contain
 the selector at all.
 
-**`floorplan.svg` has been hand-edited twice, and that is a hazard worth
+**`floorplan.svg` has been hand-edited four times, and that is a hazard worth
 knowing about.** The file is exported from a design tool, so **the next export
-drops both edits silently**. If either thing below reappears as a fault, this is
-why; the real fix belongs in the original drawing.
+drops every one of these silently**. If any of them reappears as a fault, this
+is why; the real fix belongs in the original drawing, and this list is what to
+re-apply there.
 
 1. **A missing wall.** The downstairs east staircase had nothing down its left
    side - its treads simply stopped - where the upstairs one in the same corner
@@ -2315,6 +2316,18 @@ why; the real fix belongs in the original drawing.
    into `zone-U3.1` (jewelry, the left third) and `zone-U3.2` (metalshop, the
    right two thirds) at x=324.7, with all three labels repositioned to stack
    inside a room only 108 units tall. The room's own outline is untouched.
+4. **"Leatherworking Studio" renamed to "Leather Studio"** (`zlabel-D1.2`),
+   following the studio's own rename. One tspan changed - `Leatherworking` to
+   `Leather` - rather than collapsing the pair onto one line: the name fits on
+   one at 78 units wide, but two keeps the anchor, the line count and the
+   vertical centring exactly as the author set them, and matches how every
+   other narrow zone label in that room is broken.
+
+**The generated file is `npm run floorplan`**, which is the extractor with its
+stdout pointed at `src/data/floorplan.ts`. It had no npm script until
+2026-10-06, and nothing said it wrote to stdout - so "re-run the script" left
+the one thing you needed to know unwritten, and running it plainly looks like it
+did nothing.
 
 Finding which staircase it was is worth recording as a method, because there are
 four and they look alike at a glance. Each was rendered on its own at high
