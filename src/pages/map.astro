@@ -519,14 +519,30 @@ function tooltip(id: string): string {
     opacity: 0.8;
   }
 
-  /* A zone label sits a step under its room's, in weight and in colour, so the
-     pair reads as "this room, this part of it" rather than as two rooms. */
+  /* A zone label has to be tellable from a room's at a glance, and until
+     2026-10-06 the only differences were a weight and a shade - both of which
+     are invisible when the two names are not side by side.
+
+     So the distinction is CASE, which the eye reads before it reads anything
+     else: a room is uppercase, a zone is upper-and-lower. It is the plan
+     convention for a space inside a space, it is more legible at 7 units than
+     caps are because lowercase has distinctive shapes, and it survives being
+     the only label you can see.
+
+     Italic is the drawing's own answer - the author sets `font-style="italic"`
+     on both zone-label groups and nothing else - so it comes along, with the
+     weight dropped further and the tracking taken back off, because tracking is
+     for caps.
+
+     (Figtree ships no italic file, so this is a synthesised oblique. Checked
+     rather than assumed: at these sizes it is a clean slant, because the shapes
+     are small and the stroke is even.) */
   .mp-zone-name {
     font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: 0.05em;
+    font-style: italic;
+    font-weight: 500;
+    letter-spacing: 0.01em;
     text-anchor: middle;
-    text-transform: uppercase;
     fill: var(--color-sm-slate);
     pointer-events: none;
   }

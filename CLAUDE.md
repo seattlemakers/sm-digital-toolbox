@@ -2353,10 +2353,16 @@ staircases and three hallways."* - and that line went with the room lists on
 2026-10-05. `undrawnOn()` still builds the sentence and nothing calls it; it is
 the only thing that names the spaces in the data but not on the plan.
 
-The **Landing** and the **Check-in** desk are circulation too and are
-deliberately still drawn. Check-in is somewhere you get sent; a landing is where
-you come *out* of the stairs, which is the one thing about a staircase worth
-naming.
+The **Check-in** desk is circulation too and is deliberately still drawn,
+because it is somewhere you get sent and so has to be findable by name.
+
+**The Landing was the other exception and stopped being one on 2026-10-06.**
+The argument for naming it was that a landing is where you come *out* of the
+stairs, which is the one thing about a staircase worth naming - true in the
+abstract, and wrong on this plan. It is a 49-unit slot between a restroom and a
+stair, in the corner of the floor that already carries the most ink, and the
+name had to be wedged into it. The stairs drawn beside it already say what it
+is. Fifteen of the fifty-seven spaces are unlabelled now.
 
 **There is no colour on the plan at rest, as of 2026-10-06.** The studios were a
 green wash - `--color-sm-green-mid` at 0.2, with a 0.08 hint for a room whose
@@ -2430,13 +2436,30 @@ labels of fifty-five are tight - Landing at 45.2 units in 49.3, Closet at 32.9
 in 37.9 - and none actually overflow. Shrinking the other fifty-three to give
 those two more air would be the wrong trade.
 
-**Three label weights, so a broom cupboard stops shouting as loudly as the
-Megastudio.** Rooms are bold ink, circulation is semibold slate at 80% - you
-read "hallway" once to confirm it is a hallway and never look again - and a zone
-sits a step under its room in both weight and colour, so the pair reads as "this
-room, this part of it" rather than as two rooms. A zone that carries a studio
-takes the brand green for its label *and* its dashes, which is what ties the
-green fill to the thing the green fill means.
+**A zone's name is tellable from a room's by CASE, and a weight was not
+enough.** Until 2026-10-06 the only differences were 700 against 600 and ink
+against slate - which work when the two names are side by side and do nothing at
+all when the label you are looking at is the only one in view. "Electronics
+Studio" inside the Megastudio read as a room.
+
+Case is what the eye reads first, so **a room is uppercase and a zone is
+upper-and-lower**. It is the plan convention for a space inside a space, it is
+more legible at 7 drawing units than caps are - lowercase has distinctive shapes
+where caps are all one rectangle - and unlike a weight it survives being seen
+alone.
+
+**Italic comes with it, and it is the drawing's own answer.** The author sets
+`font-style="italic"` on both zone-label groups and on nothing else; our
+renderer had simply dropped it. Figtree ships no italic file, so this is a
+synthesised oblique - checked rather than assumed, and at these sizes it is a
+clean slant, because the shapes are small and the stroke is even. The weight
+drops to 500 and the tracking comes back off, since tracking is for caps.
+
+Four states, all tellable apart: a room is bold uppercase ink; circulation is
+semibold uppercase slate at 80%, read once to confirm it is a hallway and never
+again; a zone is light italic upper-and-lower slate; and **a zone that carries a
+studio takes the brand green**, for its label and its dashes. That last one is
+the only green left on the plan at rest.
 
 **A scoped-style edit can apply by half.** Changing the template and the
 `<style>` block of one `.astro` file in a single edit, the dev server took the

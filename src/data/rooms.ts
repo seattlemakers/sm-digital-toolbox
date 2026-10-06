@@ -103,11 +103,17 @@ const CIRCULATION = /^(Stairs|Hallway|Landing|Check-in)$/;
  * fill and the name. A staircase drawn with treads and no label is still
  * obviously a staircase, which is the test this passes and the label failed.
  *
- * The Landing and the Check-in desk are circulation too and are NOT in here.
- * Check-in is somewhere you are sent; a landing is where you come out of the
- * stairs, which is the one thing about the stairs worth naming.
+ * The Landing joined them on 2026-10-06. The argument for keeping it was that
+ * a landing is where you come OUT of the stairs, which is the one thing about a
+ * staircase worth naming - true in the abstract, and on this plan it is a 49-unit
+ * slot between a restroom and a stair with its name wedged in, which crowds the
+ * corner of the floor that already has the most ink in it. The stairs beside it
+ * say what it is.
+ *
+ * The Check-in desk is circulation too and is NOT in here: it is somewhere you
+ * are sent, so it has to be findable by name.
  */
-const UNDRAWN = /^(Stairs|Hallway|.*\bCloset)$/;
+const UNDRAWN = /^(Stairs|Hallway|Landing|.*\bCloset)$/;
 
 /** Every room and zone the drawing carries, with its floor and its studios. */
 export type Spot = (Room | Zone) & {
@@ -188,7 +194,11 @@ export function studiosWithoutSpot() {
 /** "3 hallways, 2 staircases and a closet" - what the plan leaves unlabelled. */
 export function undrawnOn(floor: Floor): string {
   const names = SPOTS.filter((s) => s.floor === floor && !s.drawn).map((s) =>
-    s.name.replace(/.*\bCloset$/, 'closet').replace('Hallway', 'hallway').replace('Stairs', 'staircase'),
+    s.name
+      .replace(/.*\bCloset$/, 'closet')
+      .replace('Hallway', 'hallway')
+      .replace('Landing', 'landing')
+      .replace('Stairs', 'staircase'),
   );
   const counts = new Map<string, number>();
   for (const n of names) counts.set(n, (counts.get(n) ?? 0) + 1);
