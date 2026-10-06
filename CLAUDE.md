@@ -105,9 +105,14 @@ Done:
 Space map (`/map`) is built and verified in the browser, added 2026-09-29.
 
 Done:
-- Both floors drawn from `src/data/rooms.ts` - 33 rooms, their tape codes, and
-  which studios each one houses. Traced off the space's own floorplan drawing
-  rather than eyeballed; see *The map* below for how.
+- **The building is drawn, not traced.** `src/data/floorplan.svg` is authored
+  by hand; `scripts/read-floorplan.mjs` reads it into `src/data/floorplan.ts`.
+  Three weights - exterior, interior, stairs - and 47 pen-ups that are the
+  doorways. It replaced a raster trace on 2026-10-05; see *The map* below.
+- `src/data/rooms.ts` carries 33 rooms, their tape codes and which studios each
+  one houses - names and meaning only. The zone shapes are **gone**: they were
+  in the old trace's pixels and the new drawing shares neither its coordinates
+  nor its shape. They come back by being drawn against it.
 - `rooms.ts` points into `studios.ts` by slug and repeats nothing about a
   studio, so the map, the calendar and the board cannot disagree about what a
   studio is called or which icon it carries. A bad slug throws at build.
@@ -116,10 +121,6 @@ Done:
   is listed under *Still to confirm*.
 - Hovering a studio lights every room it is in, on both floors, and hovering a
   room lights its row. One delegated handler over `data-room` / `data-studios`.
-- **Walls, traced and then normalised.** `scripts/trace-floorplan.mjs` pulls
-  291 rectangles off the drawing; `lib/wall-plan.ts` turns them into 93 walls
-  in exactly two weights, on 58 shared lines, with the doorways left as gaps.
-  26 assertions in `npm test`.
 
 Label maker (`/labels`) is built and verified against a print-to-PDF. Most of
 the *Implementation notes* below are about it.
@@ -1991,249 +1992,94 @@ that does not resolve throws at module load, which fails the build - a typo
 would otherwise render as a room with a missing icon and no name beside it,
 which looks like a styling bug and is not one.
 
-**The geometry was extracted from the drawing, not eyeballed.** Every room on
-the plan is outlined in its own tape colour, which means each room's outline is
-one connected component of one colour - so its bounding box *is* the room. The
-pipeline, all of it built-in tooling:
+**Zones are not rooms and rooms are not walls.** The old drawing's key is a list
+of *tape colours*, because much of this building is open shop floor with tape
+marking the areas out: Woodshop 1 and Woodshop 2 have no wall between them at
+all. The first version of this page stroked each zone as an outline, which drew
+walls that are not there. Three layers: the floorplate, the zones painted flat
+on it with no outline, and the building in ink over the top. **If it is dark you
+cannot walk through it** - with the stairs the deliberate exception, drawn
+lightest of the three because a staircase is a thing you walk *on*.
 
-1. `sips -s format png` turns the webp into a PNG.
-2. A ~50-line decoder in Node (`zlib.inflateSync` plus the five PNG row
-   filters) gives raw RGB. No image library is installed and none is needed -
-   the same reasoning as the JPEG SOF parsing in event-image.mjs.
-3. Flood-fill 8-connected components within a colour distance of each tape
-   colour, report bounding boxes, drop anything under ~500px.
+**The walls were traced out of a raster once, and that is over.** Deleted on
+2026-10-05: `scripts/trace-floorplan.mjs` (dark-run masking, furniture rejected
+by the grey on its flanks, orphan stubs pruned), `lib/wall-plan.ts` (two
+weights, shared lines, stitched cracks, closed corners, 26 assertions) and
+`data/walls.ts`. All of it worked. All of it existed to recover information the
+source had never actually stated, and the hour it took to tune each threshold
+bought an approximation of a building nobody had measured.
 
-That gave every coloured room outright. The black-walled rooms - the bathrooms,
-the stairs - came off a dark-pixel occupancy map of the same image printed as
-ASCII at 10px per cell, which makes the wall grid readable directly.
+The lesson is worth the space even though the code is not: **a plan somebody
+draws beats a plan you reconstruct, and it is not close.** The replacement is
+one 11-line SVG with every wall already on a shared line, already two weights,
+already meeting at the corners, and every doorway already a pen-up rather than
+something inferred from a gap and a threshold. If this ever needs redoing,
+redraw rather than re-derive.
+
+**`read-floorplan.mjs` is an extractor, not a cleanup**, and the one thing it
+has to work out is the floorplate. The exterior is drawn as a single outline
+with the pen lifted at each door, so joining its points *in the order they were
+drawn* and closing the loop gives the building's shape back - the pen-ups are
+exactly the doors and nothing else, so ignoring them is exactly right. Checked
+with `isPointInFill` rather than by looking: inside the building true, inside
+the entrance's notch false, outside false.
+
+It parses only M/L/H/V/Z and throws on anything else. A future export that
+introduces a curve should fail loudly rather than quietly dropping a wall.
+
+**The caps are ours and the weights are the drawing's.** The source sets
+`stroke-linecap="square"`, which overshoots by half a stroke at every subpath
+end - and on this plan *every subpath end is a door jamb*. The drawing's
+standard doorway is **18.4 units**, used 23 times of 47 openings; square caps
+would take 3 off each one through an interior wall and 6 through an exterior,
+which is a sixth to a third of the door. `butt` keeps every opening exactly as
+drawn, and costs nothing at corners, which are inside subpaths and mitre
+regardless.
+
+**The room zones are deliberately absent, not unfinished.** They were fitted to
+the old raster and expressed in its pixels; the new drawing shares neither its
+coordinate system nor its outline. Keeping the numbers would have put every zone
+somewhere plausible-looking and wrong, which is worse than drawing none, so
+`Room.shape` is optional and nothing has one. An unplaced room is a row in the
+list and nothing on the plan - the zone layer is not switched off wholesale, so
+the first room drawn against the new plan simply appears.
 
 **The tape colours are read off the key's own swatches**, walking down the
 swatch column and reporting each solid run, rather than sampled from a room's
-stroke. The key is what the space tapes to; a room's stroke is one drawing of
-it, and an antialiased one.
-
-**"Storage?" on the upstairs plan is a callout, not a room.** It was drawn as a
-rectangle first, and came out sitting on top of the stairs. The tells were both
-in the raster: it has leader lines running out of it, and the stair hatch
-continues *underneath* it - the row profile of hatch pixels does not drop where
-the box is. It is a note on the stairs now. Worth remembering that every other
-room came from the colour extraction and this was the one read by hand, which
-is exactly why it was the one that was wrong.
-
-**Zones are not rooms and rooms are not walls, and conflating them is what made
-this page confusing.** The drawing's key is a list of *tape colours*, because
-much of this building is open shop floor with tape marking the areas out:
-Woodshop 1 and Woodshop 2 have no wall between them at all. The first version
-stroked each zone as an outline, which drew walls that are not there - and then
-removing the outlines left the plan with holes, because the zones had been doing
-the walls' job. Three layers now: the floorplate, the zones painted flat on it
-with no outline, and the walls in ink over the top. **If it is black you cannot
-walk through it.** That one rule is what the zone outlines were quietly
-breaking.
-
-**The walls are traced by `scripts/trace-floorplan.mjs`,** which is the file to
-read before changing any of this. A wall on the drawing is a long thin dark
-rectangle, so the trace masks dark pixels sitting in a run of at least 22,
-run-length encodes the mask and merges runs down the rows to get rectangles
-back, then keeps the ones whose short side is a plausible wall.
-
-**`MIN_THICK` is 1, and that is the whole trick.** The exterior walls are 7-9px
-of solid black; the interior partitions are a *single* dark pixel, drawn between
-two tape-coloured zone boxes and anti-aliased into both. At a floor of 3 the
-trace came back with the shell, the bathrooms and the stairs and nothing else,
-which reads as "this drawing has no interior walls" and is wrong - the sample
-that settled it was the Low VOC / High VOC divide, one pixel of `99,107,88`
-between two beige boxes.
-
-**Doors come out for free, and that is the reason for tracing rather than
-drawing.** Runs are deliberately not merged across gaps, so a wall with a
-doorway in it arrives as two rectangles with a hole between them. A junction
-where another wall crosses does not break a run, because the crossing wall is
-dark too - so the holes that survive are openings. Nothing in walls.ts marks a
-door; the absence is the door, which is also how the building works.
-
-**Furniture traces exactly like a wall, and is told apart by its flanks.** The
-drawing fills benches and machines with flat mid-grey and outlines them, so
-those outlines are long thin dark rectangles too - the rolling tables in
-Woodshop 2 came out as four convincing partitions. A wall has room on both
-sides; a furniture edge has the object's own grey fill on one. The threshold is
-0.72 rather than a half, because a bench pushed against a wall gives that wall a
-grey flank as well, and those walls are real.
-
-**Then the orphans go.** What survives is mostly walls plus a scatter of stubs -
-a dimension leader, the edge of a callout box. They are indistinguishable from a
-door jamb by shape but not by company: a real wall meets another wall, because
-that is what makes a room. Kept if it touches something, or if it is long enough
-to stand on its own. One pass, not a transitive closure, or one long wall drags
-a chain of leaders in behind it.
-
-**The drawing is a sheet, not a floorplate.** It carries a key box down the
-left, a north arrow above that and the tape-colour table down the right, and all
-three are line art that traces as convincingly as a wall. The first render put
-the drawing's own compass on the page at ten times the size of ours. Clipping by
-floor separates the two plans anyway, so the same step clips the sheet furniture
-off both.
-
-**Thin walls are evened up at render, not in the data.** One drawing pixel is
-about two thirds of a screen pixel at this size, so the partitions came out as a
-grey suggestion against the shell's slab. Both are walls in the building, so a
-floor of 4 units is more truthful than reproducing the drawing's own
-inconsistency - the shell keeps its real weight, because an exterior wall really
-is heavier.
-
-**What the trace cannot fix: the source drawing is not an architectural plan.**
-It is a zone and electrical diagram, so the big upstairs shop reads as nearly
-open - which is probably right, but it is not *evidence* that it is right. The
-laser-cut board map in the space is a true wall model and was cut from a vector
-file; that file is the better source if anyone can find it.
-
-**The trace is honest about ink, which is the wrong thing to render.** It
-reports what is drawn: a wall 1px here and 9px there, two stretches of the same
-wall a pixel apart, a notch at every junction, a run broken for reasons that are
-antialiasing rather than architecture. Drawn literally that is a hundred
-unrelated marks, and the plan read as hand-shaky. `lib/wall-plan.ts` is the pass
-that makes it a diagram: two weights, one line per wall, corners that meet - and
-the gaps deliberately left alone, because a gap is a door.
-
-It is pure and takes the floorplate as an argument rather than importing it, so
-`npm test` can run it on three rectangles instead of on the building.
-
-**Exterior is decided geometrically, not by how heavily the line was drawn.**
-The drawing's exterior walls *are* heavier, so thickness nearly works - and
-"nearly" is how a thick interior wall ends up as heavy as the outside of the
-building. A wall is exterior when it runs along the floorplate's own edge, so
-the heavy weight means "this is the building" rather than "this line was drawn
-boldly".
-
-**STITCH is calibrated against a real door.** A doorway on this drawing measures
-about 46px - the gap in the top wall marked "door to outside" runs 1451 to 1497 -
-so the distance that closes a crack has to sit well under that or it quietly
-bricks up the doors, and nothing on the plan would say so. 14 is comfortably
-below a door and comfortably above the two or three pixels a junction costs. The
-gaps that survive on the real building cluster at 35-57, which is the check that
-it is right.
-
-**`butt` caps are load-bearing for the same reason.** A square cap overshoots by
-half the wall's width at each end, which would shave about 10px off every
-doorway and close the narrow ones outright. Corners are closed instead by
-pulling each wall's end onto the centre line of the wall it meets, so the
-crossing wall's own width fills the junction.
-
-**ALIGN is 22, and it is measured.** A partition between two tape zones is drawn
-as the edge of each zone, so one wall arrives as two or three parallel lines up
-to 18px apart - the kitchen's wall came through as three, at x 562, 572 and 580,
-which on the plan is a wall with a stripe in it. Tried at 7, 12, 18 and 22: the
-plan is identical at 18 and 22 except that 22 takes the last two pairs, and once
-merged the closest any two *distinct* walls come is 25px. The window sits in a
-real gap with none of the building inside it.
-
-Walls are grouped against the first member of a cluster rather than the previous
-one. Chaining lets a row of walls each 6px from the last drift fifty pixels from
-where it started, which is how a straight corridor comes out as a shallow
-staircase.
-
-**Stairs are not walls.** A staircase traces as a ladder of treads, and a tread
-is indistinguishable from a partition by shape. At a wall's weight it claims to
-be something you cannot walk through, which on this plan is the one thing a black
-line means - so the ladders come out and the stairs get said in words.
-
-The detector has to gather a tread's *peers first* and then look at their
-spacing. Walking a globally sorted list instead lets any unrelated wall whose
-coordinate happens to fall between two treads break the run, which is exactly
-what hid the east staircase on the first attempt. The test is otherwise tight on
-purpose: three or more parallels, evenly and closely spaced, over the same
-stretch, and all about the same length. That last clause is what rules out real
-walls - the four parallels beside the kitchen measure 131, 30, 192 and 23, and
-no staircase is built like that.
-
-**A wall that meets nothing is not a wall.** What is left after the treads go is
-almost all building, plus a few marks that traced like a partition and are not
-one: the edge of a machine, a zone box drawn on the floor, the top of the
-Material Storage bay. Every real wall runs into another wall or into the outside
-of the building, because that is what makes a room; these ran into nothing. Five
-of them, and dropping them is what took the last of the hand-drawn look off.
-
-**A hole in the outside of the building too big to be a door is a hole in the
-trace.** The garage's wall is beige on the source, not black, so the trace never
-saw it and the upstairs plan was open across 247px of its top right - a building
-with a side missing. `OPENING_MAX` is 120: a door here is about 46px and the
-widest real opening on either floor is the recessed entrance at 106, so the
-garage closes and both of those stay open. Exterior coverage goes 93.5% -> 99%.
-
-**Two orderings in that pipeline are not interchangeable.** The shell is
-repaired *before* the orphan check, because an interior wall whose only
-neighbour is a stretch of exterior wall the trace missed is a real wall and in
-the other order has nothing to touch. And the collinear merge runs *last*,
-because a repaired hole arrives as a second segment butted against the traced
-one - the same wall drawn twice, which is the thing this module exists to stop.
+stroke. They stand for real tape on real door frames, so they are wayfinding
+rather than decoration - "the room with the yellow tape" is a direction somebody
+can follow. Still true, and still the reason the codes are worth carrying.
 
 **Labels are a switch, and it starts off.** While the geometry is being checked
-the drawing shows walls and nothing else - no names, codes, studio icons, tape
-or studio tint - because none of those can be judged at the same time as the
-thing underneath them, and all of them compete for the same space. Each room
-keeps its `<title>`, so the plan is still readable by pointing at it. The switch
-writes `?labels=1`, which makes the labelled version a link.
+the drawing shows the building and nothing else, because none of the rest can be
+judged at the same time as the thing underneath it. The switch writes
+`?labels=1`, which makes the labelled version a link; `?zones=1` is its pair.
 
-**The building outline is the plan, and it was missing.** The first version had
-no envelope at all - rooms floating on the mist, with the corridors the same
-tone as the street outside, so it read as a scatter of rooms rather than as a
-building containing them. It is three tones now, darkest outwards: the ground
-outside, the floor inside, then the rooms. A corridor is lighter than the
-street and darker than a room, which is exactly what a corridor is.
-
-**The exterior walls came from a different signal than the rooms.** They are
-the only dark runs on the drawing longer than about 300px, so scanning each row
-and column for its longest run finds them and nothing else. The attempt before
-that - leftmost dark pixel per row - was useless, because text is dark too and
-it kept returning the first letter of a room name.
-
-**The tape is on the wall rather than being it.** Every room's outline used to
-be stroked in its own tape colour, which is where the walls went missing: beige
-is `#f5d29c` and yellow is `#f5fc01`, and neither of those is a wall on a white
-room. The wall is slate at 5 units with the tape drawn over it at 2.4, which
-reads as a cased line - a dark wall with a coloured strip down it - and is also
-what the door frame actually looks like.
-
-**The envelope has to be drawn twice.** A room flush against an exterior wall
-paints its own partition stroke over it, so the lounge's beige tape was running
-down the outside of the building at the entrance. The shell's fill goes under
-the rooms and its outline goes over them; on a floorplan the wall you cannot
-walk through has to win.
-
-**The entrance notch is two diagonals with a flat between them**, not the single
-apex the foyer and the lounge were first drawn against: (312,1240) down-right to
-(378,1306), across to (484,1306), then down-left to (314,1478). The middle of
-the lower diagonal reads wrong in a raw scan because the Front Desk's own angled
-box sits on it - extrapolate the clean ends rather than trusting the rows in
-between.
-
-**A code chip at the shape's top-left corner is only inside rectangles.** The
-laser room is an L that wraps under the 3D printing bay, and the lounge is
-angled where the entrance notches into the building - for both, the bounding
-box's top-left is in the room next door, and the `L` chip rendered inside 3D
-Printing. Those two rooms carry a `chip` anchor. Checked by point-in-polygon
-over every chip and every label rather than by looking, which is also what
-confirmed the labels: 0 outside, on both floors.
-
-**SVG has no text wrapping, so the labels are laid out in the frontmatter.** A
-room name is measured against its own room's width at build time and wrapped
-greedily, at a size that steps down with the room; the studio icons then take
-what height is left, and a room too short for both drops the icons rather than
-the name. The 0.53 is Figtree semibold's average advance as a fraction of its
-size - close enough that the size step, not the estimate, is what keeps a name
-between its own walls.
-
-**Both floors share one viewBox size, and the empty quarter is the point.** The
-downstairs plan is genuinely narrower than the upstairs one, because the garage
-is an upstairs-only extension. Given its own extents each floor would fill its
-frame and the building would appear to change shape between them; sharing the
-frame puts the two plans at one scale, lines the walls up vertically, and lets
-the blank right-hand quarter say the true thing.
+**Both floors share one viewBox width and height, and the empty strip is the
+point.** The upstairs plate runs further left than the downstairs one. Given its
+own extents each floor would fill its frame and the building would appear to
+change shape between them; sharing the frame puts the two at one scale, lines
+the walls up vertically, and lets the blank strip say the true thing. The
+extractor computes both from the drawing, so a redrawn plan reframes itself.
 
 **The compass needs a gutter, or a room eats it.** Drawn at the viewBox origin
-it landed inside whichever room owns the top-left corner and was painted over,
-since the rooms are drawn after it. The viewBox starts 80 units left of the
-building instead.
+it landed inside whichever room owns the top-left corner and was painted over.
+The frame starts 46 units left of the building instead, which is where `GUTTER`
+in the extractor comes from.
+
+**SVG has no text wrapping, so room labels are laid out in the frontmatter.** A
+name is measured against its own room's width at build time and wrapped greedily
+at a size that steps down with the room; the studio icons take what height is
+left, and a room too short for both drops the icons rather than the name. The
+0.53 is Figtree semibold's average advance as a fraction of its size - close
+enough that the size step, not the estimate, keeps a name between its own walls.
+Dormant until the zones are redrawn, and kept because that is the hard part.
+
+**A code chip at the shape's top-left corner is only inside rectangles.** On the
+old plan the laser room was an L and the lounge was angled at the entrance; for
+both, the bounding box's top-left was in the room next door and the chip
+rendered there. `Room.chip` exists for that case. Worth remembering when the
+zones are redrawn, because it will happen again on any room that is not a box.
 
 **An open question is a `?` in the note, not a flag of its own.** The notes are
 written to be read on the page, and a second field saying "this one is
@@ -2242,14 +2088,9 @@ version filtered on *rooms with no studio at all*, which missed exactly the
 interesting ones - the MegaStudio has screen printing in it **and** an open
 question about what else does.
 
-**Every room is tinted by whether it houses a studio, and nothing else.** It is
-the only fill difference on the plan, so "is there a studio in here" is
-answerable without reading a word. Stairs and bathrooms are greyed: they are
-landmarks you navigate *by* rather than destinations.
-
-**The live highlight is an overlay, not a thicker wall.** A stroke that grows
-moves the wall it is drawn on, and the room appears to twitch under the cursor -
-the same reasoning as /today's live frame.
+**The live highlight is an overlay on the zone, not a thicker wall.** A stroke
+that grows moves the wall it is drawn on, and the room appears to twitch under
+the cursor - the same reasoning as /today's live frame.
 
 ### The rest
 

@@ -17,8 +17,7 @@
 import Base from '../layouts/Base.astro';
 import { toolById, pageTitle } from '../data/tools';
 import {
-  FLOOR_SHELL,
-  FLOOR_VIEW,
+  FLOOR_NAME,
   ROOMS,
   roomsOnFloor,
   roomsForStudio,
@@ -29,12 +28,9 @@ import {
   type Room,
 } from '../data/rooms';
 import { STUDIOS } from '../data/studios';
-import { WALLS_DOWNSTAIRS, WALLS_UPSTAIRS } from '../data/walls';
-import { wallPlan } from '../lib/wall-plan';
+import { FLOORPLAN, FLOORS, STROKE, type Layer } from '../data/floorplan';
 
 const TOOL = toolById('map');
-
-const FLOORS: Floor[] = ['upstairs', 'downstairs'];
 
 const bbox = (pts: Pt[]) => {
   const xs = pts.map((p) => p[0]);
@@ -72,7 +68,7 @@ function onColour(hex: string): string {
 
 /** Everything the renderer needs for one room, measured once. */
 function place(room: Room) {
-  const b = bbox(room.shape);
+  const b = bbox(room.shape!);
   const studios = studiosInRoom(room);
   const anchor = room.label ?? [b.cx, b.cy];
 
@@ -94,7 +90,7 @@ function place(room: Room) {
   return {
     room,
     studios,
-    points: room.shape.map((p) => p.join(',')).join(' '),
+    points: room.shape!.map((p) => p.join(',')).join(' '),
     b,
     size,
     lines,
@@ -112,18 +108,17 @@ function place(room: Room) {
   };
 }
 
-/**
- * The drawn plan, per floor: the traced rectangles put through lib/wall-plan,
- * which is where every decision about how a wall LOOKS lives. Two weights, one
- * line per run of wall, corners closed, doorways untouched.
- */
-const PLAN: Record<Floor, ReturnType<typeof wallPlan>> = {
-  upstairs: wallPlan(WALLS_UPSTAIRS, FLOOR_SHELL.upstairs),
-  downstairs: wallPlan(WALLS_DOWNSTAIRS, FLOOR_SHELL.downstairs),
-};
+/** The drawing's three layers, in the order they are painted. */
+const LAYERS: Layer[] = ['exterior', 'interior', 'stairs'];
 
+/**
+ * Rooms that can be drawn. Empty until the zones are redrawn against
+ * floorplan.svg - see the note on `Room.shape`. The page is built so that an
+ * unplaced room is simply absent from the drawing and still present in the
+ * list, rather than the zone layer being switched off wholesale.
+ */
 const PLACED = Object.fromEntries(
-  FLOORS.map((f) => [f, roomsOnFloor(f).map(place)]),
+  FLOORS.map((f) => [f, roomsOnFloor(f).filter((r) => r.shape).map(place)]),
 ) as Record<Floor, ReturnType<typeof place>[]>;
 
 const ORPHANS = studiosWithoutRoom();
@@ -177,103 +172,105 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
       FLOORS.map((floor) => (
         <section class="mp-floor" data-floor={floor}>
           <h2 class="mp-floor-h">
-            {FLOOR_VIEW[floor].title}
-            <span>{FLOOR_VIEW[floor].sub}</span>
+            {FLOOR_NAME[floor].title}
+            <span>{FLOOR_NAME[floor].sub}</span>
           </h2>
 
           <div class="mp-plan-wrap">
             <svg
               class="mp-plan"
-              viewBox={FLOOR_VIEW[floor].viewBox}
+              viewBox={FLOORPLAN[floor].viewBox}
               role="img"
-              aria-label={`Floorplan of the ${FLOOR_VIEW[floor].title.toLowerCase()} floor`}
+              aria-label={`Floorplan of the ${FLOOR_NAME[floor].title.toLowerCase()} floor`}
             >
-              {/* North is up on the drawing this was traced from, so it is up
-                  here. The arrow is the one thing on the plan that is not a
-                  room, and it is worth the space: every instruction anyone
-                  gives in this building is "past the woodshop", not "north". */}
-              <g class="mp-north" transform={`translate(${+FLOOR_VIEW[floor].viewBox.split(' ')[0] + 8} ${+FLOOR_VIEW[floor].viewBox.split(' ')[1] + 10})`}>
+              {/* North is up on the drawing, so it is up here. The one thing on
+                  the plan that is not the building, and it earns the space:
+                  every instruction anyone gives in here is "past the woodshop",
+                  not "north", so the arrow is what ties the two together. */}
+              <g
+                class="mp-north"
+                transform={`translate(${+FLOORPLAN[floor].viewBox.split(' ')[0] + 10} ${+FLOORPLAN[floor].viewBox.split(' ')[1] + 14}) scale(0.34)`}
+              >
                 <path d="M 18 58 L 30 18 L 42 58 L 30 48 Z" />
-                <text x="30" y="78">N</text>
+                <text x="30" y="80">N</text>
               </g>
 
-              {/* The floor. Everything inside the building stands on it, so
-                  a corridor reads as a corridor: lighter than the ground
-                  outside and darker than a room. */}
-              <polygon class="mp-shell" points={FLOOR_SHELL[floor].map((q) => q.join(',')).join(' ')} />
-
-              {/* ZONES, under the walls.
-
-                  These are the tape-coloured areas off the drawing's key, and
-                  conflating them with rooms is what made the first version of
-                  this page confusing. They are not the same thing: Woodshop 1
-                  and Woodshop 2 have no wall between them at all, they are one
-                  room with tape on the floor. So a zone is painted ON the
-                  floor - a flat tint, no outline, under the walls - and a wall
-                  is a wall. Anything you cannot walk through is black. */}
-              {PLACED[floor].map((p) => (
+              <g transform={`translate(0 ${FLOORPLAN[floor].offsetY})`}>
+                {/* The floorplate. Everything inside the building stands on it,
+                    so a corridor reads as a corridor: lighter than the ground
+                    outside and darker than a room. */}
                 <polygon
-                  class="mp-zone"
-                  points={p.points}
-                  data-room={p.room.slug}
-                  data-studios={p.room.studios.join(' ')}
-                  style={p.room.tape ? `--tape: ${p.room.tape}` : undefined}
-                >
-                  <title>
-                    {p.room.name}
-                    {p.room.code ? ` (${p.room.code})` : ''}
-                    {p.studios.length ? ` \u2014 ${p.studios.map((s) => s.name).join(', ')}` : ''}
-                    {p.room.note ? ` \u2014 ${p.room.note}` : ''}
-                  </title>
-                </polygon>
-              ))}
-
-              {/* THE WALLS. Two weights and nothing else: the outside of the
-                  building, and everything else. The gaps in them are the
-                  doorways, because a door is the absence of a wall and there
-                  is nothing else it could honestly be drawn as here. */}
-              {PLAN[floor].map((seg) => (
-                <line
-                  class:list={['mp-brick', seg.kind === 'ext' ? 'is-ext' : 'is-int']}
-                  x1={seg.x1}
-                  y1={seg.y1}
-                  x2={seg.x2}
-                  y2={seg.y2}
+                  class="mp-shell"
+                  points={FLOORPLAN[floor].outline.map((q) => q.join(',')).join(' ')}
                 />
-              ))}
 
-              {/* The labels, over everything. Kept in their own pass so the
-                  walls cannot be drawn on top of a room's own name. */}
-              {PLACED[floor].map((p) => (
-                <g class="mp-label" data-room={p.room.slug} data-studios={p.room.studios.join(' ')}>
-                  {p.lines.map((line, i) => (
-                    <text class="mp-name" x={p.cx} y={p.lineY[i]} style={`font-size: ${p.size}px`}>
-                      {line}
-                    </text>
-                  ))}
+                {/* ZONES, under the walls. The tape-coloured areas off the old
+                    drawing's key, and not the same thing as rooms: Woodshop 1
+                    and Woodshop 2 have no wall between them, they are one room
+                    with tape on the floor. So a zone is painted ON the floor -
+                    flat, no outline - and a wall is a wall. */}
+                {PLACED[floor].map((p) => (
+                  <polygon
+                    class="mp-zone"
+                    points={p.points}
+                    data-room={p.room.slug}
+                    data-studios={p.room.studios.join(' ')}
+                    style={p.room.tape ? `--tape: ${p.room.tape}` : undefined}
+                  >
+                    <title>
+                      {p.room.name}
+                      {p.room.code ? ` (${p.room.code})` : ''}
+                      {p.studios.length ? ` \u2014 ${p.studios.map((s) => s.name).join(', ')}` : ''}
+                      {p.room.note ? ` \u2014 ${p.room.note}` : ''}
+                    </title>
+                  </polygon>
+                ))}
 
-                  {p.showIcons &&
-                    p.studios.map((s, i) => (
-                      <image
-                        class="mp-icon"
-                        href={s.icon}
-                        x={p.iconX[i]}
-                        y={p.iconY}
-                        width={p.icon}
-                        height={p.icon}
-                      />
+                {/* THE BUILDING, exactly as drawn. Three weights and no others:
+                    the outside, the partitions, and the stairs - lightest,
+                    because stairs are a thing you walk on rather than a thing
+                    you cannot walk through. The gaps are the doorways. */}
+                {LAYERS.map((layer) => (
+                  <path
+                    class={`mp-wall is-${layer}`}
+                    d={FLOORPLAN[floor].d[layer]}
+                    stroke-width={STROKE[layer]}
+                  />
+                ))}
+
+                {/* The labels, over everything, so a wall cannot be drawn on
+                    top of a room's own name. */}
+                {PLACED[floor].map((p) => (
+                  <g class="mp-label" data-room={p.room.slug} data-studios={p.room.studios.join(' ')}>
+                    {p.lines.map((line, i) => (
+                      <text class="mp-name" x={p.cx} y={p.lineY[i]} style={`font-size: ${p.size}px`}>
+                        {line}
+                      </text>
                     ))}
 
-                  {p.chip && (
-                    <g class="mp-chip">
-                      <rect x={p.chip.x} y={p.chip.y} width={p.chip.w} height={p.chip.h} rx="5" fill={p.chip.fill} />
-                      <text x={p.chip.x + p.chip.w / 2} y={p.chip.y + 16} fill={p.chip.ink}>
-                        {p.room.code}
-                      </text>
-                    </g>
-                  )}
-                </g>
-              ))}
+                    {p.showIcons &&
+                      p.studios.map((s, i) => (
+                        <image
+                          class="mp-icon"
+                          href={s.icon}
+                          x={p.iconX[i]}
+                          y={p.iconY}
+                          width={p.icon}
+                          height={p.icon}
+                        />
+                      ))}
+
+                    {p.chip && (
+                      <g class="mp-chip">
+                        <rect x={p.chip.x} y={p.chip.y} width={p.chip.w} height={p.chip.h} rx="5" fill={p.chip.fill} />
+                        <text x={p.chip.x + p.chip.w / 2} y={p.chip.y + 16} fill={p.chip.ink}>
+                          {p.room.code}
+                        </text>
+                      </g>
+                    )}
+                  </g>
+                ))}
+              </g>
             </svg>
           </div>
 
@@ -476,26 +473,28 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
      reason the wall trace was worth doing, and it is what the zone outlines
      were quietly breaking - a tape colour round a room drew a wall that is not
      there. */
-  /* Exactly two weights. An exterior wall is twice an interior one, which is
-     enough that "this is the building" and "this is a partition" are different
-     facts rather than a shade of the same one.
+  /* The building, and the only thing on the plan drawn in ink. If it is dark
+     you cannot walk through it - except the stairs, which are drawn lightest of
+     the three for exactly that reason: a staircase is a thing you walk on.
 
-     `butt` caps are not a detail: a square cap overshoots by half the wall's
-     width at both ends, which would shave about 10px off every doorway on the
-     plan and close the narrow ones outright. Corners are closed by joinEnds()
-     pulling each wall onto the centre line of the one it meets, so the
-     crossing wall's own width fills the junction. */
-  .mp-brick {
+     The weights are the drawing's own (6 / 3 / 1.5) and are set per path from
+     the data rather than here, so a redrawn floorplan changes them by being
+     redrawn. `butt` caps are ours, though: the source sets `square`, which
+     overshoots by half a stroke at every subpath end - and every subpath end on
+     this plan is a door jamb, so square caps quietly narrow each doorway by a
+     wall's width. Corners are inside subpaths and mitre regardless. */
+  .mp-wall {
+    fill: none;
     stroke: var(--color-sm-ink);
     stroke-linecap: butt;
+    stroke-linejoin: miter;
   }
 
-  .mp-brick.is-ext {
-    stroke-width: 10;
-  }
-
-  .mp-brick.is-int {
-    stroke-width: 5;
+  /* The stairs recede. Same ink, so they still read as built rather than as
+     annotation, but they are never the thing you are trying to find. */
+  .mp-wall.is-stairs {
+    stroke: var(--color-sm-ink-2);
+    opacity: 0.75;
   }
 
   /* A zone is paint on the floor. No outline, ever: an outline is what a wall
