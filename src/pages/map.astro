@@ -267,60 +267,62 @@ function tooltip(id: string): string {
                 against the other without either leaving the screen. It scrolls
                 inside its own box for the same reason: a floor is 26 to 31 rows
                 and the plan would otherwise be a long way up the page. */}
-            <div class="mp-list">
-              <div class="mp-list-head">
-                <span>Spaces</span>
-                <span>
-                  {SPOTS.filter((sp) => sp.floor === floor && sp.shape === 'room').length} rooms ·{' '}
-                  {SPOTS.filter((sp) => sp.floor === floor && sp.shape === 'zone').length} zones
-                </span>
-              </div>
+            <div class="mp-list-col">
+              <div class="mp-list">
+                <div class="mp-list-head">
+                  <span>Spaces</span>
+                  <span>
+                    {SPOTS.filter((sp) => sp.floor === floor && sp.shape === 'room').length} rooms ·{' '}
+                    {SPOTS.filter((sp) => sp.floor === floor && sp.shape === 'zone').length} zones
+                  </span>
+                </div>
 
-              <div class="mp-list-scroll">
-                <table class="mp-table">
-                  <thead>
-                    <tr>
-                      <th class="mp-th-code">Code</th>
-                      <th>Space</th>
-                      <th>Studio</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rowsOn(floor).map((sp) => (
-                      <tr
-                        data-spot={sp.id}
-                        data-shape={sp.shape}
-                        style={litStyle(sp)}
-                        class:list={[!sp.drawn && 'is-unlabelled']}
-                      >
-                        <td class="mp-code">{sp.id}</td>
-                        <td class="mp-space">
-                          <span class="mp-space-name">{sp.name}</span>
-                          {/* The fourteen hallways, staircases and closets are drawn
-                              as walls and left unnamed on the plan, so a reviewer
-                              looking for CLOSET would not find one. Said here rather
-                              than left to be noticed. */}
-                          {!sp.drawn && <span class="mp-flag">not labelled</span>}
-                        </td>
-                        <td class="mp-who">
-                          {sp.studios.length === 0 ? (
-                            <span class="mp-dash">—</span>
-                          ) : (
-                            sp.studios.map((slug) => {
-                              const st = SPACE_STUDIO_BY_SLUG.get(slug)!;
-                              return (
-                                <span class="mp-who-one">
-                                  <img src={st.badge} alt="" width="22" height="22" />
-                                  {st.name}
-                                </span>
-                              );
-                            })
-                          )}
-                        </td>
+                <div class="mp-list-scroll">
+                  <table class="mp-table">
+                    <thead>
+                      <tr>
+                        <th class="mp-th-code">Code</th>
+                        <th>Space</th>
+                        <th>Studio</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {rowsOn(floor).map((sp) => (
+                        <tr
+                          data-spot={sp.id}
+                          data-shape={sp.shape}
+                          style={litStyle(sp)}
+                          class:list={[!sp.drawn && 'is-unlabelled']}
+                        >
+                          <td class="mp-code">{sp.id}</td>
+                          <td class="mp-space">
+                            <span class="mp-space-name">{sp.name}</span>
+                            {/* The fourteen hallways, staircases and closets are drawn
+                                as walls and left unnamed on the plan, so a reviewer
+                                looking for CLOSET would not find one. Said here rather
+                                than left to be noticed. */}
+                            {!sp.drawn && <span class="mp-flag">not labelled</span>}
+                          </td>
+                          <td class="mp-who">
+                            {sp.studios.length === 0 ? (
+                              <span class="mp-dash">—</span>
+                            ) : (
+                              sp.studios.map((slug) => {
+                                const st = SPACE_STUDIO_BY_SLUG.get(slug)!;
+                                return (
+                                  <span class="mp-who-one">
+                                    <img src={st.badge} alt="" width="22" height="22" />
+                                    {st.name}
+                                  </span>
+                                );
+                              })
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
@@ -395,7 +397,10 @@ function tooltip(id: string): string {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(18rem, 26rem);
     gap: 1.25rem;
-    align-items: start;
+    /* stretch, not start: the list is told to be exactly as tall as the plan,
+       and the way it is told is by filling a column that the plan's own height
+       has already decided. See .mp-list-col. */
+    align-items: stretch;
   }
 
   /* Three tones, darkest outwards: the ground outside the building, the floor
@@ -669,15 +674,36 @@ function tooltip(id: string): string {
 
   /* ---------------------------------------------------------- the data --- */
 
+  /* The list is exactly as tall as the plan beside it, and this is the whole
+     trick: a grid row is as tall as its tallest item, so the column holding
+     the list must contribute NO height of its own. Its only child is taken out
+     of flow, so it measures zero, the row is left to the plan, and the card
+     then fills that row with inset: 0.
+
+     A max-height cannot do this. The plan's height is its column's width over
+     the drawing's 2.163 aspect, which changes with every window width, so any
+     fixed cap is the right number at one size and wrong at all the others - it
+     was 30rem, and at the width this page is usually read at that was 165px
+     taller than the plan.
+
+     It needs no ResizeObserver either, which the rest of this repo would
+     otherwise reach for: the plan is sized by the grid and the list follows it
+     in the same layout pass. */
+  .mp-list-col {
+    position: relative;
+    min-width: 0;
+  }
+
   /* A card rather than a bare table, because beside a plan on a tinted ground
      a column of hairlines with no edge reads as something that fell off the
      page. The radius clips the scroller, which is why the overflow is here as
      well as on the child. */
   .mp-list {
+    position: absolute;
+    inset: 0;
     display: flex;
     flex-direction: column;
     min-width: 0;
-    max-height: 30rem;
     overflow: hidden;
     border: 1px solid var(--color-sm-line);
     border-radius: 12px;
@@ -917,8 +943,15 @@ function tooltip(id: string): string {
       grid-template-columns: minmax(0, 1fr);
     }
 
+    /* Stacked there is no plan beside it to match, so the card goes back into
+       the flow and takes a height of its own. */
+    .mp-list-col {
+      position: static;
+    }
+
     .mp-list {
-      max-height: 24rem;
+      position: static;
+      height: 24rem;
     }
   }
 

@@ -2032,9 +2032,26 @@ wrong.
 **It sits beside its own plan rather than under both of them**, which is the
 only arrangement where the two can actually be compared: under the plans, every
 check is "read a name, scroll up, find the room, scroll back". Each floor is one
-grid - plan left, list right - and the list scrolls inside a fixed box, because
+grid - plan left, list right - and the list scrolls inside its own box, because
 a floor is 26 to 31 rows and a column that long would push the plan off the top
 of the screen by the fifth one.
+
+**The list is exactly as tall as the plan, and the trick is that its column
+measures nothing.** A grid row is as tall as its tallest item, so the column
+holding the list puts its only child out of flow with `position: absolute`. The
+column then contributes zero, the row's height is the plan's, and the card fills
+it with `inset: 0`.
+
+A `max-height` cannot do this, and was what this had: the plan's height is its
+column's width over the drawing's 2.163 aspect, so it changes with every window
+width, and any fixed cap is right at one size and wrong at the rest. At 30rem it
+was 165px taller than the plan at the width this page is usually read at, which
+is what the pair looked wrong about.
+
+It needs no `ResizeObserver` either, which /today and /calendar would both have
+reached for: the plan is sized by the grid and the list follows it in the same
+layout pass, so there is nothing to observe. Stacked, there is no plan beside it
+to match, so the card goes back into flow and takes a height of its own.
 
 **Hovering either half lights the same space in the other**, which is what the
 side-by-side arrangement is for - a name in a list still has to be found on a
