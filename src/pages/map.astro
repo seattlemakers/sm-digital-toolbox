@@ -83,6 +83,23 @@ function rowsOn(floor: Floor): Spot[] {
     .flatMap((room) => [room, ...here.filter((s) => s.room === room.id).sort(byCode)]);
 }
 
+/**
+ * What colour a space lights up in: its studio's, or nothing.
+ *
+ * Only a space that IS a studio has one. A room whose studios are all in its
+ * zones - the Fab Lab, the Megastudio, the Garage - deliberately has none: it
+ * holds two disciplines and is not either of them, so it falls back to the
+ * plan's own green. Every space carries at most one studio, so the first is
+ * the only.
+ *
+ * `style` is left off entirely rather than set empty, so the CSS falls through
+ * to the default in its own var() rather than to an empty custom property.
+ */
+const litStyle = (sp: Spot) => {
+  const studio = sp.studios.length > 0 ? SPACE_STUDIO_BY_SLUG.get(sp.studios[0])! : null;
+  return studio ? `--studio: ${studio.colour}` : undefined;
+};
+
 const ROOMS = SPOTS.filter((s) => s.shape === 'room');
 const ZONES = SPOTS.filter((s) => s.shape === 'zone');
 
@@ -174,6 +191,7 @@ function tooltip(id: string): string {
                       data-kind={spot(r.id).kind}
                       data-via={spot(r.id).studios.length > 0 ? 'own' : 'zone'}
                       data-spot={r.id}
+                      style={litStyle(spot(r.id))}
                     >
                       <title>{tooltip(r.id)}</title>
                     </path>
@@ -189,6 +207,7 @@ function tooltip(id: string): string {
                       d={path(z.points)}
                       data-kind={spot(z.id).kind}
                       data-spot={z.id}
+                      style={litStyle(spot(z.id))}
                     >
                       <title>{tooltip(z.id)}</title>
                     </path>
@@ -272,6 +291,7 @@ function tooltip(id: string): string {
                       <tr
                         data-spot={sp.id}
                         data-shape={sp.shape}
+                        style={litStyle(sp)}
                         class:list={[!sp.drawn && 'is-unlabelled', sp.studios.length > 0 && 'has-studio']}
                       >
                         <td class="mp-code">{sp.id}</td>
@@ -290,7 +310,7 @@ function tooltip(id: string): string {
                             sp.studios.map((slug) => {
                               const st = SPACE_STUDIO_BY_SLUG.get(slug)!;
                               return (
-                                <span class="mp-who-one" style={`--studio: ${st.colour}`}>
+                                <span class="mp-who-one">
                                   <img src={st.badge} alt="" width="22" height="22" />
                                   {st.name}
                                 </span>
@@ -569,23 +589,49 @@ function tooltip(id: string): string {
      decides which fill wins.
 
      It is a fill and never a stroke. A stroke that thickens moves the wall it
-     is drawn on, and the room appears to twitch under the cursor. */
-  .mp-room.is-lit {
-    fill: var(--color-sm-green);
-    fill-opacity: 0.34;
+     is drawn on, and the room appears to twitch under the cursor.
+
+     A space that IS a studio lights in that studio's own colour, which is what
+     makes the badge in the list and the shape on the plan one object. Anything
+     else - a corridor, a kitchen, a room that merely contains studios - falls
+     back to the plan's green through the var()'s own default, so the colour
+     means "this discipline" rather than "something is hovered".
+
+     The fill is heavier than the resting tint, and it has to be: these are
+     fourteen brand colours of wildly different lightness, and woodshop's gold
+     at the 0.2 the resting studio tint uses is barely a change against white
+     paper. At 0.45 the palest of them still registers and the darkest - the
+     leatherworking brown - is still something ink can be read over. */
+  .mp-room.is-lit,
+  /* The second selector is the whole reason this rule has two. A room whose
+     studios are all in its zones is tinted by
+     `.mp-room[data-kind][data-via]`, which Astro scopes to four compound parts
+     against this rule's three - so with `.mp-room.is-lit` alone the Fab Lab,
+     the Megastudio and the Garage lit at their resting 0.08 and looked like
+     nothing had happened. `[data-via]` is on every room path, so matching it
+     here levels the count and source order decides, which is what the comment
+     above promised. */
+  .mp-room[data-via].is-lit {
+    fill: var(--studio, var(--color-sm-green));
+    fill-opacity: 0.45;
   }
 
   .mp-zone.is-lit {
-    fill: var(--color-sm-green);
-    fill-opacity: 0.38;
+    fill: var(--studio, var(--color-sm-green));
+    fill-opacity: 0.5;
     opacity: 1;
   }
 
   /* The name lights with the room. On a small room the fill alone is easy to
-     miss, and the name is what you are looking for anyway. */
+     miss, and the name is what you are looking for anyway.
+
+     Ink rather than the studio's colour, and that was measured rather than
+     chosen: eight of the fourteen fail 4.5:1 as type on white - woodshop's gold
+     manages 1.76 - and here they would be type on a wash of themselves, which
+     is worse. Ink reads on all fourteen. */
   .mp-name.is-lit,
   .mp-zone-name.is-lit {
-    fill: var(--color-sm-green-dark);
+    fill: var(--color-sm-ink);
     opacity: 1;
   }
 
@@ -776,9 +822,12 @@ function tooltip(id: string): string {
     color: var(--color-sm-line);
   }
 
-  /* Below .has-studio, which it has to beat on a row that has one. */
+  /* Below .has-studio, which it has to beat on a row that has one. Same rule
+     as the plan: the studio's own colour, green for everything else. Lighter
+     than the plan's wash, because a table row is a long thin band of it next
+     to type rather than a shape on a drawing. */
   .mp-table tr.is-lit {
-    background: color-mix(in srgb, var(--color-sm-green-mid) 24%, transparent);
+    background: color-mix(in srgb, var(--studio, var(--color-sm-green-mid)) 26%, transparent);
   }
 
   .mp-todo {

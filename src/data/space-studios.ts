@@ -41,12 +41,14 @@
  *                the second being the superset; this is the name the building
  *                uses.
  *
+ * CONFIRMED on 2026-10-06: cnc routing covers BOTH its zones - the Big CNC in
+ * the Garage (U1.2) and the CNC in Woodshop 2 (U5.1). It is one studio working
+ * in two places, not two studios, so it stays one entry. Worth having written
+ * down, because a studio in two rooms on two sides of a floor is the shape that
+ * invites somebody to "fix" it by splitting it.
+ *
  * STILL OPEN:
  *
- *   cnc routing  covers TWO zones - the Big CNC in the Garage (U1.2) and the
- *                CNC in Woodshop 2 (U5.1). If those are different studios
- *                rather than one studio in two places, this is a split rather
- *                than the rename it has just had.
  *   computer lab On the plan and on the brand sheet; has never had a class.
  */
 export type SpaceStudio = {

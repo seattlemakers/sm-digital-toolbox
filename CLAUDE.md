@@ -2041,6 +2041,24 @@ cannot light a downstairs room. It lights the fill and the name, never a stroke:
 a stroke that thickens moves the wall it is drawn on and the room twitches under
 the cursor - the same reason the zone highlight is an overlay.
 
+**A space that IS a studio lights in that studio's own colour.** Everything else
+- a corridor, the kitchen, a room that merely *contains* studios - falls back to
+the plan's green through the `var(--studio, ...)` default, which keeps the
+colour meaning "this discipline" rather than "something is hovered". The Fab
+Lab, the Megastudio and the Garage are deliberately in the second group: each
+holds two disciplines and is not either of them.
+
+**The lit fill is 0.45, not the 0.2 the resting studio tint uses**, and the
+reason is the palette rather than taste. These are fourteen brand colours of
+wildly different lightness: woodshop's gold at 0.2 over white is barely a change
+at all, while the leatherworking brown at 0.45 is still something ink reads
+over. One opacity has to serve all fourteen, so it is set by the palest.
+
+**The lit name is ink, not the studio's colour**, which is the same measurement
+that stopped the studio names being coloured in the old list: eight of the
+fourteen fail 4.5:1 as type on white, woodshop's gold at 1.76 - and here they
+would be type on a wash of themselves, which is worse.
+
 Every `.is-lit` rule has to sit BELOW the fills it overrides. `.mp-room.is-lit`
 and `.mp-room[data-kind='studio']` both weigh (0,2,0), so source order alone
 decides which fill wins - the same trap as `.t-row.is-bare` on the board.
@@ -2122,11 +2140,12 @@ slugs, so studios.ts points at `jewelry.png` and `cnc-routing.png` while calling
 those studios lapidary and cnc. Nothing there renders a badge; the paths are
 kept honest so they do not rot.
 
-**Still open: cnc routing covers two zones** - the Big CNC in the Garage (U1.2)
-and the CNC in Woodshop 2 (U5.1). If those are two studios rather than one
-studio in two places, that is a split rather than the rename it has just had.
-And **computer lab** is on the plan and the brand sheet and has never had a
-class.
+**cnc routing covers both its zones, confirmed 2026-10-06** - the Big CNC in the
+Garage (U1.2) and the CNC in Woodshop 2 (U5.1) are one studio working in two
+places. It stays one entry, and the note is in space-studios.ts rather than only
+here, because a studio in two rooms on opposite sides of a floor is exactly the
+shape that invites somebody to "fix" it by splitting it. **computer lab** is
+still open: on the plan and the brand sheet, never on a schedule.
 
 **A zone is a named area inside a room, with no wall between them**, and that is
 the distinction the old tape colours were reaching for and never quite had.
