@@ -2103,9 +2103,13 @@ here is "the Jewelry Studio is inside Metal Studios", which can only be checked
 if the two are adjacent, so zones are interleaved rather than blocked at the
 end.
 
-**The green tint means on both halves of the page what it means on the plan:**
-a studio works in this space. It is the only tint on either, which is what lets
-the table and the drawing be read against each other.
+**Nothing on either half is coloured at rest, as of 2026-10-06.** The list used
+to tint a row green when its space had a studio, and to set the studio's name in
+brand green beside it - the same claim the plan's wash was making, in the same
+colour, one panel over. Both came off with it. The badge already says "a studio
+works here" and says it in that studio's own colour, so the tint was the fact
+twice and the green name was it three times. The name is ink; the row is white
+until you point at it.
 
 **The studio list is gone and `spotsForStudio()` / `placeOf()` are not.** The
 list answered "where is the laser cutter", which is the page's eventual job; the
@@ -2412,9 +2416,11 @@ So **colour on this plan now means one thing only: "this is the space you are
 pointing at"**. What is left at rest is three tones - the wrap's grey outside
 the building, mist for the floor, white for a room - plus the walls and the
 names. Circulation still gets no fill, so a corridor shows the floorplate
-through it and reads as the space between rooms, which is what it is. A studio
-zone keeps its green dashes: the boundary is worth saying, and an outline says
-it without filling a fifth of the floor.
+through it and reads as the space between rooms, which is what it is. Every zone
+is dashed in slate, studio or not: the boundary is worth drawing - it is what
+lets the Megastudio show electronics at one end and screen printing at the other
+- but which side of it is a studio is the list's answer and the hover's, not a
+thing to carry in a stroke colour.
 
 The drawing's own fills were never used either - they are a map-colouring, so
 the two woodshops have different colours and so do the two ceramics rooms, which
@@ -2488,11 +2494,14 @@ synthesised oblique - checked rather than assumed, and at these sizes it is a
 clean slant, because the shapes are small and the stroke is even. The weight
 drops to 500 and the tracking comes back off, since tracking is for caps.
 
-Four states, all tellable apart: a room is bold uppercase ink; circulation is
-semibold uppercase slate at 80%, read once to confirm it is a hallway and never
-again; a zone is light italic upper-and-lower slate; and **a zone that carries a
-studio takes the brand green**, for its label and its dashes. That last one is
-the only green left on the plan at rest.
+Three states, all tellable apart and none of them coloured: a room is bold
+uppercase ink; circulation is semibold uppercase slate at 80%, read once to
+confirm it is a hallway and never again; and a zone is light italic
+upper-and-lower slate. A studio zone took the brand green for its label and its
+dashes until 2026-10-06 and now looks like any other zone - **there is no green
+anywhere on this page except the hero band**, and the one hidden "still to
+place" panel. Colour appears when you point at something and at no other
+time.
 
 **A scoped-style edit can apply by half.** Changing the template and the
 `<style>` block of one `.astro` file in a single edit, the dev server took the

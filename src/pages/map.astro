@@ -206,7 +206,6 @@ function tooltip(id: string): string {
                     <path
                       class="mp-zone"
                       d={path(z.points)}
-                      data-kind={spot(z.id).kind}
                       data-spot={z.id}
                       style={litStyle(spot(z.id))}
                     >
@@ -248,7 +247,6 @@ function tooltip(id: string): string {
                   {FLOORPLAN[floor].zones.map((z) => (
                     <text
                       class="mp-zone-name"
-                      data-kind={spot(z.id).kind}
                       data-spot={z.id}
                       x={z.at[0]}
                       y={z.at[1]}
@@ -293,7 +291,7 @@ function tooltip(id: string): string {
                         data-spot={sp.id}
                         data-shape={sp.shape}
                         style={litStyle(sp)}
-                        class:list={[!sp.drawn && 'is-unlabelled', sp.studios.length > 0 && 'has-studio']}
+                        class:list={[!sp.drawn && 'is-unlabelled']}
                       >
                         <td class="mp-code">{sp.id}</td>
                         <td class="mp-space">
@@ -454,6 +452,14 @@ function tooltip(id: string): string {
      So colour on this plan now means one thing only - "this is the space you
      are pointing at" - and the drawing is the walls and the names.
 
+     The studio zones were the last of it: their dashes were green and their
+     labels green-dark, which is a second, quieter version of the same claim the
+     wash was making. Every zone is slate now, studio or not. The boundary is
+     still worth drawing - it is what lets the Megastudio show electronics at
+     one end and screen printing at the other - but which side of it is a studio
+     is the list's answer and the hover's, not a thing to carry in a stroke
+     colour.
+
      The drawing's own fills are a map-colouring - the two woodshops have
      different colours and so do the two ceramics rooms - which is useful while
      drawing and unreadable once finished, so they are not used either.
@@ -501,16 +507,6 @@ function tooltip(id: string): string {
        It sits over its room, so inside a zone the zone answers - which is the
        more specific answer, and the one the list is keyed to. */
     pointer-events: all;
-  }
-
-  /* A zone that houses a studio keeps its green dashes and has lost its tint
-     with the rooms. The boundary is still the thing worth saying - it is what
-     lets the Megastudio show electronics at one end and screen printing at the
-     other - and a dashed outline says it without filling a fifth of the floor.
-     It sits a step stronger than a plain zone's slate dashes. */
-  .mp-zone[data-kind='studio'] {
-    stroke: var(--color-sm-green);
-    opacity: 0.85;
   }
 
   /* ------------------------------------------------------------ labels ---
@@ -575,10 +571,6 @@ function tooltip(id: string): string {
     text-anchor: middle;
     fill: var(--color-sm-slate);
     pointer-events: none;
-  }
-
-  .mp-zone-name[data-kind='studio'] {
-    fill: var(--color-sm-green-dark);
   }
 
   /* The building, and the only thing on the plan drawn in ink. If it is dark
@@ -770,13 +762,6 @@ function tooltip(id: string): string {
     border-bottom: 0;
   }
 
-  /* The green says the same thing here that it says on the plan: a studio works
-     in this space. It is the only tint on either, so the two can be read
-     against each other. */
-  .mp-table tr.has-studio {
-    background: color-mix(in srgb, var(--color-sm-green-mid) 8%, transparent);
-  }
-
   .mp-th-code,
   .mp-code {
     width: 1%;
@@ -848,12 +833,16 @@ function tooltip(id: string): string {
     white-space: nowrap;
   }
 
+  /* Ink rather than the brand green, which it was until 2026-10-06. Green on
+     this page now means one thing - the thing you are pointing at - and a
+     studio name is not that. The badge beside it already says "studio", and
+     says it in that studio's own colour. */
   .mp-who-one {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
     font-size: 0.875rem;
-    color: var(--color-sm-green);
+    color: var(--color-sm-ink-2);
   }
 
   .mp-who-one + .mp-who-one {
