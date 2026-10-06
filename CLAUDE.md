@@ -2027,14 +2027,34 @@ the entrance's notch false, outside false.
 It parses only M/L/H/V/Z and throws on anything else. A future export that
 introduces a curve should fail loudly rather than quietly dropping a wall.
 
-**The caps are ours and the weights are the drawing's.** The source sets
-`stroke-linecap="square"`, which overshoots by half a stroke at every subpath
-end - and on this plan *every subpath end is a door jamb*. The drawing's
-standard doorway is **18.4 units**, used 23 times of 47 openings; square caps
-would take 3 off each one through an interior wall and 6 through an exterior,
-which is a sixth to a third of the door. `butt` keeps every opening exactly as
-drawn, and costs nothing at corners, which are inside subpaths and mitre
-regardless.
+**The weights are the drawing's and so are the caps, and overriding the caps
+was a mistake worth recording.** The source sets `stroke-linecap="square"`. It
+was changed to `butt` on the reasoning that a square cap overshoots by half a
+stroke at every subpath end, and every subpath end here is a door jamb - so butt
+keeps each doorway exactly as the path data states it. True, and wrong twice.
+
+**Ten corners on this plan are formed by two separate subpaths meeting at a
+point**, including the downstairs building's own top-left. A mitre join only
+closes a corner *inside* one subpath; between two, butt caps leave a notch half
+a stroke square at the outside of every one of them, and the plan reads as
+hand-shaky. Filling exactly that notch is what the cap is for. Found by listing
+subpath ends that coincide and run perpendicular, which is worth repeating after
+any redraw - the count is the number of corners the caps are holding together.
+
+**And the doorways were never narrowed.** The author drew the gaps with square
+caps switched on, so the opening they designed is the gap *minus* the caps. Butt
+made every interior door 3 units wider than intended rather than correct. The
+gap is 18.4 (23 of the 47 openings use it), the cap takes 1.5 from each side,
+and 15.4 is the drawing's door. The general lesson: a stroke setting in somebody
+else's drawing is part of the geometry, not a default to be improved.
+
+Checked with `isPointInStroke` rather than by eye: a point one unit diagonally
+outside each L-corner is covered, and the middle of a standard doorway is not.
+
+**Stairs are painted first, under both wall layers.** A staircase runs right up
+to the wall enclosing it, so drawn on top its treads cross the wall and poke out
+the other side - which reads as the stair being in front of the building rather
+than inside it.
 
 **The room zones are deliberately absent, not unfinished.** They were fitted to
 the old raster and expressed in its pixels; the new drawing shares neither its

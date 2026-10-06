@@ -108,8 +108,15 @@ function place(room: Room) {
   };
 }
 
-/** The drawing's three layers, in the order they are painted. */
-const LAYERS: Layer[] = ['exterior', 'interior', 'stairs'];
+/**
+ * The drawing's three layers, in the order they are painted.
+ *
+ * Stairs first, so the walls land on top of them. A staircase runs right up to
+ * the wall it is enclosed by, and drawn over the top its treads cross the wall
+ * and poke out the other side - which reads as the stair being in front of the
+ * building rather than inside it.
+ */
+const LAYERS: Layer[] = ['stairs', 'exterior', 'interior'];
 
 /**
  * Rooms that can be drawn. Empty until the zones are redrawn against
@@ -478,20 +485,34 @@ const OPEN_QUESTIONS = ROOMS.filter((r) => r.note?.includes('?'));
      the three for exactly that reason: a staircase is a thing you walk on.
 
      The weights are the drawing's own (6 / 3 / 1.5) and are set per path from
-     the data rather than here, so a redrawn floorplan changes them by being
-     redrawn. `butt` caps are ours, though: the source sets `square`, which
-     overshoots by half a stroke at every subpath end - and every subpath end on
-     this plan is a door jamb, so square caps quietly narrow each doorway by a
-     wall's width. Corners are inside subpaths and mitre regardless. */
+     the data, so a redrawn floorplan changes them by being redrawn.
+
+     `square` caps are the drawing's too, and overriding them to `butt` was a
+     mistake worth recording. The argument was that a square cap overshoots by
+     half a stroke at every subpath end, and every subpath end here is either a
+     door jamb or a corner - so butt caps keep the doorways exactly as the path
+     data states them. True, and it misses two things.
+
+     Ten corners on this plan are formed by two SEPARATE subpaths meeting at a
+     point, including the downstairs building's own top-left. A mitre join only
+     closes a corner inside one subpath; between two, butt caps leave a notch of
+     half a stroke square, and the plan looks like it was drawn with a shaky
+     hand. Square caps fill exactly that notch - that is what the cap is for.
+
+     And the doorways were never narrowed: the author drew the gaps with square
+     caps switched on, so the opening they designed is the gap MINUS the caps.
+     Butt caps made every interior door 3 units wider than intended, not
+     correct. The gap is 18.4, the cap takes 1.5 from each side, the door is
+     15.4, and that is the drawing's door. */
   .mp-wall {
     fill: none;
     stroke: var(--color-sm-ink);
-    stroke-linecap: butt;
+    stroke-linecap: square;
     stroke-linejoin: miter;
   }
 
-  /* The stairs recede. Same ink, so they still read as built rather than as
-     annotation, but they are never the thing you are trying to find. */
+  /* The stairs recede. Same ink family, so they still read as built rather than
+     as annotation, but they are never the thing you are trying to find. */
   .mp-wall.is-stairs {
     stroke: var(--color-sm-ink-2);
     opacity: 0.75;
