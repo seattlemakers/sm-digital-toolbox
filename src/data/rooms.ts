@@ -1,14 +1,15 @@
 /**
  * What the drawing cannot know about each space.
  *
- * The floorplan now names and shapes every room and zone itself, so this file
- * stopped being a list of rooms on 2026-10-05 and became a list of *notes* on
- * them, keyed by the drawing's own ids. Everything that was duplicated - the
- * name, the outline, which floor it is on - is gone, because the drawing is the
- * one place it is stated and a second copy is a second copy.
+ * The floorplan names and shapes every room and zone itself, so this file is
+ * one mapping and nothing else: the drawing's own id, and the studios that work
+ * in that space. Everything that was duplicated - the name, the outline, which
+ * floor it is on - is gone, because the drawing is the one place it is stated
+ * and a second copy is a second copy.
  *
- * What is left is the two things a floorplan genuinely cannot say: which
- * studios work in a space, and what we are still unsure about.
+ * It carried prose notes about particular spaces until 2026-10-05 and does not
+ * any more. What a space is for is a studio slug; everything else about it was
+ * a caption, and a caption on a plan is a thing to keep current forever.
  *
  * ROOMS AND ZONES BOTH TAKE A KEY, and which one gets the studio is the whole
  * point of having both. "Laser Cutting Studio" is a zone inside the Fab Lab, so
@@ -26,54 +27,37 @@
 import { STUDIO_BY_SLUG } from './studios';
 import { FLOORPLAN, FLOORS, type Floor, type Room, type Zone } from './floorplan';
 
-export type Place = {
-  /** Studio slugs working in this space. Empty is a fact, not a gap. */
-  studios?: string[];
-  /** Anything worth saying that the plan does not. A `?` marks it unresolved. */
-  note?: string;
-};
-
-export const PLACES: Record<string, Place> = {
+/** Which studios work in a space, keyed by the drawing's own id. */
+export const STUDIOS_IN: Record<string, string[]> = {
   // --- upstairs ------------------------------------------------------------
-  'U1': { note: 'The big roll-up door. Metalshop 1 and the big CNC are zones inside it.' },
-  'U1.1': { studios: ['metalworking'] },
-  'U1.2': { studios: ['cnc'] },
-  // Metal Studios is the container; both halves are zones. The parent carries
-  // no studio of its own, the same as the Garage, the Fab Lab and the
-  // Megastudio - a room that is entirely subdivided is named for what it holds
-  // rather than for any one of them.
-  'U3': {},
-  'U3.1': { studios: ['lapidary'] },
-  'U3.2': { studios: ['metalworking'] },
-  'U4': { note: 'Open to the room rather than walled off; a landmark more than a space.' },
-  'U5': { studios: ['woodshop'] },
-  'U5.1': { studios: ['cnc'] },
-  'U6': { studios: ['woodshop'] },
-  'U10': { note: 'The big flexible room. Electronics and screen printing are zones in it.' },
-  'U10.1': { studios: ['electronics'] },
-  'U10.2': { studios: ['screen-printing'] },
-  'U15': { note: '3D printing and laser cutting are zones in it.' },
-  'U15.1': { studios: ['3d-printing'] },
-  'U15.2': { studios: ['laser-cutting'] },
-  'U16': { studios: ['computer-lab'] },
-  'U11': { note: 'All genders.' },
-  'U12': { note: 'All genders.' },
+  'U1.1': ['metalworking'],
+  'U1.2': ['cnc'],
+  // Metal Studios is the container; both halves are zones, so the parent
+  // carries nothing - the same as the Garage, the Fab Lab and the Megastudio.
+  // A room that is entirely subdivided is named for what it holds rather than
+  // for any one of the things it holds.
+  'U3.1': ['lapidary'],
+  'U3.2': ['metalworking'],
+  'U5': ['woodshop'],
+  'U5.1': ['cnc'],
+  'U6': ['woodshop'],
+  'U10.1': ['electronics'],
+  'U10.2': ['screen-printing'],
+  'U15.1': ['3d-printing'],
+  'U15.2': ['laser-cutting'],
+  'U16': ['computer-lab'],
 
   // --- downstairs ----------------------------------------------------------
-  'D1': { note: 'Five zones, including the event space and the mini makerspace.' },
-  // Rentable space rather than a discipline, so it carries no studio slug -
-  // studios.ts is the list of things the calendar tags classes with, and
-  // "somebody rents this" is not one of them.
-  'D1.1': { note: 'Private studios, available to rent.' },
-  'D1.2': { studios: ['leatherworking'] },
-  'D1.5': { studios: ['arts-crafts'] },
-  'D3': { studios: ['av-studio'] },
-  'D10': { studios: ['sewing'] },
-  'D12': { studios: ['ceramics'] },
-  'D14': { studios: ['ceramics'] },
-  'D15': { studios: ['ceramics'] },
-  'D16': { studios: ['ceramics'] },
-  'D7': { note: 'The street door. Check in here.' },
+  // D1.1 is the Builder Studios, which are rented rather than taught in, so no
+  // slug: studios.ts is the list of things the calendar tags classes with.
+  'D1.2': ['leatherworking'],
+  'D1.5': ['arts-crafts'],
+  'D3': ['av-studio'],
+  'D10': ['sewing'],
+  'D12': ['ceramics'],
+  'D14': ['ceramics'],
+  'D15': ['ceramics'],
+  'D16': ['ceramics'],
 };
 
 /**
@@ -124,7 +108,7 @@ const CIRCULATION = /^(Stairs|Hallway|Landing|Check-in)$/;
  */
 const UNDRAWN = /^(Stairs|Hallway|.*\bCloset)$/;
 
-/** Every room and zone the drawing carries, with its floor and its notes. */
+/** Every room and zone the drawing carries, with its floor and its studios. */
 export type Spot = (Room | Zone) & {
   floor: Floor;
   shape: 'room' | 'zone';
@@ -134,7 +118,6 @@ export type Spot = (Room | Zone) & {
   /** For a zone, the room it sits in. */
   room?: string;
   studios: string[];
-  note?: string;
 };
 
 /**
@@ -145,14 +128,14 @@ export type Spot = (Room | Zone) & {
  */
 export const SPOTS: Spot[] = FLOORS.flatMap((floor) => {
   const zoneStudios = (roomId: string) =>
-    FLOORPLAN[floor].zones.filter((z) => z.room === roomId).flatMap((z) => PLACES[z.id]?.studios ?? []);
+    FLOORPLAN[floor].zones.filter((z) => z.room === roomId).flatMap((z) => STUDIOS_IN[z.id] ?? []);
 
   const kindOf = (name: string, studios: string[]): Kind =>
     studios.length > 0 ? 'studio' : CIRCULATION.test(name) ? 'circulation' : 'room';
 
   return [
     ...FLOORPLAN[floor].rooms.map((r) => {
-      const studios = PLACES[r.id]?.studios ?? [];
+      const studios = STUDIOS_IN[r.id] ?? [];
       return {
         ...r,
         floor,
@@ -160,11 +143,10 @@ export const SPOTS: Spot[] = FLOORS.flatMap((floor) => {
         kind: kindOf(r.name, [...studios, ...zoneStudios(r.id)]),
         drawn: !UNDRAWN.test(r.name),
         studios,
-        note: PLACES[r.id]?.note,
       };
     }),
     ...FLOORPLAN[floor].zones.map((z) => {
-      const studios = PLACES[z.id]?.studios ?? [];
+      const studios = STUDIOS_IN[z.id] ?? [];
       return {
         ...z,
         floor,
@@ -172,7 +154,6 @@ export const SPOTS: Spot[] = FLOORS.flatMap((floor) => {
         kind: kindOf(z.name, studios),
         drawn: true,
         studios,
-        note: PLACES[z.id]?.note,
       };
     }),
   ];
@@ -220,12 +201,9 @@ export function undrawnOn(floor: Floor): string {
   return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
-/** Spaces whose note asks a question, so the open ones stay visible. */
-export const OPEN_QUESTIONS = SPOTS.filter((s) => s.note?.includes('?'));
-
-// A note on a space the drawing does not have is a note about a building that
-// no longer exists - far more likely after a redraw than a typo here.
-for (const id of Object.keys(PLACES)) {
+// A studio pinned to a space the drawing does not have is a studio in a
+// building that no longer exists - far more likely after a redraw than a typo.
+for (const id of Object.keys(STUDIOS_IN)) {
   if (!SPOT_BY_ID.has(id)) {
     throw new Error(`rooms.ts: "${id}" is not a room or zone in floorplan.svg`);
   }

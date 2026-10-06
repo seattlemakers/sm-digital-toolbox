@@ -23,7 +23,7 @@
  */
 import Base from '../layouts/Base.astro';
 import { toolById, pageTitle } from '../data/tools';
-import { OPEN_QUESTIONS, SPOTS, placeOf, spotsForStudio, studiosWithoutSpot } from '../data/rooms';
+import { SPOTS, placeOf, spotsForStudio, studiosWithoutSpot } from '../data/rooms';
 import { FLOORPLAN, FLOORS, STROKE, type Floor, type Layer } from '../data/floorplan';
 import { STUDIOS, STUDIO_BY_SLUG } from '../data/studios';
 
@@ -58,22 +58,16 @@ const path = (points: readonly (readonly number[])[]) =>
 const ORPHANS = studiosWithoutSpot();
 
 /**
- * Everything the room list used to say about a space, in its hover title.
+ * The space's name and who works in it, in its hover title.
  *
- * The list was cut on 2026-10-05 and this is where its contents went. Writing
- * it anywhere else would have repeated the plan - the names are already drawn
- * on it - but the studios and the notes are not, and "Private studios,
- * available to rent" had already gone missing once when the panel it was
- * riding on stopped rendering.
+ * The room list was cut on 2026-10-05 and this is where the one thing it said
+ * that the plan does not went. The names are drawn on the plan already; which
+ * studio is in which room is the mapping this page exists for.
  */
 function tooltip(id: string): string {
   const sp = SPOTS.find((s) => s.id === id)!;
   const studios = sp.studios.map((slug) => STUDIO_BY_SLUG.get(slug)!.name);
-  return [
-    sp.name,
-    studios.length ? ` — ${studios.join(', ')}` : '',
-    sp.note ? ` — ${sp.note}` : '',
-  ].join('');
+  return studios.length ? `${sp.name} — ${studios.join(', ')}` : sp.name;
 }
 ---
 
@@ -248,21 +242,14 @@ function tooltip(id: string): string {
     </section>
 
     {
-      (ORPHANS.length > 0 || OPEN_QUESTIONS.length > 0) && (
+      ORPHANS.length > 0 && (
         <section class="mp-todo">
-          <h2>Still to confirm</h2>
+          <h2>Still to place</h2>
           <ul>
-            {ORPHANS.length > 0 && (
-              <li>
-                <b>{ORPHANS.map((st) => st.name).join(', ')}</b> — no space on the plan
-                claims {ORPHANS.length === 1 ? 'this studio' : 'these studios'} yet.
-              </li>
-            )}
-            {OPEN_QUESTIONS.map((sp) => (
-              <li>
-                <b>{sp.name}</b> — {sp.note}
-              </li>
-            ))}
+            <li>
+              <b>{ORPHANS.map((st) => st.name).join(', ')}</b> — no space on the plan
+              claims {ORPHANS.length === 1 ? 'this studio' : 'these studios'} yet.
+            </li>
           </ul>
         </section>
       )
@@ -271,8 +258,8 @@ function tooltip(id: string): string {
     <p class="mp-note">
       {SPOTS.filter((sp) => sp.shape === 'room' && sp.drawn).length} rooms and{' '}
       {SPOTS.filter((sp) => sp.shape === 'zone').length} zones, named and shaped
-      by <b>data/floorplan.svg</b>. <b>data/rooms.ts</b> adds only what the
-      drawing cannot know: which studios work where, and what is still unsettled.
+      by <b>data/floorplan.svg</b>. <b>data/rooms.ts</b> adds the one thing the
+      drawing cannot know: which studios work where.
     </p>
   </main>
 </Base>

@@ -117,9 +117,11 @@ Done:
 - Colour badges for all 14 at `public/brand/studios/`, cut from the brand sheet
   by `scripts/crop-studio-badges.mjs`. **computer lab** and **leatherworking**
   exist as marks for the first time.
-- `src/data/rooms.ts` is no longer a list of rooms. It is a list of *notes* on
-  them, keyed by the drawing's own ids, carrying the only two things a plan
-  cannot state: which studios work in a space, and what is still unsettled.
+- `src/data/rooms.ts` is no longer a list of rooms. It is one mapping - the
+  drawing's own id to the studios that work in that space - and nothing else.
+- The page is the two plans and the studio list. The per-floor room lists and
+  the prose notes on particular spaces were both cut on 2026-10-05; a room's
+  studios are in its hover title.
 - Three weights of wall - exterior, interior, stairs - and the doorways are
   pen-ups in the path data rather than anything marked.
 
@@ -1984,17 +1986,28 @@ it.
 
 **The drawing states the building; rooms.ts states what it cannot.** As of
 2026-10-05 `floorplan.svg` carries every room and zone - id, name, outline, fill
-and label position - so `rooms.ts` stopped being a list of rooms and became a
-list of notes on them, keyed by the drawing's ids. Everything that was in both
-is gone from one: the name, the shape, the floor. A room renamed in a redraw is
-renamed everywhere, because it is written down once.
+and label position - so `rooms.ts` stopped being a list of rooms and became one
+mapping keyed by the drawing's ids. Everything that was in both is gone from
+one: the name, the shape, the floor. A room renamed in a redraw is renamed
+everywhere, because it is written down once.
 
-What is left in rooms.ts is the two things a plan genuinely cannot say: **which
-studios work in a space**, and **what is still unsettled**. Both throw at module
-load if they go stale - an id that is not in the drawing, or a studio slug that
-is not in studios.ts - which fails the build rather than rendering a space with
-a missing icon and no name beside it, a thing that looks like a styling bug and
-is not one. The id check is the one that earns its keep after a redraw.
+What is left is the one thing a plan genuinely cannot say: **which studios work
+in a space**. Both halves of an entry throw at module load if they go stale - an
+id that is not in the drawing, or a studio slug that is not in studios.ts -
+which fails the build rather than rendering a space with a missing icon and no
+name beside it, a thing that looks like a styling bug and is not one. The id
+check is the one that earns its keep after a redraw.
+
+**The prose notes are gone, and that is what `rooms.ts` is for.** Each space
+could carry a sentence - "The street door. Check in here.", "All genders.",
+"Private studios, available to rent." - and they read well written down. What
+they are is captions on a plan: true on the day somebody typed them, nothing
+checks them afterwards, and the file whose job is to say where a discipline
+works ends up half prose. Deleted on 2026-10-05 along with the `note` field,
+the open-questions panel and `Place` itself; the map is rooms, zones and
+studios, which is what it was being asked for. If a space genuinely needs a
+caption on the page, it belongs in the drawing beside the name, where whoever
+redraws the building will see it.
 
 **A zone is a named area inside a room, with no wall between them**, and that is
 the distinction the old tape colours were reaching for and never quite had.
@@ -2077,19 +2090,20 @@ Fourteen colours is a lot to put on one page. As a rule each one identifies its
 row without competing with the badge beside it, which is where the colour is
 already doing its work.
 
-**A zone can be rentable space rather than a discipline**, which is why
-`studios` is optional on a Place and why Builder Studios carries a note and no
-slug. studios.ts is the list of things the *calendar* tags classes with, and
-"somebody rents this" is not one of them - putting it there to make the zone
-look complete would have broken the one rule that file exists to hold.
+**A zone can be rentable space rather than a discipline, and it simply has no
+entry.** The Builder Studios are let rather than taught in, so no slug:
+studios.ts is the list of things the *calendar* tags classes with, and "somebody
+rents this" is not one of them - putting it there to make the zone look complete
+would have broken the one rule that file exists to hold. A space with nothing in
+`STUDIOS_IN` is the normal case, not a gap.
 
-**Answering the last open question took a fact off the page.** The "still to
-confirm" block only ever rendered notes containing a question mark, so when the
-last question was answered the whole block stopped rendering - and took "Private
-studios, available to rent" with it, since a zone's note had nowhere else to go.
-Zone notes render in the room list now. Worth remembering about any panel that
-exists to show *unresolved* things: the day it empties is the day anything
-riding on it disappears.
+**A panel that only renders unresolved things disappears the day they are
+resolved, and takes its passengers with it.** The "still to confirm" block
+rendered notes containing a question mark; answering the last question stopped
+the whole block rendering and silently took "Private studios, available to rent"
+with it, because a zone's note had nowhere else to go. The notes are gone now
+and the point is general: anything riding on a conditional panel is only as
+durable as the condition.
 
 **When a room is entirely subdivided, rename the room.** Metalshop 2 is a third
 jewelry studio and two thirds metalshop, and the first attempt drew only the
@@ -2175,9 +2189,10 @@ a staircase still has its treads - so a staircase with no label is still
 obviously a staircase, which is the test the label was failing. What the plan
 loses is fourteen names and fourteen fills; what it keeps is the building.
 
-The page says it once underneath instead: *"Also on this floor: one closet, two
-staircases and three hallways."* Numbers as words rather than numerals, because
-mixing them ("one closet, 2 staircases") reads as two different kinds of fact.
+The page said so once underneath - *"Also on this floor: one closet, two
+staircases and three hallways."* - and that line went with the room lists on
+2026-10-05. `undrawnOn()` still builds the sentence and nothing calls it; it is
+the only thing that names the spaces in the data but not on the plan.
 
 The **Landing** and the **Check-in** desk are circulation too and are
 deliberately still drawn. Check-in is somewhere you get sent; a landing is where
@@ -2320,13 +2335,6 @@ extractor computes both from the drawing, so a redrawn plan reframes itself.
 it landed inside whichever room owns the top-left corner and was painted over.
 The frame starts 46 units left of the building instead, which is where `GUTTER`
 in the extractor comes from.
-
-**An open question is a `?` in the note, not a flag of its own.** The notes are
-written to be read on the page, and a second field saying "this one is
-unresolved" would be the same fact in two places, free to disagree. The first
-version filtered on *rooms with no studio at all*, which missed exactly the
-interesting ones - the MegaStudio has screen printing in it **and** an open
-question about what else does.
 
 ### The rest
 
