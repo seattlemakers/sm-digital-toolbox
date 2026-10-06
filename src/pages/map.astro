@@ -179,14 +179,16 @@ function tooltip(id: string): string {
                     points={FLOORPLAN[floor].outline.map((q) => q.join(',')).join(' ')}
                   />
 
-                  {/* ROOMS. The fills are the drawing's own: adjacent rooms are
-                      given different colours so they can be told apart, which is
-                      a map-colouring rather than a key - two woodshops do not
-                      share one. Held well back, because the thing you are looking
-                      for is a name and the thing that orients you is a wall. */}
-                  {FLOORPLAN[floor].rooms.filter((r) => spot(r.id).drawn).map((r) => (
+                  {/* ROOMS, all of them - including the fourteen hallways,
+                      staircases and closets the plan does not name. Those are
+                      drawn with no fill and no label, so nothing about the
+                      resting plan changes, but they are here to be hovered:
+                      their name is the one thing about them a reviewer cannot
+                      otherwise check, and it appears when you point at the row
+                      or at the space itself. */}
+                  {FLOORPLAN[floor].rooms.map((r) => (
                     <path
-                      class="mp-room"
+                      class:list={['mp-room', !spot(r.id).drawn && 'is-quiet']}
                       d={path(r.points)}
                       data-kind={spot(r.id).kind}
                       data-spot={r.id}
@@ -226,9 +228,9 @@ function tooltip(id: string): string {
                       and broken on their own lines - both are fitted to the room
                       they sit in, and recomputing either would be guessing at a
                       decision somebody made with the plan in front of them. */}
-                  {FLOORPLAN[floor].rooms.filter((r) => spot(r.id).drawn).map((r) => (
+                  {FLOORPLAN[floor].rooms.map((r) => (
                     <text
-                      class="mp-name"
+                      class:list={['mp-name', !spot(r.id).drawn && 'is-quiet']}
                       data-kind={spot(r.id).kind}
                       data-spot={r.id}
                       x={r.at[0]}
@@ -458,14 +460,29 @@ function tooltip(id: string): string {
 
      Two rooms of the same kind side by side do not merge, because the wall
      between them is drawn in ink. The wall is the separator. */
+  /* "all" rather than the default, which only hits painted pixels: a corridor
+     and a closet are both fill-less, so without this they are the two kinds of
+     space you cannot point at - and one of them is the kind whose name only
+     exists on hover. */
   .mp-room {
     fill: var(--color-sm-paper);
+    pointer-events: all;
     transition: fill 140ms ease;
   }
 
   /* No fill at all: the floorplate shows through, so corridors read as the
      space between rooms rather than as more rooms. */
   .mp-room[data-kind='circulation'] {
+    fill: none;
+  }
+
+  /* The spaces the plan does not name - hallways, staircases, closets, the
+     Landing. Rendered and invisible: no fill, so the resting plan is exactly
+     what it was when they were left out of the markup altogether, and the
+     walls still say where they are. What they gain is a hit target and a name
+     that arrives on hover. Above the lit rules, so being lit beats being
+     quiet. */
+  .mp-room.is-quiet {
     fill: none;
   }
 
@@ -509,6 +526,7 @@ function tooltip(id: string): string {
     text-transform: uppercase;
     fill: var(--color-sm-ink);
     pointer-events: none;
+    transition: opacity 140ms ease;
   }
 
   /* Circulation names itself and then gets out of the way. You read "hallway"
@@ -517,6 +535,18 @@ function tooltip(id: string): string {
     font-weight: 600;
     fill: var(--color-sm-slate);
     opacity: 0.8;
+  }
+
+  /* A name that is not on the plan until you ask for it. Fourteen of these
+     would be most of the ink on the floor and none of the answer - but a name
+     nobody can see is also a name nobody can check, which is what this page is
+     for. So it is drawn and transparent, and the hover brings it in.
+
+     It has to sit between the circulation rule and the lit one: all three weigh
+     the same once Astro has scoped them, so source order is the whole
+     arbitration. */
+  .mp-name.is-quiet {
+    opacity: 0;
   }
 
   /* A zone label has to be tellable from a room's at a glance, and until
@@ -930,13 +960,23 @@ function tooltip(id: string): string {
     for (const label of svg.querySelectorAll<SVGTextElement>('text[data-spot]')) {
       const room = svg.querySelector<SVGGraphicsElement>(`path[data-spot="${label.dataset.spot}"]`);
       if (!room) continue;
-      const ink = label.getBBox().width;
+      const ink = label.getBBox();
+      const walls = room.getBBox();
+
+      // The room's width is not the room the LABEL has. These are centred on
+      // the author's own anchor and shrinking the type pulls both ends in
+      // towards it, so what a name can use is twice its smaller side - which is
+      // the whole width only when the anchor happens to sit in the middle. It
+      // does not on an L-shaped room: the downstairs west staircase is anchored
+      // 13 units from its left wall and 26 from its right, and measured against
+      // the full 39 "Stairs" fits and still crosses the wall.
+      const centre = ink.x + ink.width / 2;
       // Two units of air at each end, so a capped name does not simply touch
       // the wall instead of crossing it.
-      const room_ = room.getBBox().width - 4;
-      if (ink > room_ && room_ > 0) {
+      const room_ = 2 * Math.min(centre - walls.x, walls.x + walls.width - centre) - 4;
+      if (ink.width > room_ && room_ > 0) {
         const size = parseFloat(getComputedStyle(label).fontSize);
-        label.style.fontSize = `${(size * room_) / ink}px`;
+        label.style.fontSize = `${(size * room_) / ink.width}px`;
       }
     }
   }
