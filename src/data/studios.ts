@@ -44,8 +44,9 @@ export type Studio = {
    *
    * Nothing in here renders it: /map does, off data/space-studios.ts. The
    * files are named by THAT list's slugs, which parted from this one's on
-   * 2026-10-06 - `lapidary` here is `jewelry` there, and `cnc` is
-   * `cnc-routing`. Same two marks, two names for them, on purpose.
+   * 2026-10-06 - `lapidary` here is `jewelry` there, `cnc` is `cnc-routing`,
+   * and `leatherworking` is `leather-studio`. Same marks, two names for them,
+   * on purpose.
    */
   badge: string;
   /**
@@ -80,7 +81,7 @@ export const STUDIOS: Studio[] = [
   // The two share a calendar tag already (`leatherworking-sewing`), which makes
   // it the least wrong thing to point at - but it is a placeholder, and a row
   // tagged only `leatherworking` currently shows a spool of thread.
-  { slug: 'leatherworking',  name: 'leatherworking',  icon: '/brand/icons/sewing.svg', badge: '/brand/studios/leatherworking.png', colour: '#853321',          eventCategories: ['leatherworking', 'leatherworking-sewing'] },
+  { slug: 'leatherworking',  name: 'leatherworking',  icon: '/brand/icons/sewing.svg', badge: '/brand/studios/leather-studio.png', colour: '#853321',          eventCategories: ['leatherworking', 'leatherworking-sewing'] },
   { slug: 'metalworking',    name: 'metalworking',    icon: '/brand/icons/metalworking.svg', badge: '/brand/studios/metalworking.png', colour: '#8e7479',    eventCategories: [] },
   // On the brand sheet and on the plan (room U16), and on no calendar tag -
   // so it has nothing to show on /calendar yet, exactly like metalworking.

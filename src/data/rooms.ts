@@ -51,7 +51,7 @@ export const STUDIOS_IN: Record<string, string[]> = {
   // --- downstairs ----------------------------------------------------------
   // D1.1 is the Builder Studios, which are rented rather than taught in, so no
   // slug: studios.ts is the list of things the calendar tags classes with.
-  'D1.2': ['leatherworking'],
+  'D1.2': ['leather-studio'],
   'D1.5': ['arts-crafts'],
   'D3': ['av-studio'],
   'D10': ['sewing'],

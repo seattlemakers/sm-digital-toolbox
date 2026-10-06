@@ -40,6 +40,9 @@
  *   cnc routing  Was "cnc". The calendar emits both `cnc` and `cnc-routing`,
  *                the second being the superset; this is the name the building
  *                uses.
+ *   leather      Was "leatherworking". studios.ts keeps that, because it is
+ *   studio       also the calendar tag; the room it is in is still called the
+ *                Leatherworking Studio in the drawing.
  *
  * CONFIRMED on 2026-10-06: cnc routing covers BOTH its zones - the Big CNC in
  * the Garage (U1.2) and the CNC in Woodshop 2 (U5.1). It is one studio working
@@ -58,7 +61,7 @@ export type SpaceStudio = {
   /**
    * The colour badge at public/brand/studios/<slug>.png, cut from the brand
    * sheet. A placeholder raster: it is the only mark that exists at all for
-   * computer lab and leatherworking, which the vector set has neither of.
+   * computer lab and the leather studio, which the vector set has neither of.
    */
   badge: string;
   /**
@@ -80,7 +83,7 @@ export const SPACE_STUDIOS: SpaceStudio[] = [
   { slug: 'ceramics',        name: 'ceramics',        badge: '/brand/studios/ceramics.png',        colour: '#e85579' },
   { slug: 'screen-printing', name: 'screen printing', badge: '/brand/studios/screen-printing.png', colour: '#43b0a5' },
   { slug: 'arts-crafts',     name: 'arts & crafts',   badge: '/brand/studios/arts-crafts.png',     colour: '#9cc001' },
-  { slug: 'leatherworking',  name: 'leatherworking',  badge: '/brand/studios/leatherworking.png',  colour: '#853321' },
+  { slug: 'leather-studio',  name: 'leather studio',  badge: '/brand/studios/leather-studio.png',  colour: '#853321' },
   { slug: 'metalworking',    name: 'metalworking',    badge: '/brand/studios/metalworking.png',    colour: '#8e7479' },
   { slug: 'computer-lab',    name: 'computer lab',    badge: '/brand/studios/computer-lab.png',    colour: '#5a41ab' },
   { slug: 'av-studio',       name: 'a/v studio',      badge: '/brand/studios/av-studio.png',       colour: '#3563a6' },

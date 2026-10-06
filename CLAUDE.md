@@ -2123,13 +2123,21 @@ load-bearing in two places outside either file: they key `STUDIOS_IN` in
 rooms.ts, and they name the badge PNGs that `crop-studio-badges.mjs` cuts
 against its own hardcoded list. A rename is three edits and a re-run.
 
-**Two of the three open names were settled on 2026-10-06, and settling them is
-what made the fork real.** `lapidary` became **jewelry** - the brand sheet draws
-the mark as "Jewelry" and the room it sits in is the Jewelry Studio, so the
-studio list was the only thing in the building saying otherwise - and `cnc`
-became **cnc routing**. studios.ts keeps both old names, because they are what
-its calendar would tag. The two lists now genuinely differ, which is the first
-proof the fork was worth having rather than a copy waiting to be re-merged.
+**Three names were settled on 2026-10-06, and settling them is what made the
+fork real.** `lapidary` became **jewelry** - the brand sheet draws the mark as
+"Jewelry" and the room it sits in is the Jewelry Studio, so the studio list was
+the only thing in the building saying otherwise - `cnc` became **cnc routing**,
+and `leatherworking` became **leather studio**. studios.ts keeps all three old
+names, because they are what its calendar tags. The two lists now genuinely
+differ, which is the proof the fork was worth having rather than a copy waiting
+to be re-merged.
+
+**A studio's name and its room's name are allowed to differ, and one pair
+does.** D1.2 reads "Leatherworking Studio - leather studio", because the room
+name is the drawing's and the studio name is this list's. Changing the room
+means changing `floorplan.svg`, which is an export from a design tool - so it
+belongs in the original drawing rather than in the file here, or the next export
+silently puts it back.
 
 **Both were full renames, slug included**, which is three edits and a file
 move each: the entry here, its key in `STUDIOS_IN`, and the badge PNG, which is
