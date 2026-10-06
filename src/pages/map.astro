@@ -114,6 +114,21 @@ function tooltip(id: string): string {
       <p class="sm-lead">{TOOL.blurb}</p>
     </header>
 
+    {/* WHAT TO CHECK, said once at the top rather than over each floor.
+
+        The plan cannot be reviewed by looking at it: a room with the wrong name
+        still looks like a room, a zone parented to the wrong room still draws
+        in the right place, and a studio pinned to the wrong space is invisible
+        to anyone who does not already know where it belongs. All three are
+        findable by reading the list beside it. */}
+    <p class="mp-lede">
+      Each floor's plan sits beside everything it is drawn from. Worth checking
+      three things: the <b>name</b> of each space, which spaces are <b>zones</b>{' '}
+      of a larger room, and the <b>studio</b> against each one.{' '}
+      <b>{ROOMS.length} rooms and {ZONES.length} zones</b> in all. Hovering
+      either side lights the other.
+    </p>
+
     {
       FLOORS.map((floor) => (
         <section class="mp-floor" data-floor={floor}>
@@ -122,188 +137,179 @@ function tooltip(id: string): string {
             <span>{FLOOR_NAME[floor].sub}</span>
           </h2>
 
-          <div class="mp-plan-wrap">
-            <svg
-              class="mp-plan"
-              viewBox={FLOORPLAN[floor].viewBox}
-              role="img"
-              aria-label={`Floorplan of the ${FLOOR_NAME[floor].title.toLowerCase()} floor`}
-            >
-              {/* North is up on the drawing, so it is up here. The one thing on
-                  the plan that is not the building, and it earns the space:
-                  every instruction anyone gives in here is "past the woodshop",
-                  not "north", so the arrow is what ties the two together. */}
-              <g
-                class="mp-north"
-                transform={`translate(${+FLOORPLAN[floor].viewBox.split(' ')[0] + 10} ${+FLOORPLAN[floor].viewBox.split(' ')[1] + 14}) scale(0.34)`}
+          <div class="mp-pair">
+            <div class="mp-plan-wrap">
+              <svg
+                class="mp-plan"
+                viewBox={FLOORPLAN[floor].viewBox}
+                role="img"
+                aria-label={`Floorplan of the ${FLOOR_NAME[floor].title.toLowerCase()} floor`}
               >
-                <path d="M 18 58 L 30 18 L 42 58 L 30 48 Z" />
-                <text x="30" y="80">N</text>
-              </g>
+                {/* North is up on the drawing, so it is up here. The one thing on
+                    the plan that is not the building, and it earns the space:
+                    every instruction anyone gives in here is "past the woodshop",
+                    not "north", so the arrow is what ties the two together. */}
+                <g
+                  class="mp-north"
+                  transform={`translate(${+FLOORPLAN[floor].viewBox.split(' ')[0] + 10} ${+FLOORPLAN[floor].viewBox.split(' ')[1] + 14}) scale(0.34)`}
+                >
+                  <path d="M 18 58 L 30 18 L 42 58 L 30 48 Z" />
+                  <text x="30" y="80">N</text>
+                </g>
 
-              <g transform={`translate(0 ${FLOORPLAN[floor].offsetY})`}>
-                {/* The floorplate, under everything. */}
-                <polygon
-                  class="mp-shell"
-                  points={FLOORPLAN[floor].outline.map((q) => q.join(',')).join(' ')}
-                />
-
-                {/* ROOMS. The fills are the drawing's own: adjacent rooms are
-                    given different colours so they can be told apart, which is
-                    a map-colouring rather than a key - two woodshops do not
-                    share one. Held well back, because the thing you are looking
-                    for is a name and the thing that orients you is a wall. */}
-                {FLOORPLAN[floor].rooms.filter((r) => spot(r.id).drawn).map((r) => (
-                  <path
-                    class="mp-room"
-                    d={path(r.points)}
-                    data-kind={spot(r.id).kind}
-                    data-via={spot(r.id).studios.length > 0 ? 'own' : 'zone'}
-                    data-spot={r.id}
-                  >
-                    <title>{tooltip(r.id)}</title>
-                  </path>
-                ))}
-
-                {/* ZONES, dashed. A zone has no wall between it and its room -
-                    that is what makes it a zone - so it cannot be drawn as one.
-                    A dashed line is the convention for a boundary you can walk
-                    straight through, which is exactly what this is. */}
-                {FLOORPLAN[floor].zones.map((z) => (
-                  <path
-                    class="mp-zone"
-                    d={path(z.points)}
-                    data-kind={spot(z.id).kind}
-                    data-spot={z.id}
-                  >
-                    <title>{tooltip(z.id)}</title>
-                  </path>
-                ))}
-
-                {/* The building. Three weights and no others; the gaps are the
-                    doorways. */}
-                {LAYERS.map((layer) => (
-                  <path
-                    class={`mp-wall is-${layer}`}
-                    d={FLOORPLAN[floor].d[layer]}
-                    stroke-width={STROKE[layer]}
+                <g transform={`translate(0 ${FLOORPLAN[floor].offsetY})`}>
+                  {/* The floorplate, under everything. */}
+                  <polygon
+                    class="mp-shell"
+                    points={FLOORPLAN[floor].outline.map((q) => q.join(',')).join(' ')}
                   />
-                ))}
 
-                {/* The names, over everything, each on the author's own anchor
-                    and broken on their own lines - both are fitted to the room
-                    they sit in, and recomputing either would be guessing at a
-                    decision somebody made with the plan in front of them. */}
-                {FLOORPLAN[floor].rooms.filter((r) => spot(r.id).drawn).map((r) => (
-                  <text
-                    class="mp-name"
-                    data-kind={spot(r.id).kind}
-                    x={r.at[0]}
-                    y={r.at[1]}
-                    style={`font-size: ${r.size * LABEL_SCALE}px`}
-                  >
-                    {r.lines.map((line, i) => (
-                      <tspan x={r.at[0]} dy={i ? r.size * LABEL_SCALE : 0}>
-                        {line}
-                      </tspan>
-                    ))}
-                  </text>
-                ))}
+                  {/* ROOMS. The fills are the drawing's own: adjacent rooms are
+                      given different colours so they can be told apart, which is
+                      a map-colouring rather than a key - two woodshops do not
+                      share one. Held well back, because the thing you are looking
+                      for is a name and the thing that orients you is a wall. */}
+                  {FLOORPLAN[floor].rooms.filter((r) => spot(r.id).drawn).map((r) => (
+                    <path
+                      class="mp-room"
+                      d={path(r.points)}
+                      data-kind={spot(r.id).kind}
+                      data-via={spot(r.id).studios.length > 0 ? 'own' : 'zone'}
+                      data-spot={r.id}
+                    >
+                      <title>{tooltip(r.id)}</title>
+                    </path>
+                  ))}
 
-                {FLOORPLAN[floor].zones.map((z) => (
-                  <text
-                    class="mp-zone-name"
-                    data-kind={spot(z.id).kind}
-                    x={z.at[0]}
-                    y={z.at[1]}
-                    style={`font-size: ${z.size * LABEL_SCALE}px`}
-                  >
-                    {z.lines.map((line, i) => (
-                      <tspan x={z.at[0]} dy={i ? z.size * LABEL_SCALE * 1.15 : 0}>
-                        {line}
-                      </tspan>
+                  {/* ZONES, dashed. A zone has no wall between it and its room -
+                      that is what makes it a zone - so it cannot be drawn as one.
+                      A dashed line is the convention for a boundary you can walk
+                      straight through, which is exactly what this is. */}
+                  {FLOORPLAN[floor].zones.map((z) => (
+                    <path
+                      class="mp-zone"
+                      d={path(z.points)}
+                      data-kind={spot(z.id).kind}
+                      data-spot={z.id}
+                    >
+                      <title>{tooltip(z.id)}</title>
+                    </path>
+                  ))}
+
+                  {/* The building. Three weights and no others; the gaps are the
+                      doorways. */}
+                  {LAYERS.map((layer) => (
+                    <path
+                      class={`mp-wall is-${layer}`}
+                      d={FLOORPLAN[floor].d[layer]}
+                      stroke-width={STROKE[layer]}
+                    />
+                  ))}
+
+                  {/* The names, over everything, each on the author's own anchor
+                      and broken on their own lines - both are fitted to the room
+                      they sit in, and recomputing either would be guessing at a
+                      decision somebody made with the plan in front of them. */}
+                  {FLOORPLAN[floor].rooms.filter((r) => spot(r.id).drawn).map((r) => (
+                    <text
+                      class="mp-name"
+                      data-kind={spot(r.id).kind}
+                      data-spot={r.id}
+                      x={r.at[0]}
+                      y={r.at[1]}
+                      style={`font-size: ${r.size * LABEL_SCALE}px`}
+                    >
+                      {r.lines.map((line, i) => (
+                        <tspan x={r.at[0]} dy={i ? r.size * LABEL_SCALE : 0}>
+                          {line}
+                        </tspan>
+                      ))}
+                    </text>
+                  ))}
+
+                  {FLOORPLAN[floor].zones.map((z) => (
+                    <text
+                      class="mp-zone-name"
+                      data-kind={spot(z.id).kind}
+                      data-spot={z.id}
+                      x={z.at[0]}
+                      y={z.at[1]}
+                      style={`font-size: ${z.size * LABEL_SCALE}px`}
+                    >
+                      {z.lines.map((line, i) => (
+                        <tspan x={z.at[0]} dy={i ? z.size * LABEL_SCALE * 1.15 : 0}>
+                          {line}
+                        </tspan>
+                      ))}
+                    </text>
+                  ))}
+                </g>
+              </svg>
+            </div>
+
+            {/* The list beside the plan rather than under it, so one can be read
+                against the other without either leaving the screen. It scrolls
+                inside its own box for the same reason: a floor is 26 to 31 rows
+                and the plan would otherwise be a long way up the page. */}
+            <div class="mp-list">
+              <div class="mp-list-head">
+                <span>Spaces</span>
+                <span>
+                  {SPOTS.filter((sp) => sp.floor === floor && sp.shape === 'room').length} rooms ·{' '}
+                  {SPOTS.filter((sp) => sp.floor === floor && sp.shape === 'zone').length} zones
+                </span>
+              </div>
+
+              <div class="mp-list-scroll">
+                <table class="mp-table">
+                  <thead>
+                    <tr>
+                      <th class="mp-th-code">Code</th>
+                      <th>Space</th>
+                      <th>Studio</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rowsOn(floor).map((sp) => (
+                      <tr
+                        data-spot={sp.id}
+                        data-shape={sp.shape}
+                        class:list={[!sp.drawn && 'is-unlabelled', sp.studios.length > 0 && 'has-studio']}
+                      >
+                        <td class="mp-code">{sp.id}</td>
+                        <td class="mp-space">
+                          <span class="mp-space-name">{sp.name}</span>
+                          {/* The fourteen hallways, staircases and closets are drawn
+                              as walls and left unnamed on the plan, so a reviewer
+                              looking for CLOSET would not find one. Said here rather
+                              than left to be noticed. */}
+                          {!sp.drawn && <span class="mp-flag">not labelled</span>}
+                        </td>
+                        <td class="mp-who">
+                          {sp.studios.length === 0 ? (
+                            <span class="mp-dash">—</span>
+                          ) : (
+                            sp.studios.map((slug) => {
+                              const st = STUDIO_BY_SLUG.get(slug)!;
+                              return (
+                                <span class="mp-who-one" style={`--studio: ${st.colour}`}>
+                                  <img src={st.badge} alt="" width="22" height="22" />
+                                  {st.name}
+                                </span>
+                              );
+                            })
+                          )}
+                        </td>
+                      </tr>
                     ))}
-                  </text>
-                ))}
-              </g>
-            </svg>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </section>
       ))
     }
-
-    {/* THE DATA, for checking rather than for finding your way.
-
-        Everything the plan is drawn from, including the spaces it deliberately
-        does not label, laid out so somebody who knows the building can go down
-        it and say yes or no. The plan above cannot be reviewed on its own: a
-        room with the wrong name still looks like a room, a zone in the wrong
-        parent still draws in the right place, and a studio assigned to the
-        wrong space is invisible unless you already know where it should be. */}
-    <section class="mp-data">
-      <h2 class="mp-floor-h">
-        Room data<span>{ROOMS.length} rooms · {ZONES.length} zones</span>
-      </h2>
-
-      <p class="mp-lede">
-        Everything the plan is built from. Worth checking three things: the{' '}
-        <b>name</b> of each space, which spaces are <b>zones</b> of a larger
-        room, and the <b>studio</b> against each one. Codes are the drawing's
-        own and are what the plan, this table and the data all key off.
-      </p>
-
-      {FLOORS.map((floor) => (
-        <div class="mp-table-wrap">
-          <h3 class="mp-table-h">
-            {FLOOR_NAME[floor].title}
-            <span>{FLOOR_NAME[floor].sub}</span>
-          </h3>
-
-          <table class="mp-table">
-            <thead>
-              <tr>
-                <th class="mp-th-code">Code</th>
-                <th>Space</th>
-                <th>Studio</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rowsOn(floor).map((sp) => (
-                <tr
-                  data-shape={sp.shape}
-                  class:list={[!sp.drawn && 'is-unlabelled', sp.studios.length > 0 && 'has-studio']}
-                >
-                  <td class="mp-code">{sp.id}</td>
-                  <td class="mp-space">
-                    <span class="mp-space-name">{sp.name}</span>
-                    {/* The fourteen hallways, staircases and closets are drawn
-                        as walls and left unnamed on the plan, so a reviewer
-                        looking for CLOSET would not find one. Said here rather
-                        than left to be noticed. */}
-                    {!sp.drawn && <span class="mp-flag">not labelled</span>}
-                  </td>
-                  <td class="mp-who">
-                    {sp.studios.length === 0 ? (
-                      <span class="mp-dash">—</span>
-                    ) : (
-                      sp.studios.map((slug) => {
-                        const st = STUDIO_BY_SLUG.get(slug)!;
-                        return (
-                          <span class="mp-who-one" style={`--studio: ${st.colour}`}>
-                            <img src={st.badge} alt="" width="22" height="22" />
-                            {st.name}
-                          </span>
-                        );
-                      })
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
-    </section>
 
     {
       ORPHANS.length > 0 && (
@@ -354,6 +360,17 @@ function tooltip(id: string): string {
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-sm-slate);
+  }
+
+  /* The plan takes the room it needs and the list takes what is left, with a
+     floor under the list: below about 18rem the studio column starts wrapping
+     its own names, and a wrapped name is the one thing in here that has to be
+     read straight. */
+  .mp-pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+    gap: 1.25rem;
+    align-items: start;
   }
 
   /* Three tones, darkest outwards: the ground outside the building, the floor
@@ -451,7 +468,11 @@ function tooltip(id: string): string {
     stroke-width: 1.1;
     stroke-dasharray: 4 3;
     opacity: 0.55;
-    pointer-events: none;
+    /* "all" rather than the default, which only hits painted pixels: a zone
+       with no fill would then be hoverable along its dashes and nowhere else.
+       It sits over its room, so inside a zone the zone answers - which is the
+       more specific answer, and the one the list is keyed to. */
+    pointer-events: all;
   }
 
   /* A zone that houses a studio is tinted a step past its room and dashed in
@@ -541,15 +562,82 @@ function tooltip(id: string): string {
     opacity: 0.6;
   }
 
+  /* ------------------------------------------------- one lit at a time ---
+
+     Hovering either half lights the same space in the other, which is the whole
+     reason the list sits beside the plan rather than under it. Every one of
+     these rules has to sit BELOW the fills it overrides: .mp-room.is-lit and
+     .mp-room[data-kind='studio'] both weigh (0,2,0), so source order alone
+     decides which fill wins.
+
+     It is a fill and never a stroke. A stroke that thickens moves the wall it
+     is drawn on, and the room appears to twitch under the cursor. */
+  .mp-room.is-lit {
+    fill: var(--color-sm-green);
+    fill-opacity: 0.34;
+  }
+
+  .mp-zone.is-lit {
+    fill: var(--color-sm-green);
+    fill-opacity: 0.38;
+    opacity: 1;
+  }
+
+  /* The name lights with the room. On a small room the fill alone is easy to
+     miss, and the name is what you are looking for anyway. */
+  .mp-name.is-lit,
+  .mp-zone-name.is-lit {
+    fill: var(--color-sm-green-dark);
+    opacity: 1;
+  }
+
   /* ---------------------------------------------------------- the data --- */
 
-  .mp-data {
-    margin-top: 3.25rem;
+  /* A card rather than a bare table, because beside a plan on a tinted ground
+     a column of hairlines with no edge reads as something that fell off the
+     page. The radius clips the scroller, which is why the overflow is here as
+     well as on the child. */
+  .mp-list {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    max-height: 30rem;
+    overflow: hidden;
+    border: 1px solid var(--color-sm-line);
+    border-radius: 12px;
+    background: #fff;
+  }
+
+  .mp-list-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.6rem;
+    flex: 0 0 auto;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--color-sm-line);
+    background: var(--color-sm-mist);
+    font-family: var(--font-display);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-sm-slate);
+  }
+
+  .mp-list-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    /* A list that scrolls inside a page that also scrolls hands the page its
+       overscroll at either end, so reaching the bottom of a floor's list jumps
+       the whole page away from the plan it is being read against. */
+    overscroll-behavior: contain;
   }
 
   .mp-lede {
-    max-width: 62ch;
-    margin-top: 0.9rem;
+    max-width: 68ch;
+    margin: 0 0 2rem;
     font-size: 0.9375rem;
     line-height: 1.65;
     color: var(--color-sm-slate);
@@ -560,41 +648,25 @@ function tooltip(id: string): string {
     color: var(--color-sm-ink-2);
   }
 
-  .mp-table-wrap {
-    margin-top: 2rem;
-  }
-
-  .mp-table-h {
-    display: flex;
-    align-items: baseline;
-    gap: 0.55rem;
-    margin-bottom: 0.6rem;
-    font-family: var(--font-display);
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--color-sm-ink);
-  }
-
-  .mp-table-h span {
-    font-size: 0.65rem;
-    font-weight: 600;
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-    color: var(--color-sm-slate);
-  }
-
   .mp-table {
     width: 100%;
-    max-width: 46rem;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
   }
 
   /* Hairline rows rather than a bordered grid: this is a list to read down,
      and the one vertical relationship that matters - a zone under its room -
      is said by the indent instead. */
+  /* The header has to survive the scroll, and a sticky cell cannot hold a
+     border - the row it is pinned over slides under it and the border goes
+     with the paint. An inset shadow draws inside the cell instead. */
   .mp-table th {
-    padding: 0 0.6rem 0.5rem;
-    border-bottom: 1px solid var(--color-sm-line);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 0.45rem 0.6rem;
+    background: #fff;
+    box-shadow: inset 0 -1px 0 var(--color-sm-line);
     font-family: var(--font-display);
     font-size: 0.62rem;
     font-weight: 700;
@@ -641,7 +713,8 @@ function tooltip(id: string): string {
      "this room, this part of it" - the same relationship the dashed boundary
      draws on the plan. */
   .mp-table tr[data-shape='zone'] .mp-space-name {
-    margin-left: 1.15rem;
+    display: inline-block;
+    padding-left: 1.15rem;
     font-size: 0.875rem;
     font-weight: 500;
     color: var(--color-sm-ink-2);
@@ -649,7 +722,8 @@ function tooltip(id: string): string {
 
   .mp-table tr[data-shape='zone'] .mp-space-name::before {
     content: '└';
-    position: absolute;
+    display: inline-block;
+    width: 1.15rem;
     margin-left: -1.15rem;
     font-weight: 400;
     color: var(--color-sm-slate);
@@ -675,8 +749,12 @@ function tooltip(id: string): string {
     color: var(--color-sm-slate);
   }
 
+  /* A little more room on the right than the other cells, because an overlay
+     scrollbar appears over the content rather than beside it and this is the
+     column it would land on. */
   .mp-who {
     width: 1%;
+    padding-right: 0.95rem;
     white-space: nowrap;
   }
 
@@ -698,6 +776,11 @@ function tooltip(id: string): string {
 
   .mp-dash {
     color: var(--color-sm-line);
+  }
+
+  /* Below .has-studio, which it has to beat on a row that has one. */
+  .mp-table tr.is-lit {
+    background: color-mix(in srgb, var(--color-sm-green-mid) 24%, transparent);
   }
 
   .mp-todo {
@@ -737,6 +820,19 @@ function tooltip(id: string): string {
     color: var(--color-sm-slate);
   }
 
+  /* Side by side needs about 44rem for the plan and 18 for the list. Under
+     that they stack, and the list comes down off the plan's height to
+     something that still leaves the plan on screen above it. */
+  @media (max-width: 62rem) {
+    .mp-pair {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .mp-list {
+      max-height: 24rem;
+    }
+  }
+
   @media (max-width: 40rem) {
     /* The plan is the one thing here that cannot usefully shrink any further,
        so at phone width it gets the sheet's own gutters back. */
@@ -759,3 +855,26 @@ function tooltip(id: string): string {
     }
   }
 </style>
+
+<script>
+  /* Hover one, light the other.
+
+     Delegated per floor rather than per element: a pair is one plan and about
+     thirty rows, and the plan's own rooms come and go with the drawing. Scoped
+     to the pair as well, so the upstairs list cannot light a downstairs room.
+
+     The names on the plan are pointer-events: none, so a label hands the hover
+     to the room underneath it rather than being a dead patch in the middle of
+     the space it names. They still carry data-spot, because they light too. */
+  for (const pair of document.querySelectorAll<HTMLElement>('.mp-pair')) {
+    const paint = (id: string | null) => {
+      for (const el of pair.querySelectorAll('.is-lit')) el.classList.remove('is-lit');
+      if (id) for (const el of pair.querySelectorAll(`[data-spot="${id}"]`)) el.classList.add('is-lit');
+    };
+
+    pair.addEventListener('pointerover', (e) => {
+      paint((e.target as Element).closest('[data-spot]')?.getAttribute('data-spot') ?? null);
+    });
+    pair.addEventListener('pointerleave', () => paint(null));
+  }
+</script>

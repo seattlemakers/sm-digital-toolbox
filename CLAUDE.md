@@ -119,9 +119,10 @@ Done:
   exist as marks for the first time.
 - `src/data/rooms.ts` is no longer a list of rooms. It is one mapping - the
   drawing's own id to the studios that work in that space - and nothing else.
-- The page is the two plans and a **room data table** - every room and zone,
-  with its code, its parent and its studio - for review before any of this is
-  relied on. The studio list and the per-floor room lists are both gone.
+- Each floor is **a plan beside its own list** - every room and zone on that
+  floor, with its code, its parent and its studio - for review before any of
+  this is relied on. The list scrolls in its own box, and hovering either side
+  lights the same space in the other. The studio list is gone.
 - Three weights of wall - exterior, interior, stairs - and the doorways are
   pen-ups in the path data rather than anything marked.
 
@@ -2022,6 +2023,47 @@ the plan deliberately does not label - those have names too and somebody still
 has to say whether they are right. Each is tagged "not labelled", because a
 reviewer hunting the plan for CLOSET would otherwise conclude the table is
 wrong.
+
+**It sits beside its own plan rather than under both of them**, which is the
+only arrangement where the two can actually be compared: under the plans, every
+check is "read a name, scroll up, find the room, scroll back". Each floor is one
+grid - plan left, list right - and the list scrolls inside a fixed box, because
+a floor is 26 to 31 rows and a column that long would push the plan off the top
+of the screen by the fifth one.
+
+**Hovering either half lights the same space in the other**, which is what the
+side-by-side arrangement is for - a name in a list still has to be found on a
+drawing, and on a plan of forty-three spaces that is the slow step. One
+delegated handler per floor, scoped to that floor's pair so the upstairs list
+cannot light a downstairs room. It lights the fill and the name, never a stroke:
+a stroke that thickens moves the wall it is drawn on and the room twitches under
+the cursor - the same reason the zone highlight is an overlay.
+
+Every `.is-lit` rule has to sit BELOW the fills it overrides. `.mp-room.is-lit`
+and `.mp-room[data-kind='studio']` both weigh (0,2,0), so source order alone
+decides which fill wins - the same trap as `.t-row.is-bare` on the board.
+
+**Zones went `pointer-events: none` -> `all` for it.** They sit over their room,
+so without it the Jewelry Studio could not be hovered at all and the cursor
+reported Metal Studios instead. `all` rather than the default, which hits only
+painted pixels: a zone with no fill would otherwise be hoverable along its
+dashes and nowhere else. The zone's own tooltip inside the zone is the better
+answer anyway.
+
+**A sticky `<th>` needs `border-collapse: separate`.** With `collapse` the rows
+scrolling under the header came up over it - the first row of the list printed
+across the column headings. A collapsed table's borders belong to the table
+rather than to its cells, and the header's background goes with them. Separate
+with `border-spacing: 0` looks identical here, because the hairlines are the
+cells' own `border-bottom`. The header's own rule is then an inset `box-shadow`
+rather than a border, which a sticky cell can keep.
+
+**The zone's `└` is a hanging indent, not an absolutely-positioned glyph.** Out
+of flow it takes its position from the line box rather than from the name, which
+looked right in a full-width table and dropped onto the line *below* its own
+name the moment the column was narrow enough to matter. `display: inline-block`
+with a negative margin into the cell's padding is the version that survives a
+wrap.
 
 **The codes sort numerically, and a zone sorts under its room.** The drawing's
 own order is the order the author drew in - U15 between U9 and U10, D20 between
