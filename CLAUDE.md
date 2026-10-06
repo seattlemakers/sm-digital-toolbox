@@ -119,9 +119,9 @@ Done:
   exist as marks for the first time.
 - `src/data/rooms.ts` is no longer a list of rooms. It is one mapping - the
   drawing's own id to the studios that work in that space - and nothing else.
-- The page is the two plans and the studio list. The per-floor room lists and
-  the prose notes on particular spaces were both cut on 2026-10-05; a room's
-  studios are in its hover title.
+- The page is the two plans and a **room data table** - every room and zone,
+  with its code, its parent and its studio - for review before any of this is
+  relied on. The studio list and the per-floor room lists are both gone.
 - Three weights of wall - exterior, interior, stairs - and the doorways are
   pen-ups in the path data rather than anything marked.
 
@@ -2008,6 +2008,38 @@ the open-questions panel and `Place` itself; the map is rooms, zones and
 studios, which is what it was being asked for. If a space genuinely needs a
 caption on the page, it belongs in the drawing beside the name, where whoever
 redraws the building will see it.
+
+**A plan cannot be reviewed on its own, which is what the data table is for.**
+Added 2026-10-06, in place of the studio list. A room with the wrong name still
+looks like a room; a zone parented to the wrong room still draws in exactly the
+right place; a studio pinned to the wrong space is invisible to anyone who does
+not already know where it should be. None of those is findable by looking at the
+plan, and all three are findable by reading a list - so the page carries one,
+and says in a line what to check in it.
+
+It lists **everything**, including the fourteen hallways, staircases and closets
+the plan deliberately does not label - those have names too and somebody still
+has to say whether they are right. Each is tagged "not labelled", because a
+reviewer hunting the plan for CLOSET would otherwise conclude the table is
+wrong.
+
+**The codes sort numerically, and a zone sorts under its room.** The drawing's
+own order is the order the author drew in - U15 between U9 and U10, D20 between
+D7 and D8 - which is nothing to do with how the building reads. Sorting as text
+is no better: U10 lands between U1 and U2. And the single most reviewable fact
+here is "the Jewelry Studio is inside Metal Studios", which can only be checked
+if the two are adjacent, so zones are interleaved rather than blocked at the
+end.
+
+**The green tint means on both halves of the page what it means on the plan:**
+a studio works in this space. It is the only tint on either, which is what lets
+the table and the drawing be read against each other.
+
+**The studio list is gone and `spotsForStudio()` / `placeOf()` are not.** The
+list answered "where is the laser cutter", which is the page's eventual job; the
+table answers "is this data right", which is the job in front of it. The two
+functions are what a studio list is built from - `placeOf()` holds the "Fab Lab,
+laser end" rule - and are left in rooms.ts for when it comes back.
 
 **A zone is a named area inside a room, with no wall between them**, and that is
 the distinction the old tape colours were reaching for and never quite had.

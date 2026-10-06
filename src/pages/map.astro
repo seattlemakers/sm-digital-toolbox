@@ -23,9 +23,9 @@
  */
 import Base from '../layouts/Base.astro';
 import { toolById, pageTitle } from '../data/tools';
-import { SPOTS, placeOf, spotsForStudio, studiosWithoutSpot } from '../data/rooms';
+import { SPOTS, studiosWithoutSpot, type Spot } from '../data/rooms';
 import { FLOORPLAN, FLOORS, STROKE, type Floor, type Layer } from '../data/floorplan';
-import { STUDIOS, STUDIO_BY_SLUG } from '../data/studios';
+import { STUDIO_BY_SLUG } from '../data/studios';
 
 const TOOL = toolById('map');
 
@@ -56,6 +56,37 @@ const LABEL_SCALE = 0.88;
 const path = (points: readonly (readonly number[])[]) =>
   `M${points.map((p) => p.join(' ')).join(' L')} Z`;
 const ORPHANS = studiosWithoutSpot();
+
+/**
+ * Every space on a floor, in reading order, each room followed by its own
+ * zones.
+ *
+ * The drawing's order is the order the author drew in - U15 sits between U9 and
+ * U10, D20 between D7 and D8 - which is nothing to do with how the building
+ * reads and makes a list of fifty-seven rows impossible to check against. The
+ * codes sort numerically rather than as text, so U10 does not land between U1
+ * and U2, and a zone sorts under the room it belongs to rather than into a
+ * block of its own at the end: "is the Jewelry Studio inside Metal Studios?" is
+ * exactly the question this table is here to have answered, and it can only be
+ * answered if the two are next to each other.
+ */
+const codeAt = (id: string): [number, number] => {
+  const [, major, minor = '0'] = id.match(/^[A-Z](\d+)(?:\.(\d+))?$/) ?? [];
+  return [Number(major), Number(minor)];
+};
+const byCode = (a: Spot, b: Spot) =>
+  codeAt(a.id)[0] - codeAt(b.id)[0] || codeAt(a.id)[1] - codeAt(b.id)[1];
+
+function rowsOn(floor: Floor): Spot[] {
+  const here = SPOTS.filter((s) => s.floor === floor);
+  return here
+    .filter((s) => s.shape === 'room')
+    .sort(byCode)
+    .flatMap((room) => [room, ...here.filter((s) => s.room === room.id).sort(byCode)]);
+}
+
+const ROOMS = SPOTS.filter((s) => s.shape === 'room');
+const ZONES = SPOTS.filter((s) => s.shape === 'zone');
 
 /**
  * The space's name and who works in it, in its hover title.
@@ -201,44 +232,77 @@ function tooltip(id: string): string {
       ))
     }
 
-    {/* THE STUDIOS. A studio is not a room - it is wherever its work happens,
-        which can be one room, two rooms, a zone inside somebody else's room, or
-        nothing yet. Listing them separately from the floors is what lets that
-        be true without the plan having to pretend otherwise. */}
-    <section class="mp-studios">
+    {/* THE DATA, for checking rather than for finding your way.
+
+        Everything the plan is drawn from, including the spaces it deliberately
+        does not label, laid out so somebody who knows the building can go down
+        it and say yes or no. The plan above cannot be reviewed on its own: a
+        room with the wrong name still looks like a room, a zone in the wrong
+        parent still draws in the right place, and a studio assigned to the
+        wrong space is invisible unless you already know where it should be. */}
+    <section class="mp-data">
       <h2 class="mp-floor-h">
-        Studios<span>{STUDIOS.length} in all</span>
+        Room data<span>{ROOMS.length} rooms · {ZONES.length} zones</span>
       </h2>
 
-      <ul class="mp-studio-list">
-        {
-          STUDIOS.map((st) => {
-            const where = spotsForStudio(st.slug);
-            return (
-              <li
-                class:list={['mp-studio', where.length === 0 && 'is-homeless']}
-                style={`--studio: ${st.colour}`}
-                data-studios={st.slug}
-              >
-                <img class="mp-badge" src={st.badge} alt="" width="40" height="40" />
-                <span class="mp-studio-body">
-                  <span class="mp-studio-name">{st.name}</span>
-                  {where.length === 0 ? (
-                    <span class="mp-studio-where">no space yet</span>
-                  ) : (
-                    where.map((sp) => (
-                      <span class="mp-studio-where">
-                        {placeOf(sp)}
-                        <i>{sp.floor === 'upstairs' ? '2nd floor' : '1st floor'}</i>
-                      </span>
-                    ))
-                  )}
-                </span>
-              </li>
-            );
-          })
-        }
-      </ul>
+      <p class="mp-lede">
+        Everything the plan is built from. Worth checking three things: the{' '}
+        <b>name</b> of each space, which spaces are <b>zones</b> of a larger
+        room, and the <b>studio</b> against each one. Codes are the drawing's
+        own and are what the plan, this table and the data all key off.
+      </p>
+
+      {FLOORS.map((floor) => (
+        <div class="mp-table-wrap">
+          <h3 class="mp-table-h">
+            {FLOOR_NAME[floor].title}
+            <span>{FLOOR_NAME[floor].sub}</span>
+          </h3>
+
+          <table class="mp-table">
+            <thead>
+              <tr>
+                <th class="mp-th-code">Code</th>
+                <th>Space</th>
+                <th>Studio</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rowsOn(floor).map((sp) => (
+                <tr
+                  data-shape={sp.shape}
+                  class:list={[!sp.drawn && 'is-unlabelled', sp.studios.length > 0 && 'has-studio']}
+                >
+                  <td class="mp-code">{sp.id}</td>
+                  <td class="mp-space">
+                    <span class="mp-space-name">{sp.name}</span>
+                    {/* The fourteen hallways, staircases and closets are drawn
+                        as walls and left unnamed on the plan, so a reviewer
+                        looking for CLOSET would not find one. Said here rather
+                        than left to be noticed. */}
+                    {!sp.drawn && <span class="mp-flag">not labelled</span>}
+                  </td>
+                  <td class="mp-who">
+                    {sp.studios.length === 0 ? (
+                      <span class="mp-dash">—</span>
+                    ) : (
+                      sp.studios.map((slug) => {
+                        const st = STUDIO_BY_SLUG.get(slug)!;
+                        return (
+                          <span class="mp-who-one" style={`--studio: ${st.colour}`}>
+                            <img src={st.badge} alt="" width="22" height="22" />
+                            {st.name}
+                          </span>
+                        );
+                      })
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
     </section>
 
     {
@@ -255,11 +319,14 @@ function tooltip(id: string): string {
       )
     }
 
+    {/* The counts moved into the Room data heading, where they are a count of
+        the table underneath them. Said in both places they disagreed: this one
+        was the 29 rooms the plan labels, that one is all 43. */}
     <p class="mp-note">
-      {SPOTS.filter((sp) => sp.shape === 'room' && sp.drawn).length} rooms and{' '}
-      {SPOTS.filter((sp) => sp.shape === 'zone').length} zones, named and shaped
-      by <b>data/floorplan.svg</b>. <b>data/rooms.ts</b> adds the one thing the
-      drawing cannot know: which studios work where.
+      Every name, shape and label position above comes from{' '}
+      <b>data/floorplan.svg</b>, which is drawn by hand rather than traced.{' '}
+      <b>data/rooms.ts</b> adds the one thing the drawing cannot know: which
+      studios work where.
     </p>
   </main>
 </Base>
@@ -474,85 +541,163 @@ function tooltip(id: string): string {
     opacity: 0.6;
   }
 
-  /* ------------------------------------------------------- the studios --- */
+  /* ---------------------------------------------------------- the data --- */
 
-  .mp-studios {
+  .mp-data {
     margin-top: 3.25rem;
   }
 
-  .mp-studio-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-    gap: 0.4rem;
-    margin-top: 1.1rem;
+  .mp-lede {
+    max-width: 62ch;
+    margin-top: 0.9rem;
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    color: var(--color-sm-slate);
   }
 
-  /* The studio's own colour as a spine down the left, rather than behind the
-     name or around the card. Fourteen colours is a lot to put on one page: as
-     a 3px rule each one identifies its row without any of them competing with
-     the badge beside it, which is where the colour is actually doing work. */
-  .mp-studio {
+  .mp-lede b {
+    font-weight: 600;
+    color: var(--color-sm-ink-2);
+  }
+
+  .mp-table-wrap {
+    margin-top: 2rem;
+  }
+
+  .mp-table-h {
     display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    padding: 0.6rem 0.75rem;
-    border-left: 3px solid var(--studio);
-    border-radius: 0 9px 9px 0;
-    background: var(--color-sm-mist);
-  }
-
-  .mp-badge {
-    flex: 0 0 auto;
-  }
-
-  .mp-studio-body {
-    display: flex;
-    flex-direction: column;
-    gap: 0.05rem;
-    min-width: 0;
-  }
-
-  .mp-studio-name {
+    align-items: baseline;
+    gap: 0.55rem;
+    margin-bottom: 0.6rem;
     font-family: var(--font-display);
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 700;
     color: var(--color-sm-ink);
   }
 
-  .mp-studio-where {
-    display: flex;
-    align-items: baseline;
-    gap: 0.4rem;
+  .mp-table-h span {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-sm-slate);
+  }
+
+  .mp-table {
+    width: 100%;
+    max-width: 46rem;
+    border-collapse: collapse;
+  }
+
+  /* Hairline rows rather than a bordered grid: this is a list to read down,
+     and the one vertical relationship that matters - a zone under its room -
+     is said by the indent instead. */
+  .mp-table th {
+    padding: 0 0.6rem 0.5rem;
+    border-bottom: 1px solid var(--color-sm-line);
+    font-family: var(--font-display);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--color-sm-slate);
+  }
+
+  .mp-table td {
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--color-sm-line);
+    vertical-align: middle;
+  }
+
+  .mp-table tr:last-child td {
+    border-bottom: 0;
+  }
+
+  /* The green says the same thing here that it says on the plan: a studio works
+     in this space. It is the only tint on either, so the two can be read
+     against each other. */
+  .mp-table tr.has-studio {
+    background: color-mix(in srgb, var(--color-sm-green-mid) 8%, transparent);
+  }
+
+  .mp-th-code,
+  .mp-code {
+    width: 1%;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
     font-size: 0.8125rem;
     color: var(--color-sm-slate);
   }
 
-  /* The floor rides with each place rather than being said once: two of these
-     studios are on both floors, so one line underneath would be wrong. */
-  .mp-studio-where i {
+  .mp-space-name {
     font-family: var(--font-display);
-    font-size: 0.62rem;
-    font-style: normal;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-sm-ink);
+  }
+
+  /* A zone is indented under its room and set a step down, so the pair reads as
+     "this room, this part of it" - the same relationship the dashed boundary
+     draws on the plan. */
+  .mp-table tr[data-shape='zone'] .mp-space-name {
+    margin-left: 1.15rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-sm-ink-2);
+  }
+
+  .mp-table tr[data-shape='zone'] .mp-space-name::before {
+    content: '└';
+    position: absolute;
+    margin-left: -1.15rem;
+    font-weight: 400;
+    color: var(--color-sm-slate);
+    opacity: 0.55;
+  }
+
+  .mp-flag {
+    margin-left: 0.5rem;
+    font-family: var(--font-display);
+    font-size: 0.58rem;
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
-    opacity: 0.65;
+    color: var(--color-sm-slate);
+    opacity: 0.8;
   }
 
-  /* A studio with nowhere to send anybody is the one thing this page cannot do
-     its job without, so it says so in the alert colour and keeps its place in
-     the list rather than being filtered to a footnote. */
-  .mp-studio.is-homeless {
-    border-left-color: var(--color-sm-line);
+  /* The unlabelled spaces stay in the list and recede in it - they are real
+     rooms with real names and somebody still has to say whether the names are
+     right, but they are not what the plan is for. */
+  .mp-table tr.is-unlabelled .mp-space-name {
+    font-weight: 500;
+    color: var(--color-sm-slate);
   }
 
-  .mp-studio.is-homeless .mp-badge {
-    opacity: 0.4;
+  .mp-who {
+    width: 1%;
+    white-space: nowrap;
   }
 
-  .mp-studio.is-homeless .mp-studio-where {
-    font-weight: 600;
-    color: var(--color-sm-alert);
+  .mp-who-one {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.875rem;
+    color: var(--color-sm-green);
+  }
+
+  .mp-who-one + .mp-who-one {
+    margin-left: 0.7rem;
+  }
+
+  .mp-who-one img {
+    flex: 0 0 auto;
+  }
+
+  .mp-dash {
+    color: var(--color-sm-line);
   }
 
   .mp-todo {
@@ -601,8 +746,16 @@ function tooltip(id: string): string {
       border-radius: 0;
     }
 
-    .mp-studio-list {
-      grid-template-columns: 1fr;
+    /* The badge is the first thing to go: at this width the name is what is
+       being checked and the picture is 22px of decoration beside it. */
+    .mp-who-one img {
+      display: none;
+    }
+
+    .mp-table th,
+    .mp-table td {
+      padding-left: 0.35rem;
+      padding-right: 0.35rem;
     }
   }
 </style>
