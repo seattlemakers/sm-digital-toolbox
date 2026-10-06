@@ -2058,6 +2058,20 @@ rolled belt. The vectors stay the source for /today, /calendar and the reel,
 because those need to be sharp on a 4K panel and on paper; the badges are
 placeholders and raster.
 
+**/map is badges throughout; the vectors stay everywhere else.** The room list
+kept the mono marks for a while after the studio list had moved, which read as
+two icon sets on one page because it was. Nothing on /map points at
+`/brand/icons/` now. /today, /calendar and the reel still do, and should: those
+go on a 4K panel and onto paper, where a 184px raster would not hold up.
+
+**The brand colours are marks, not type - eight of the fourteen fail as text.**
+Colouring each studio's name in its own colour was tried and measured at 13px on
+white: woodshop's gold manages **1.76:1**, arts & crafts 2.11, screen printing
+2.63, and five more sit under the 4.5 needed for body copy. That is not a
+contrast problem so much as invisible ink. The names stay green, which passes
+and is already this page's word for "studio"; the badge beside each one carries
+the identity. Worth measuring before putting any of these on type again.
+
 **The studio's colour is a 3px spine down the left of its row, not a fill.**
 Fourteen colours is a lot to put on one page. As a rule each one identifies its
 row without competing with the badge beside it, which is where the colour is
@@ -2069,11 +2083,16 @@ room, or nowhere yet. Listing studios separately from the floors is what lets
 the plan stay honest about rooms while the studio list stays honest about
 studios.
 
-**The stale scoped-style trap caught this page a second time.** The studio list
-came out as unstyled inline text with the data perfectly correct. Same cause,
-same fix: restart the dev server. Worth treating as the first thing to try
-whenever a block of new CSS in an `.astro` file appears to do nothing at all,
-rather than the last.
+**The stale scoped-style trap caught this page twice more.** The studio list
+came out as unstyled inline text with the data perfectly correct, and separately
+a `.mp-tag` colour rule never reached the stylesheet while the inline custom
+property it read was sitting right there on every element. Three times now, same
+cause, same fix: restart the dev server.
+
+Treat it as the FIRST thing to try whenever new CSS in an `.astro` file appears
+to do nothing, not the last - every instance has looked like a specificity bug
+and none has been one. The tell is that `document.styleSheets` does not contain
+the selector at all.
 
 **`floorplan.svg` has been hand-edited once, and that is a hazard worth
 knowing about.** The downstairs east staircase had no wall down its left side -
