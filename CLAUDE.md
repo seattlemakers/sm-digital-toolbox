@@ -2077,6 +2077,22 @@ Fourteen colours is a lot to put on one page. As a rule each one identifies its
 row without competing with the badge beside it, which is where the colour is
 already doing its work.
 
+**Dividing a room into two zones can need only one of them drawn.** Metalshop 2
+is a third jewelry studio and two thirds metalshop, and drawing both as zones
+would have put a zone called "Metalshop 2" inside a room called Metalshop 2 -
+printing the name twice, on top of itself, because both labels sit near the
+same centre. Only the jewelry third is a zone; the metalshop two thirds are
+named by the room, which is what a room is for.
+
+**Carving a room moves its label, and that is not overriding the author.** The
+anchor they chose was for an undivided room, and at x=342.1 it put METALSHOP 2
+across the jewelry third - the two labels genuinely overlapped. Recentred on
+the two thirds it now describes (324.7 to 394.2, centre 359.5). Checked by
+intersecting every label's `getBBox` against every other on the floor rather
+than by looking: zero overlapping pairs, and that test is worth re-running after
+any zone is added, because a label collision is obvious on a big room and
+invisible on a small one.
+
 **A studio is not a room, and the list exists to let that be true.** It is
 wherever its work happens - one room, two rooms, a zone inside somebody else's
 room, or nowhere yet. Listing studios separately from the floors is what lets
@@ -2094,18 +2110,20 @@ to do nothing, not the last - every instance has looked like a specificity bug
 and none has been one. The tell is that `document.styleSheets` does not contain
 the selector at all.
 
-**`floorplan.svg` has been hand-edited once, and that is a hazard worth
-knowing about.** The downstairs east staircase had no wall down its left side -
-its treads simply stopped - where the upstairs one in the same corner has one.
-`M829 513.8 V562.5` was added to `down-interior` to match. The y starts at
-513.8 rather than at the stair box's own 518 because the entrance diagonal runs
-(854.4,488.4) to (810.8,532) at slope -1 and therefore crosses x=829 at 513.8;
-stopping at 518 would have left the wall hanging four units short of the thing
-it is supposed to meet.
+**`floorplan.svg` has been hand-edited twice, and that is a hazard worth
+knowing about.** The file is exported from a design tool, so **the next export
+drops both edits silently**. If either thing below reappears as a fault, this is
+why; the real fix belongs in the original drawing.
 
-The hazard: that file is exported from a design tool, so **the next export will
-drop this edit silently**. If a wall goes missing again in that corner, this is
-why. The fix belongs in the original drawing; the patch here is a stopgap.
+1. **A missing wall.** The downstairs east staircase had nothing down its left
+   side - its treads simply stopped - where the upstairs one in the same corner
+   has a wall. `M829 513.8 V562.5` was added to `down-interior`. The y starts at
+   513.8 rather than at the stair box's own 518 because the entrance diagonal
+   runs (854.4,488.4) to (810.8,532) at slope -1 and therefore crosses x=829 at
+   513.8; stopping at 518 would have left the wall hanging four units short of
+   the thing it is supposed to meet.
+2. **The jewelry third of Metalshop 2.** `zone-U3.1` over the left third of
+   U3 (290 to 324.7 of 290-394.2), with its label.
 
 Finding which staircase it was is worth recording as a method, because there are
 four and they look alike at a glance. Each was rendered on its own at high

@@ -85,7 +85,7 @@ export const FLOORPLAN: Record<Floor, FloorPlan> = {
         lines: ["Compressor","Room"], at: [342.1, 61.1], size: 10,
         points: [[290, 29.6], [394.2, 29.6], [394.2, 96.5], [290, 96.5]] },
       { id: "U3", name: "Metalshop 2", fill: "#c3bad8",
-        lines: ["Metalshop 2"], at: [342.1, 154.7], size: 11,
+        lines: ["Metalshop 2"], at: [359.5, 154.7], size: 11,
         points: [[290, 96.5], [394.2, 96.5], [394.2, 205], [290, 205]] },
       { id: "U4", name: "Staff Desk", fill: "#d9c6a5",
         lines: ["Staff Desk"], at: [357, 229], size: 11,
@@ -167,6 +167,9 @@ export const FLOORPLAN: Record<Floor, FloorPlan> = {
       { id: "U15.2", name: "Laser Cutting Studio", room: "U15", fill: null,
         lines: ["Laser Cutting","Studio"], at: [693.5, 284.8], size: 7,
         points: [[627.7, 198.3], [742.3, 198.3], [742.3, 233.4], [759.3, 233.4], [759.3, 312.9], [627.7, 312.9]] },
+      { id: "U3.1", name: "Jewelry Studio", room: "U3", fill: null,
+        lines: ["Jewelry","Studio"], at: [307.4, 143], size: 7,
+        points: [[290, 96.5], [324.7, 96.5], [324.7, 205], [290, 205]] },
     ],
   },
   downstairs: {
