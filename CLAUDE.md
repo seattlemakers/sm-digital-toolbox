@@ -2018,6 +2018,26 @@ and neither do the two ceramics rooms, so nothing can be read off the colour
 itself. They render at half opacity because at full strength they are the
 loudest thing on a plan whose point is the names and the walls.
 
+**`floorplan.svg` has been hand-edited once, and that is a hazard worth
+knowing about.** The downstairs east staircase had no wall down its left side -
+its treads simply stopped - where the upstairs one in the same corner has one.
+`M829 513.8 V562.5` was added to `down-interior` to match. The y starts at
+513.8 rather than at the stair box's own 518 because the entrance diagonal runs
+(854.4,488.4) to (810.8,532) at slope -1 and therefore crosses x=829 at 513.8;
+stopping at 518 would have left the wall hanging four units short of the thing
+it is supposed to meet.
+
+The hazard: that file is exported from a design tool, so **the next export will
+drop this edit silently**. If a wall goes missing again in that corner, this is
+why. The fix belongs in the original drawing; the patch here is a stopgap.
+
+Finding which staircase it was is worth recording as a method, because there are
+four and they look alike at a glance. Each was rendered on its own at high
+magnification and compared against the photograph - and the tell was the tread
+direction, not the walls: only the downstairs east pair has a horizontal-tread
+flight above a vertical-tread one. Guessing from the crop's proportions would
+have picked the wrong one.
+
 **Fourteen of the forty-three spaces are not drawn, and the plan is mostly the
 better for it.** Hallways, staircases and closets are most of the ink and none
 of the answer - nobody opens a map to find the hallway, and a cupboard labelled
