@@ -58,7 +58,7 @@ export const TOOLS: Tool[] = [
     id: 'map',
     name: 'Space Map',
     href: '/map',
-    blurb: 'Find a studio: which room it is in, on which floor, behind which colour of tape.',
+    blurb: 'Find a studio: which room it is in, and on which floor.',
   },
   {
     id: 'labels',

@@ -19,11 +19,7 @@
  *   as of 2026-10-05 and it is the right way round - the walls were previously
  *   recovered from a raster and the rooms were rectangles fitted to the same
  *   raster, so the two were tangled together and both were approximations.
- *
- * TAPE COLOURS are read off the drawing's key, in its own order. They stand for
- * real tape on real door frames, so they are wayfinding rather than decoration -
- * "the room with the yellow tape" is a direction somebody can follow.
- */
+ * */
 import { STUDIO_BY_SLUG, type Studio } from './studios';
 import type { Floor, Pt } from './floorplan';
 
@@ -33,11 +29,7 @@ export type Room = {
   slug: string;
   /** What the room is called. The old CAD drawing's wording until told otherwise. */
   name: string;
-  /** The code from the drawing's key. Null for rooms the key does not list. */
-  code: string | null;
   floor: Floor;
-  /** Tape colour on the door frame, as the key draws it. Null = beige/white. */
-  tape: string | null;
   /**
    * Studio slugs housed here, pointing into studios.ts. Many-to-many on both
    * sides: the woodshop is in two rooms, and one room can hold several studios.
@@ -65,173 +57,174 @@ export type Room = {
   shape?: Pt[];
   /** Label anchor, when the shape's centre is the wrong place for it. */
   label?: Pt;
-  /** Code-chip anchor, for a shape whose top-left corner is in another room. */
-  chip?: Pt;
   /** Anything the drawing says about the room that the name does not. */
   note?: string;
 };
 
-export const TAPE = {
-  orange: '#ff9d01',
-  red: '#ff0100',
-  green: '#22ca22',
-  yellow: '#f5fc01',
-  blue: '#292ad0',
-  purple: '#bf5ad1',
-  pink: '#fe9dee',
-  brown: '#98640f',
-  cyan: '#06c7ff',
-  /** The key's "can be beige or white" bracket - most of the building. */
-  beige: '#f5d29c',
-} as const;
-
 export const ROOMS: Room[] = [
-  // ------------------------------------------------------------- upstairs ---
+  // --- upstairs ------------------------------------------------------------
+  //
+  // Confirmed against data/floorplan.svg on 2026-10-05, from a marked-up export
+  // of it. This is the real building; everything upstairs before this described
+  // the old CAD layout and has been replaced rather than edited - that plan had
+  // the laser, 3D printing, electronics and the VOC booths up here, and this one
+  // has none of them.
+  //
+  // NOT a room: the staff desk, which sits open beside the west stairs. It is a
+  // landmark rather than a space - "past the staff desk" is a direction, and
+  // forcing it into this list would make it a place with no walls.
   {
-    slug: 'classroom-2', name: 'Classroom 2', code: 'C2', floor: 'upstairs',
-    tape: TAPE.beige, studios: [], note: 'Small classes and work area.',
+    slug: 'garage', name: 'Garage', floor: 'upstairs',
+    studios: [],
+    note: 'Metal is getting an area at the back, so some metalworking happens here too.',
   },
   {
-    // The drawing's "Storage?" box is a callout with leader lines, not a room -
-    // the stair hatch runs on underneath it - so it is a note here rather than
-    // a rectangle. Drawn as one, it sat on top of the stairs.
-    slug: 'stairs-2-west', name: 'Stairs', code: null, floor: 'upstairs',
-    tape: null, studios: [],
-    note: 'Down to the lounge and the front desk. The drawing marks storage under them.',
+    slug: 'compressor-room', name: 'Compressor Room', floor: 'upstairs',
+    studios: [],
   },
   {
-    slug: 'megastudio', name: 'The MegaStudio', code: 'MS', floor: 'upstairs',
-    tape: TAPE.blue, studios: ['screen-printing'],
-    note: 'The drawing puts screen printing in the corner. What else lives here?',
+    // The jewellery bench and the metal machines share this one. Deliberately
+    // not "Metal Shop": metal also has an area at the back of the garage, and
+    // two rooms called metal something is the one thing a wayfinding map cannot
+    // afford. See *Naming rooms* in CLAUDE.md.
+    slug: 'machine-shop', name: 'Machine Shop', floor: 'upstairs',
+    studios: ['metalworking', 'lapidary'],
+    note: 'Jewelry bench and the metal machines. Welding is in the garage, not here.',
   },
   {
-    slug: '3d-printing', name: '3D Printing', code: '3', floor: 'upstairs',
-    tape: TAPE.orange, studios: ['3d-printing'],
+    slug: 'woodshop-2', name: 'Woodshop 2', floor: 'upstairs',
+    studios: ['woodshop'],
   },
   {
-    // An L: the room wraps under the 3D printing bay and up its right-hand side.
-    slug: 'laser', name: 'Laser', code: 'L', floor: 'upstairs',
-    tape: TAPE.red, studios: ['laser-cutting'],
+    slug: 'woodshop-1', name: 'Woodshop 1', floor: 'upstairs',
+    studios: ['woodshop'],
   },
   {
-    slug: 'bathroom-2-west', name: 'Bathroom', code: null, floor: 'upstairs',
-    tape: null, studios: [],
+    slug: 'sanding-room', name: 'Sanding Room', floor: 'upstairs',
+    studios: [],
   },
   {
-    slug: 'bathroom-2-east', name: 'Bathroom', code: null, floor: 'upstairs',
-    tape: null, studios: [],
+    slug: 'fume-room', name: 'Fume Room', floor: 'upstairs',
+    studios: [],
   },
   {
-    slug: 'electronics', name: 'Electronics', code: 'E', floor: 'upstairs',
-    tape: TAPE.green, studios: ['electronics'],
+    slug: 'darkroom-2', name: 'Darkroom', floor: 'upstairs',
+    studios: [],
+    note: 'There is a darkroom on the downstairs list too. Is that still there, or did it move up here?',
   },
   {
-    slug: 'high-voc', name: 'High VOC', code: 'VOC', floor: 'upstairs',
-    tape: TAPE.beige, studios: [], note: 'Painting booth.',
+    // Kept as drawn. A proper name is the best kind for a room that hosts
+    // changing things, and in a building where every discipline area is called
+    // a studio, a generic one would be ambiguous in a way this is not.
+    slug: 'megastudio', name: 'Megastudio', floor: 'upstairs',
+    studios: [],
+    note: 'The big flexible room. What lives in here now?',
   },
   {
-    slug: 'low-voc', name: 'Low VOC', code: 'VOC', floor: 'upstairs',
-    tape: TAPE.beige, studios: [], note: 'Staining and finishing.',
+    slug: 'restroom-2-west', name: 'Restroom', floor: 'upstairs',
+    studios: [], note: 'All genders.',
   },
   {
-    slug: 'cnc', name: 'CNC', code: 'CNC', floor: 'upstairs',
-    tape: TAPE.beige, studios: ['cnc'], note: 'The 4x4 router.',
+    slug: 'restroom-2-east', name: 'Restroom', floor: 'upstairs',
+    studios: [], note: 'All genders.',
   },
   {
-    slug: 'woodshop-1', name: 'Woodshop 1', code: 'W1', floor: 'upstairs',
-    tape: TAPE.yellow, studios: ['woodshop'], note: 'The dusty half - saws and benches.',
+    slug: 'fab-lab', name: 'Fab Lab', floor: 'upstairs',
+    studios: [],
   },
   {
-    slug: 'woodshop-2', name: 'Woodshop 2', code: 'W2', floor: 'upstairs',
-    tape: TAPE.yellow, studios: ['woodshop'], note: 'Clean area and glue-ups.',
+    slug: 'computer-lab', name: 'Computer Lab', floor: 'upstairs',
+    studios: [],
+    note: 'The brand icon sheet has a Computer Lab mark; studios.ts has no such studio yet.',
   },
   {
-    slug: 'foyer-2', name: 'Foyer 2', code: 'F2', floor: 'upstairs',
-    tape: TAPE.beige, studios: [],
+    slug: 'closet-2', name: 'Closet', floor: 'upstairs',
+    studios: [],
   },
   {
-    slug: 'stairs-2-east', name: 'Stairs', code: null, floor: 'upstairs',
-    tape: null, studios: [], note: 'Down to the crafts end of the ground floor.',
+    slug: 'stairs-2-west', name: 'Stairs', floor: 'upstairs',
+    studios: [],
   },
   {
-    slug: 'metal', name: 'Metal Shop', code: 'M', floor: 'upstairs',
-    tape: TAPE.beige, studios: ['metalworking'], note: 'Lathe, CNC mill, and the dusty end.',
-  },
-  {
-    slug: 'garage', name: 'Garage', code: 'G', floor: 'upstairs',
-    tape: TAPE.beige, studios: [],
-    note: 'Welding and semi-protected project storage. Which studio owns it?',
+    slug: 'stairs-2-east', name: 'Stairs', floor: 'upstairs',
+    studios: [],
   },
 
-  // ----------------------------------------------------------- downstairs ---
+  // --- downstairs ----------------------------------------------------------
+  //
+  // NOT yet confirmed against the new drawing. These came off the old CAD plan,
+  // which this building's layout does not match - the names are probably mostly
+  // right and the arrangement is probably not. They stay until the downstairs
+  // export comes back marked up, because a wrong-but-close list is a better
+  // starting point for that than an empty one.
   {
-    slug: 'kitchen', name: 'Kitchen', code: 'K', floor: 'downstairs',
-    tape: TAPE.pink, studios: [],
+    slug: 'kitchen', name: 'Kitchen', floor: 'downstairs',
+    studios: [],
   },
   {
-    slug: 'av-studio', name: 'A/V Studio', code: 'A', floor: 'downstairs',
-    tape: TAPE.beige, studios: ['av-studio'], note: 'Green screen.',
+    slug: 'av-studio', name: 'A/V Studio', floor: 'downstairs',
+    studios: ['av-studio'], note: 'Green screen.',
   },
   {
-    slug: 'bathroom-1-west', name: "Women's Bathroom", code: null, floor: 'downstairs',
-    tape: null, studios: [], note: 'With a shower.',
+    slug: 'bathroom-1-west', name: "Women's Bathroom", floor: 'downstairs',
+    studios: [], note: 'With a shower.',
   },
   {
-    slug: 'bathroom-1-east', name: "Men's Bathroom", code: null, floor: 'downstairs',
-    tape: null, studios: [], note: 'With a shower.',
+    slug: 'bathroom-1-east', name: "Men's Bathroom", floor: 'downstairs',
+    studios: [], note: 'With a shower.',
   },
   {
-    slug: 'sewing', name: 'Sewing', code: 'S', floor: 'downstairs',
-    tape: TAPE.purple, studios: ['sewing'],
+    slug: 'sewing', name: 'Sewing', floor: 'downstairs',
+    studios: ['sewing'],
     note: 'Leatherworking too? It shares a calendar tag with sewing.',
   },
   {
-    slug: 'crafts', name: 'Crafts', code: 'CR', floor: 'downstairs',
-    tape: TAPE.beige, studios: ['arts-crafts'], note: 'Kits and general craft supplies.',
+    slug: 'crafts', name: 'Crafts', floor: 'downstairs',
+    studios: ['arts-crafts'], note: 'Kits and general craft supplies.',
   },
   {
-    slug: 'stairs-1-east', name: 'Stairs', code: null, floor: 'downstairs',
-    tape: null, studios: [], note: 'Up to Foyer 2, the metal shop and the garage.',
+    slug: 'stairs-1-east', name: 'Stairs', floor: 'downstairs',
+    studios: [], note: 'Up to Foyer 2, the metal shop and the garage.',
   },
   {
-    slug: 'stairs-1-west', name: 'Stairs', code: null, floor: 'downstairs',
-    tape: null, studios: [], note: 'Up to Classroom 2 and the MegaStudio.',
+    slug: 'stairs-1-west', name: 'Stairs', floor: 'downstairs',
+    studios: [], note: 'Up to Classroom 2 and the MegaStudio.',
   },
   {
     // The entrance is a re-entrant notch in the building's bottom-left corner;
     // the foyer wraps round the inside of it. Simplified to the two walls that
     // matter for finding the door.
-    slug: 'foyer-1', name: 'Foyer 1', code: 'F1', floor: 'downstairs',
-    tape: TAPE.beige, studios: [],
+    slug: 'foyer-1', name: 'Foyer 1', floor: 'downstairs',
+    studios: [],
     note: 'The door to the street, and the project feature area.',
   },
   {
-    slug: 'front-desk', name: 'Front Desk', code: 'FD', floor: 'downstairs',
-    tape: TAPE.beige, studios: [], note: 'Reception. Sign in here.',
+    slug: 'front-desk', name: 'Front Desk', floor: 'downstairs',
+    studios: [], note: 'Reception. Sign in here.',
   },
   {
-    slug: 'lounge', name: 'Lounge', code: 'LO', floor: 'downstairs',
-    tape: TAPE.beige, studios: [],
+    slug: 'lounge', name: 'Lounge', floor: 'downstairs',
+    studios: [],
   },
   {
-    slug: 'office', name: 'Office', code: 'OF', floor: 'downstairs',
-    tape: TAPE.brown, studios: [],
+    slug: 'office', name: 'Office', floor: 'downstairs',
+    studios: [],
   },
   {
-    slug: 'darkroom', name: 'Darkroom', code: 'D', floor: 'downstairs',
-    tape: TAPE.beige, studios: [],
+    slug: 'darkroom', name: 'Darkroom', floor: 'downstairs',
+    studios: [],
   },
   {
-    slug: 'storage-1', name: 'Storage 1', code: 'ST', floor: 'downstairs',
-    tape: TAPE.beige, studios: [], note: 'Makerspace storage.',
+    slug: 'storage-1', name: 'Storage 1', floor: 'downstairs',
+    studios: [], note: 'Makerspace storage.',
   },
   {
-    slug: 'utilities', name: 'Utilities', code: 'U', floor: 'downstairs',
-    tape: TAPE.beige, studios: [],
+    slug: 'utilities', name: 'Utilities', floor: 'downstairs',
+    studios: [],
   },
   {
-    slug: 'classroom-1', name: 'Classroom 1', code: 'C1', floor: 'downstairs',
-    tape: TAPE.cyan, studios: [],
+    slug: 'classroom-1', name: 'Classroom 1', floor: 'downstairs',
+    studios: [],
     note: 'Event space, classroom and rentable space. Member storage at the back.',
   },
 ];
