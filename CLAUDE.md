@@ -2018,6 +2018,68 @@ and neither do the two ceramics rooms, so nothing can be read off the colour
 itself. They render at half opacity because at full strength they are the
 loudest thing on a plan whose point is the names and the walls.
 
+**The plan is coloured by use, and that replaced a colouring that could not be
+read.** The drawing's own fills are a map-colouring - adjacent spaces get
+different colours so they can be told apart - so the two woodshops do not share
+one and neither do the two ceramics rooms. Useful while drawing, unreadable when
+finished: every room shouts and none of it means anything.
+
+Four tones now, and each says something. Outside the building is the wrap's
+grey; the floor is mist; a room is white, a plate standing on that floor; and a
+**studio is the only tinted thing on the plan**, because finding where a
+discipline lives is what somebody opened this map to do. Circulation is given no
+fill at all, so the floorplate shows through and a corridor reads as the space
+between rooms rather than as another room - which is what a corridor is.
+
+Two rooms of the same kind side by side do not merge, because the wall between
+them is ink. The wall separates; the fill means.
+
+**`--color-sm-wash` is too weak to be a fill at this size.** It is a 7% step off
+white, and the first version of this looked like a plan with no colour on it at
+all. It is `--color-sm-green-mid` at 0.2 instead. The test is not whether the
+tint is visible on its own but whether it survives being one room among
+forty-three at a quarter of a page.
+
+**A room whose studios are all in its ZONES gets a hint, not the full tint.**
+The Big Room is enormous and its one studio is the leatherworking corner; the
+Fab Lab's are the laser and 3D printing ends; the Megastudio's are electronics
+and screen printing. Tinted like the Sewing Studio - which is a studio wall to
+wall - those three made the plan read as though the whole floor were a shop. At
+0.08 against the zone's 0.26 the room says making happens in here and the zone
+says where.
+
+**Circulation is matched by name, and the drawing corroborates it.** The list is
+Stairs, Hallway, Landing, Check-in. Without being asked, the author gave all four
+staircases one fill and all five hallways-and-landings another - so two
+independent passes agree on the same set. The Lobby is deliberately out of it,
+and the drawing agrees there too: it is a place you wait rather than one you pass
+through.
+
+**Labels are scaled to 0.88, and the number is the face.** The drawing sets its
+sizes in Archivo Narrow; the site sets Figtree, which is wider, so a name tuned
+to its room in one face overflows it in the other. Measured rather than guessed,
+by comparing each label's rendered width against its own room's: at 0.88 two
+labels of fifty-five are tight - Landing at 45.2 units in 49.3, Closet at 32.9
+in 37.9 - and none actually overflow. Shrinking the other fifty-three to give
+those two more air would be the wrong trade.
+
+**Three label weights, so a broom cupboard stops shouting as loudly as the
+Megastudio.** Rooms are bold ink, circulation is semibold slate at 80% - you
+read "hallway" once to confirm it is a hallway and never look again - and a zone
+sits a step under its room in both weight and colour, so the pair reads as "this
+room, this part of it" rather than as two rooms. A zone that carries a studio
+takes the brand green for its label *and* its dashes, which is what ties the
+green fill to the thing the green fill means.
+
+**A scoped-style edit can apply by half.** Changing the template and the
+`<style>` block of one `.astro` file in a single edit, the dev server took the
+template - the new `data-via` attribute was in the DOM - and served a stylesheet
+with the matching rule simply absent. Not a specificity problem and not a typo:
+the rule was in the source and not in `document.styleSheets`. Restarting the dev
+server fixed it. Worth checking `document.styleSheets` for the selector before
+spending any time on specificity, because everything about it reads as a
+cascade bug.
+
 **A backtick in a doc comment inside a generator's output template closes the
 template.** `read-floorplan.mjs` writes its output as one big template literal,
 and two words quoted in backticks inside the generated file's own header comment

@@ -46,6 +46,14 @@ const FLOOR_NAME: Record<Floor, { title: string; sub: string }> = {
 };
 
 const spotsOn = (floor: Floor) => SPOTS.filter((s) => s.floor === floor);
+const spot = (id: string) => SPOTS.find((s) => s.id === id)!;
+
+/**
+ * The drawing's label sizes were set in Archivo Narrow and the site sets
+ * Figtree, which is wider - so a name tuned to its room in one face overflows
+ * it in the other. Measured rather than guessed: see *Labels* in CLAUDE.md.
+ */
+const LABEL_SCALE = 0.88;
 const path = (points: readonly (readonly number[])[]) =>
   `M${points.map((p) => p.join(' ')).join(' L')} Z`;
 const ORPHANS = studiosWithoutSpot();
@@ -106,9 +114,9 @@ const ORPHANS = studiosWithoutSpot();
                   <path
                     class="mp-room"
                     d={path(r.points)}
-                    style={r.fill ? `--room: ${r.fill}` : undefined}
+                    data-kind={spot(r.id).kind}
+                    data-via={spot(r.id).studios.length > 0 ? 'own' : 'zone'}
                     data-spot={r.id}
-                    data-studios={(SPOTS.find((s) => s.id === r.id)?.studios ?? []).join(' ')}
                   >
                     <title>{r.name}</title>
                   </path>
@@ -122,8 +130,8 @@ const ORPHANS = studiosWithoutSpot();
                   <path
                     class="mp-zone"
                     d={path(z.points)}
+                    data-kind={spot(z.id).kind}
                     data-spot={z.id}
-                    data-studios={(SPOTS.find((s) => s.id === z.id)?.studios ?? []).join(' ')}
                   >
                     <title>{z.name}</title>
                   </path>
@@ -144,9 +152,15 @@ const ORPHANS = studiosWithoutSpot();
                     they sit in, and recomputing either would be guessing at a
                     decision somebody made with the plan in front of them. */}
                 {FLOORPLAN[floor].rooms.map((r) => (
-                  <text class="mp-name" x={r.at[0]} y={r.at[1]} style={`font-size: ${r.size}px`}>
+                  <text
+                    class="mp-name"
+                    data-kind={spot(r.id).kind}
+                    x={r.at[0]}
+                    y={r.at[1]}
+                    style={`font-size: ${r.size * LABEL_SCALE}px`}
+                  >
                     {r.lines.map((line, i) => (
-                      <tspan x={r.at[0]} dy={i ? r.size : 0}>
+                      <tspan x={r.at[0]} dy={i ? r.size * LABEL_SCALE : 0}>
                         {line}
                       </tspan>
                     ))}
@@ -154,9 +168,15 @@ const ORPHANS = studiosWithoutSpot();
                 ))}
 
                 {FLOORPLAN[floor].zones.map((z) => (
-                  <text class="mp-zone-name" x={z.at[0]} y={z.at[1]} style={`font-size: ${z.size}px`}>
+                  <text
+                    class="mp-zone-name"
+                    data-kind={spot(z.id).kind}
+                    x={z.at[0]}
+                    y={z.at[1]}
+                    style={`font-size: ${z.size * LABEL_SCALE}px`}
+                  >
                     {z.lines.map((line, i) => (
-                      <tspan x={z.at[0]} dy={i ? z.size * 1.1 : 0}>
+                      <tspan x={z.at[0]} dy={i ? z.size * LABEL_SCALE * 1.15 : 0}>
                         {line}
                       </tspan>
                     ))}
@@ -166,13 +186,13 @@ const ORPHANS = studiosWithoutSpot();
             </svg>
           </div>
           <ul class="mp-spots">
-            {spotsOn(floor).filter((sp) => sp.kind === 'room').map((sp) => (
-              <li class:list={['mp-spot', sp.studios.length > 0 && 'has-studio']} data-spot={sp.id}>
+            {spotsOn(floor).filter((sp) => sp.shape === 'room').map((sp) => (
+              <li class="mp-spot" data-kind={sp.kind} data-spot={sp.id}>
                 <span class="mp-spot-id">{sp.id}</span>
                 <span class="mp-spot-body">
                   <span class="mp-spot-name">{sp.name}</span>
                   {spotsOn(floor)
-                    .filter((z) => z.kind === 'zone' && z.room === sp.id)
+                    .filter((z) => z.shape === 'zone' && z.room === sp.id)
                     .map((z) => (
                       <span class="mp-spot-zone">{z.name}</span>
                     ))}
@@ -214,8 +234,8 @@ const ORPHANS = studiosWithoutSpot();
     }
 
     <p class="mp-note">
-      {SPOTS.filter((sp) => sp.kind === 'room').length} rooms and
-      {' '}{SPOTS.filter((sp) => sp.kind === 'zone').length} zones, named and shaped by
+      {SPOTS.filter((sp) => sp.shape === 'room').length} rooms and
+      {' '}{SPOTS.filter((sp) => sp.shape === 'zone').length} zones, named and shaped by
       <b>data/floorplan.svg</b>. <b>data/rooms.ts</b> adds only what the drawing
       cannot know: which studios work where, and what is still unsettled.
     </p>
@@ -281,51 +301,117 @@ const ORPHANS = studiosWithoutSpot();
     fill: var(--color-sm-mist);
   }
 
-  /* The drawing's own fills, held well back. At full strength they are the
-     loudest thing on the plan, and they are the least informative - the colours
-     distinguish neighbours rather than classify rooms, since the two woodshops
-     do not share one. What you came for is a name; what orients you is a wall. */
+  /* ------------------------------------------------------------ colour ---
+
+     Four tones, and each one says something:
+
+       outside the building   the wrap's own grey
+       the floor              mist - and a corridor is left to show it, because
+                              a corridor IS the leftover floor
+       a room                 white, a plate standing on that floor
+       a studio               the brand wash, the only tint on the plan
+
+     That last line is the whole scheme. Somebody opens this map to find where
+     a discipline lives, so the spaces that house one are the only coloured
+     thing on it and everything else gets out of the way. The drawing's own
+     fills were a map-colouring - the two woodshops have different colours and
+     so do the two ceramics rooms - which is useful while drawing and
+     unreadable once finished.
+
+     Two rooms of the same kind side by side do not merge, because the wall
+     between them is drawn in ink. The wall is the separator; the fill is the
+     meaning. */
   .mp-room {
-    fill: var(--room, var(--color-sm-paper));
-    fill-opacity: 0.5;
-    transition: fill-opacity 140ms ease;
+    fill: var(--color-sm-paper);
+    transition: fill 140ms ease;
+  }
+
+  /* The brand green at a fraction, rather than --color-sm-wash. Wash is a 7%
+     step off white and simply does not register at this size - the first
+     version of this looked like a plan with no colour on it at all. Measured
+     against paper rather than judged: the tint has to survive being one room
+     among forty-three at a quarter of the page. */
+  .mp-room[data-kind='studio'] {
+    fill: var(--color-sm-green-mid);
+    fill-opacity: 0.2;
+  }
+
+  /* A room whose studios are all in its ZONES gets a hint rather than the full
+     tint. The Big Room is enormous and its one studio is the leatherworking
+     corner; the Fab Lab's are the laser and 3D printing ends. Tinted the same
+     as the Sewing Studio, which is a studio wall to wall, those rooms made the
+     plan read as though the whole floor was a shop. Light room, strong zone: the
+     room says making happens in here, the zone says where. */
+  .mp-room[data-kind='studio'][data-via='zone'] {
+    fill-opacity: 0.08;
+  }
+
+  /* No fill at all: the floorplate shows through, so corridors read as the
+     space between rooms rather than as more rooms. */
+  .mp-room[data-kind='circulation'] {
+    fill: none;
   }
 
   /* A zone has no wall between it and its room - that is what makes it a zone -
      so it cannot be drawn as one. Dashes are the convention for a boundary you
-     walk straight through. The dash is in drawing units, so it stays the same
-     size on the plan however the page is scaled. */
+     walk straight through. In drawing units, so the dash keeps its size on the
+     plan however the page is scaled. */
   .mp-zone {
     fill: none;
-    stroke: var(--color-sm-ink-2);
-    stroke-width: 1.2;
-    stroke-dasharray: 5 4;
-    opacity: 0.75;
+    stroke: var(--color-sm-slate);
+    stroke-width: 1.1;
+    stroke-dasharray: 4 3;
+    opacity: 0.55;
     pointer-events: none;
   }
 
+  /* A zone that houses a studio is tinted a step past its room and dashed in
+     green, which is what lets the Megastudio show electronics at one end and
+     screen printing at the other without either claiming the room. */
+  .mp-zone[data-kind='studio'] {
+    fill: var(--color-sm-green-mid);
+    fill-opacity: 0.26;
+    stroke: var(--color-sm-green);
+    opacity: 0.85;
+  }
+
+  /* ------------------------------------------------------------ labels ---
+
+     Uppercase and tracked, which is the floorplan convention and stays legible
+     at sizes where a lowercase name would not. Three weights, so a broom
+     cupboard stops shouting as loudly as the Megastudio. */
   .mp-name {
     font-family: var(--font-display);
     font-weight: 700;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
     text-anchor: middle;
     text-transform: uppercase;
     fill: var(--color-sm-ink);
     pointer-events: none;
   }
 
-  /* Italic and a step back, so a zone reads as a part of the room it is in
-     rather than as another room. */
+  /* Circulation names itself and then gets out of the way. You read "hallway"
+     once to confirm it is a hallway and never look at it again. */
+  .mp-name[data-kind='circulation'] {
+    font-weight: 600;
+    fill: var(--color-sm-slate);
+    opacity: 0.8;
+  }
+
+  /* A zone label sits a step under its room's, in weight and in colour, so the
+     pair reads as "this room, this part of it" rather than as two rooms. */
   .mp-zone-name {
     font-family: var(--font-display);
     font-weight: 600;
-    font-style: italic;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.05em;
     text-anchor: middle;
     text-transform: uppercase;
-    fill: var(--color-sm-ink-2);
-    opacity: 0.9;
+    fill: var(--color-sm-slate);
     pointer-events: none;
+  }
+
+  .mp-zone-name[data-kind='studio'] {
+    fill: var(--color-sm-green-dark);
   }
 
   /* The building, and the only thing on the plan drawn in ink. If it is dark
@@ -362,8 +448,8 @@ const ORPHANS = studiosWithoutSpot();
   /* The stairs recede. Same ink family, so they still read as built rather than
      as annotation, but they are never the thing you are trying to find. */
   .mp-wall.is-stairs {
-    stroke: var(--color-sm-ink-2);
-    opacity: 0.75;
+    stroke: var(--color-sm-slate);
+    opacity: 0.6;
   }
 
   /* ---------------------------------------------------------- the lists --- */
@@ -398,9 +484,13 @@ const ORPHANS = studiosWithoutSpot();
     color: var(--color-sm-slate);
   }
 
-  .mp-spot.has-studio .mp-spot-id {
+  .mp-spot[data-kind='studio'] .mp-spot-id {
     background: var(--color-sm-wash);
     color: var(--color-sm-green-dark);
+  }
+
+  .mp-spot[data-kind='circulation'] {
+    opacity: 0.68;
   }
 
   .mp-spot-body {

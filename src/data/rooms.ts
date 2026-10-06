@@ -68,32 +68,83 @@ export const PLACES: Record<string, Place> = {
   'D7': { note: 'The street door. Check in here.' },
 };
 
+/**
+ * What a space is FOR, which is the one thing worth colouring it by.
+ *
+ * The drawing's own fills are a map-colouring rather than a key - adjacent
+ * spaces are given different colours so they can be told apart, which is why
+ * the two woodshops do not share one and neither do the two ceramics rooms.
+ * Useful while drawing, unreadable on a finished map: every room shouts and
+ * nothing means anything.
+ *
+ * So the plan is coloured by use instead. Three kinds is the most a plan can
+ * carry before the colours stop being a key again:
+ *
+ *   studio       - somebody's discipline works here. The thing people come to
+ *                  this map to find, so it is the only tinted thing on it.
+ *   circulation  - how you get between the others. Takes the floorplate's own
+ *                  colour, because a corridor IS the leftover floor.
+ *   room         - everything else, from the kitchen to a broom closet.
+ *
+ * Circulation is matched by name against a short list rather than inferred.
+ * The drawing corroborates it exactly: the author gave all four staircases one
+ * fill and all five hallways-and-landings another, without being asked to. The
+ * Lobby is deliberately NOT in the list, and the drawing agrees - it is a place
+ * you wait rather than a place you pass through.
+ */
+export type Kind = 'studio' | 'circulation' | 'room';
+
+const CIRCULATION = /^(Stairs|Hallway|Landing|Check-in)$/;
+
 /** Every room and zone the drawing carries, with its floor and its notes. */
 export type Spot = (Room | Zone) & {
   floor: Floor;
-  kind: 'room' | 'zone';
+  shape: 'room' | 'zone';
+  kind: Kind;
   /** For a zone, the room it sits in. */
   room?: string;
   studios: string[];
   note?: string;
 };
 
-export const SPOTS: Spot[] = FLOORS.flatMap((floor) => [
-  ...FLOORPLAN[floor].rooms.map((r) => ({
-    ...r,
-    floor,
-    kind: 'room' as const,
-    studios: PLACES[r.id]?.studios ?? [],
-    note: PLACES[r.id]?.note,
-  })),
-  ...FLOORPLAN[floor].zones.map((z) => ({
-    ...z,
-    floor,
-    kind: 'zone' as const,
-    studios: PLACES[z.id]?.studios ?? [],
-    note: PLACES[z.id]?.note,
-  })),
-]);
+/**
+ * A room counts as a studio when one of its ZONES has one, not only when it
+ * does itself. The Fab Lab carries no studio of its own - laser cutting and 3D
+ * printing are zones inside it - and a map that left it the same colour as a
+ * broom cupboard would be wrong about the most useful room on the floor.
+ */
+export const SPOTS: Spot[] = FLOORS.flatMap((floor) => {
+  const zoneStudios = (roomId: string) =>
+    FLOORPLAN[floor].zones.filter((z) => z.room === roomId).flatMap((z) => PLACES[z.id]?.studios ?? []);
+
+  const kindOf = (name: string, studios: string[]): Kind =>
+    studios.length > 0 ? 'studio' : CIRCULATION.test(name) ? 'circulation' : 'room';
+
+  return [
+    ...FLOORPLAN[floor].rooms.map((r) => {
+      const studios = PLACES[r.id]?.studios ?? [];
+      return {
+        ...r,
+        floor,
+        shape: 'room' as const,
+        kind: kindOf(r.name, [...studios, ...zoneStudios(r.id)]),
+        studios,
+        note: PLACES[r.id]?.note,
+      };
+    }),
+    ...FLOORPLAN[floor].zones.map((z) => {
+      const studios = PLACES[z.id]?.studios ?? [];
+      return {
+        ...z,
+        floor,
+        shape: 'zone' as const,
+        kind: kindOf(z.name, studios),
+        studios,
+        note: PLACES[z.id]?.note,
+      };
+    }),
+  ];
+});
 
 export const SPOT_BY_ID = new Map(SPOTS.map((s) => [s.id, s]));
 
@@ -104,7 +155,7 @@ export function spotsForStudio(slug: string): Spot[] {
 
 /** "Fab Lab, laser cutting studio" - a zone says which room it is in. */
 export function placeOf(spot: Spot): string {
-  if (spot.kind === 'room') return spot.name;
+  if (spot.shape === 'room') return spot.name;
   const room = SPOT_BY_ID.get(spot.room!);
   return room ? `${room.name}, ${spot.name.toLowerCase()}` : spot.name;
 }
