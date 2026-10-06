@@ -110,6 +110,13 @@ Done:
   **43 rooms, 12 zones**, their names, their shapes, the walls and the label
   positions. `scripts/read-floorplan.mjs` reads the lot into
   `src/data/floorplan.ts`. It replaced a raster trace on 2026-10-05.
+- **14 studios, marked out across rooms and zones.** A studio is wherever its
+  work happens: woodshop is two rooms, cnc is two zones in different rooms,
+  ceramics is four rooms, metalworking is a room plus a zone. Two have nowhere
+  yet - arts & crafts and lapidary - and the page says so.
+- Colour badges for all 14 at `public/brand/studios/`, cut from the brand sheet
+  by `scripts/crop-studio-badges.mjs`. **computer lab** and **leatherworking**
+  exist as marks for the first time.
 - `src/data/rooms.ts` is no longer a list of rooms. It is a list of *notes* on
   them, keyed by the drawing's own ids, carrying the only two things a plan
   cannot state: which studios work in a space, and what is still unsettled.
@@ -2017,6 +2024,56 @@ different colours so they can be told apart; the two woodshops do not share one
 and neither do the two ceramics rooms, so nothing can be read off the colour
 itself. They render at half opacity because at full strength they are the
 loudest thing on a plan whose point is the names and the walls.
+
+### The studio badges
+
+**Cut to equal squares, because a set of badges at fourteen slightly different
+sizes reads as fourteen mistakes.** The sheet's rings measure 165 to 173px;
+nothing but a common box fixes that. Each square is centred on its own ring, so
+the artwork sits in the same place every time.
+
+**Outside the ring is transparent; the disc inside it stays white.** These sit on
+tinted room fills and on photographs, and a white square round a circular mark
+reads as a sticker nobody trimmed. The white disc is the badge - it is what keeps
+the mark legible on a photograph, which is the whole reason the brand draws them
+that way.
+
+**The colour comes from the GLYPH, not the ring, and two wrong answers came
+first.** Averaging the ring's pixels returned a muddy `#5d976a` for a green that
+is plainly vivid: a ring is a four-pixel outline, most of those pixels are its
+antialiased edge, and any mean over them lands halfway to white. Scoring for
+darkness as well as saturation made it worse by pulling into the shadow side.
+
+Neither was the real cause. **On this sheet the ring is drawn pale and the glyph
+carries the brand colour** - electronics rings at about `#8fc79b` and draws its
+chip at `#23a93c`. Sampling the ring was answering a different question
+accurately, which is the kind of bug that survives a lot of tuning. It reads
+inside the ring at 80% of the radius now, top 3% by saturation, median rather
+than mean so a few near-black outline pixels cannot drag it.
+
+**Two marks exist here that exist nowhere else.** The vector set has no computer
+lab and no leatherworking, so those two are badge-only - which is why
+leatherworking's `icon` is still a spool of thread while its `badge` is its own
+rolled belt. The vectors stay the source for /today, /calendar and the reel,
+because those need to be sharp on a 4K panel and on paper; the badges are
+placeholders and raster.
+
+**The studio's colour is a 3px spine down the left of its row, not a fill.**
+Fourteen colours is a lot to put on one page. As a rule each one identifies its
+row without competing with the badge beside it, which is where the colour is
+already doing its work.
+
+**A studio is not a room, and the list exists to let that be true.** It is
+wherever its work happens - one room, two rooms, a zone inside somebody else's
+room, or nowhere yet. Listing studios separately from the floors is what lets
+the plan stay honest about rooms while the studio list stays honest about
+studios.
+
+**The stale scoped-style trap caught this page a second time.** The studio list
+came out as unstyled inline text with the data perfectly correct. Same cause,
+same fix: restart the dev server. Worth treating as the first thing to try
+whenever a block of new CSS in an `.astro` file appears to do nothing at all,
+rather than the last.
 
 **`floorplan.svg` has been hand-edited once, and that is a hazard worth
 knowing about.** The downstairs east staircase had no wall down its left side -

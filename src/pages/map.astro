@@ -23,9 +23,9 @@
  */
 import Base from '../layouts/Base.astro';
 import { toolById, pageTitle } from '../data/tools';
-import { OPEN_QUESTIONS, SPOTS, studiosWithoutSpot, undrawnOn } from '../data/rooms';
+import { OPEN_QUESTIONS, SPOTS, placeOf, spotsForStudio, studiosWithoutSpot, undrawnOn } from '../data/rooms';
 import { FLOORPLAN, FLOORS, STROKE, type Floor, type Layer } from '../data/floorplan';
-import { STUDIO_BY_SLUG } from '../data/studios';
+import { STUDIOS, STUDIO_BY_SLUG } from '../data/studios';
 
 const TOOL = toolById('map');
 
@@ -220,6 +220,46 @@ const ORPHANS = studiosWithoutSpot();
         </section>
       ))
     }
+
+    {/* THE STUDIOS. A studio is not a room - it is wherever its work happens,
+        which can be one room, two rooms, a zone inside somebody else's room, or
+        nothing yet. Listing them separately from the floors is what lets that
+        be true without the plan having to pretend otherwise. */}
+    <section class="mp-studios">
+      <h2 class="mp-floor-h">
+        Studios<span>{STUDIOS.length} in all</span>
+      </h2>
+
+      <ul class="mp-studio-list">
+        {
+          STUDIOS.map((st) => {
+            const where = spotsForStudio(st.slug);
+            return (
+              <li
+                class:list={['mp-studio', where.length === 0 && 'is-homeless']}
+                style={`--studio: ${st.colour}`}
+                data-studios={st.slug}
+              >
+                <img class="mp-badge" src={st.badge} alt="" width="40" height="40" />
+                <span class="mp-studio-body">
+                  <span class="mp-studio-name">{st.name}</span>
+                  {where.length === 0 ? (
+                    <span class="mp-studio-where">no space yet</span>
+                  ) : (
+                    where.map((sp) => (
+                      <span class="mp-studio-where">
+                        {placeOf(sp)}
+                        <i>{sp.floor === 'upstairs' ? '2nd floor' : '1st floor'}</i>
+                      </span>
+                    ))
+                  )}
+                </span>
+              </li>
+            );
+          })
+        }
+      </ul>
+    </section>
 
     {
       (ORPHANS.length > 0 || OPEN_QUESTIONS.length > 0) && (
@@ -541,6 +581,87 @@ const ORPHANS = studiosWithoutSpot();
     color: var(--color-sm-slate);
   }
 
+  /* ------------------------------------------------------- the studios --- */
+
+  .mp-studios {
+    margin-top: 3.25rem;
+  }
+
+  .mp-studio-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.4rem;
+    margin-top: 1.1rem;
+  }
+
+  /* The studio's own colour as a spine down the left, rather than behind the
+     name or around the card. Fourteen colours is a lot to put on one page: as
+     a 3px rule each one identifies its row without any of them competing with
+     the badge beside it, which is where the colour is actually doing work. */
+  .mp-studio {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.6rem 0.75rem;
+    border-left: 3px solid var(--studio);
+    border-radius: 0 9px 9px 0;
+    background: var(--color-sm-mist);
+  }
+
+  .mp-badge {
+    flex: 0 0 auto;
+  }
+
+  .mp-studio-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    min-width: 0;
+  }
+
+  .mp-studio-name {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-sm-ink);
+  }
+
+  .mp-studio-where {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-size: 0.8125rem;
+    color: var(--color-sm-slate);
+  }
+
+  /* The floor rides with each place rather than being said once: two of these
+     studios are on both floors, so one line underneath would be wrong. */
+  .mp-studio-where i {
+    font-family: var(--font-display);
+    font-size: 0.62rem;
+    font-style: normal;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    opacity: 0.65;
+  }
+
+  /* A studio with nowhere to send anybody is the one thing this page cannot do
+     its job without, so it says so in the alert colour and keeps its place in
+     the list rather than being filtered to a footnote. */
+  .mp-studio.is-homeless {
+    border-left-color: var(--color-sm-line);
+  }
+
+  .mp-studio.is-homeless .mp-badge {
+    opacity: 0.4;
+  }
+
+  .mp-studio.is-homeless .mp-studio-where {
+    font-weight: 600;
+    color: var(--color-sm-alert);
+  }
+
   .mp-todo {
     margin-top: 3rem;
     padding: 1.1rem 1.25rem;
@@ -593,7 +714,8 @@ const ORPHANS = studiosWithoutSpot();
       border-radius: 0;
     }
 
-    .mp-spots {
+    .mp-spots,
+    .mp-studio-list {
       grid-template-columns: 1fr;
     }
   }

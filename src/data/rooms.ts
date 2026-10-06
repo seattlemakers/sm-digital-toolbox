@@ -49,9 +49,7 @@ export const PLACES: Record<string, Place> = {
   'U15': { note: '3D printing and laser cutting are zones in it.' },
   'U15.1': { studios: ['3d-printing'] },
   'U15.2': { studios: ['laser-cutting'] },
-  'U16': {
-    note: 'The brand icon sheet has a Computer Lab mark and studios.ts has no such studio — add one?',
-  },
+  'U16': { studios: ['computer-lab'] },
   'U11': { note: 'All genders.' },
   'U12': { note: 'All genders.' },
 

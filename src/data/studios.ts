@@ -30,7 +30,25 @@ export type Studio = {
   slug: string;
   /** Display name. Lowercase throughout, matching the brand deck's chips. */
   name: string;
+  /**
+   * The mono vector mark, dark line art in a white disc. Still what /today,
+   * /calendar and the reel use: it is a vector, so it stays sharp on a 4K wall
+   * panel and prints cleanly on a door sign.
+   */
   icon: string;
+  /**
+   * The colour badge, cut from the brand's icon sheet by
+   * scripts/crop-studio-badges.mjs. A placeholder raster, and the only mark
+   * there is for computer lab and leatherworking - the vector set has neither,
+   * which is why leatherworking's `icon` is still a spool of thread.
+   */
+  badge: string;
+  /**
+   * The studio's own colour, read off the sheet's GLYPH rather than its ring -
+   * the rings are drawn pale and the glyph carries the brand colour. See
+   * *The studio badges* in CLAUDE.md.
+   */
+  colour: string;
   /** Raw calendar category slugs that resolve to this studio. */
   eventCategories: string[];
   /**
@@ -44,23 +62,28 @@ export type Studio = {
 };
 
 export const STUDIOS: Studio[] = [
-  { slug: 'laser-cutting',   name: 'laser cutting',   icon: '/brand/icons/laser-cutting.svg',   eventCategories: ['laser-cutting'] },
-  { slug: '3d-printing',     name: '3d printing',     icon: '/brand/icons/3d-printing.svg',     eventCategories: ['3d-printing'] },
-  { slug: 'woodshop',        name: 'woodshop',        icon: '/brand/icons/woodshop.svg',        eventCategories: ['woodworking'] },
-  { slug: 'sewing',          name: 'sewing',          icon: '/brand/icons/sewing.svg',          eventCategories: ['sewing'] },
-  { slug: 'electronics',     name: 'electronics',     icon: '/brand/icons/electronics.svg',     eventCategories: ['electronics'], preferEvent: 'Programmable LEDs' },
-  { slug: 'cnc',             name: 'cnc',             icon: '/brand/icons/cnc.svg',             eventCategories: ['cnc', 'cnc-routing'] },
-  { slug: 'ceramics',        name: 'ceramics',        icon: '/brand/icons/ceramics.svg',        eventCategories: ['ceramics'] },
-  { slug: 'screen-printing', name: 'screen printing', icon: '/brand/icons/screen-printing.svg', eventCategories: ['print-making'] },
-  { slug: 'arts-crafts',     name: 'arts & crafts',   icon: '/brand/icons/arts-crafts.svg',     eventCategories: ['crafts'] },
+  { slug: 'laser-cutting',   name: 'laser cutting',   icon: '/brand/icons/laser-cutting.svg', badge: '/brand/studios/laser-cutting.png', colour: '#ef1c26',   eventCategories: ['laser-cutting'] },
+  { slug: '3d-printing',     name: '3d printing',     icon: '/brand/icons/3d-printing.svg', badge: '/brand/studios/3d-printing.png', colour: '#ea5300',     eventCategories: ['3d-printing'] },
+  { slug: 'woodshop',        name: 'woodshop',        icon: '/brand/icons/woodshop.svg', badge: '/brand/studios/woodshop.png', colour: '#ffb61b',        eventCategories: ['woodworking'] },
+  { slug: 'sewing',          name: 'sewing',          icon: '/brand/icons/sewing.svg', badge: '/brand/studios/sewing.png', colour: '#92318c',          eventCategories: ['sewing'] },
+  { slug: 'electronics',     name: 'electronics',     icon: '/brand/icons/electronics.svg', badge: '/brand/studios/electronics.png', colour: '#29a641',     eventCategories: ['electronics'], preferEvent: 'Programmable LEDs' },
+  { slug: 'cnc',             name: 'cnc',             icon: '/brand/icons/cnc.svg', badge: '/brand/studios/cnc.png', colour: '#945612',             eventCategories: ['cnc', 'cnc-routing'] },
+  { slug: 'ceramics',        name: 'ceramics',        icon: '/brand/icons/ceramics.svg', badge: '/brand/studios/ceramics.png', colour: '#e85579',        eventCategories: ['ceramics'] },
+  { slug: 'screen-printing', name: 'screen printing', icon: '/brand/icons/screen-printing.svg', badge: '/brand/studios/screen-printing.png', colour: '#43b0a5', eventCategories: ['print-making'] },
+  { slug: 'arts-crafts',     name: 'arts & crafts',   icon: '/brand/icons/arts-crafts.svg', badge: '/brand/studios/arts-crafts.png', colour: '#9cc001',     eventCategories: ['crafts'] },
   // The icon sheet has no leatherworking mark, so it borrows sewing's for now.
   // The two share a calendar tag already (`leatherworking-sewing`), which makes
   // it the least wrong thing to point at - but it is a placeholder, and a row
   // tagged only `leatherworking` currently shows a spool of thread.
-  { slug: 'leatherworking',  name: 'leatherworking',  icon: '/brand/icons/sewing.svg',          eventCategories: ['leatherworking', 'leatherworking-sewing'] },
-  { slug: 'metalworking',    name: 'metalworking',    icon: '/brand/icons/metalworking.svg',    eventCategories: [] },
-  { slug: 'av-studio',       name: 'a/v studio',      icon: '/brand/icons/av-studio.svg',       eventCategories: [] },
-  { slug: 'lapidary',        name: 'lapidary',        icon: '/brand/icons/lapidary.svg',        eventCategories: [] },
+  { slug: 'leatherworking',  name: 'leatherworking',  icon: '/brand/icons/sewing.svg', badge: '/brand/studios/leatherworking.png', colour: '#853321',          eventCategories: ['leatherworking', 'leatherworking-sewing'] },
+  { slug: 'metalworking',    name: 'metalworking',    icon: '/brand/icons/metalworking.svg', badge: '/brand/studios/metalworking.png', colour: '#8e7479',    eventCategories: [] },
+  // On the brand sheet and on the plan (room U16), and on no calendar tag -
+  // so it has nothing to show on /calendar yet, exactly like metalworking.
+  { slug: 'computer-lab',    name: 'computer lab',    icon: '/brand/icons/event.svg', badge: '/brand/studios/computer-lab.png', colour: '#5a41ab', eventCategories: [] },
+  { slug: 'av-studio',       name: 'a/v studio',      icon: '/brand/icons/av-studio.svg', badge: '/brand/studios/av-studio.png', colour: '#3563a6',       eventCategories: [] },
+  // The sheet draws this one as "Jewelry". Kept as lapidary until somebody
+  // confirms they are the same studio rather than two.
+  { slug: 'lapidary',        name: 'lapidary',        icon: '/brand/icons/lapidary.svg', badge: '/brand/studios/lapidary.png', colour: '#a90c5c',        eventCategories: [] },
 ];
 
 export const STUDIO_BY_SLUG = new Map(STUDIOS.map((s) => [s.slug, s]));
