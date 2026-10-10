@@ -1,9 +1,22 @@
 /**
- * The studio list. Single source of truth for the reel.
+ * The CALENDAR's studio list, and the reel's. A one-off.
+ *
+ * Renamed from studios.ts on 2026-10-10, when data/space became the central
+ * list for the building. This one is kept, frozen, because it serves tools that
+ * are being retired and carries three fields that are about a booking system
+ * rather than a space: `eventCategories`, `preferEvent`, and an `icon` that
+ * /calendar requires to be a non-null string.
+ *
+ * Its slugs have drifted from data/space's on purpose - `cnc` here is
+ * `cnc-routing` there, `lapidary` is `jewelry` - and they are NOT to be
+ * reconciled. `public/studios/<slug>/` photo folders are keyed to these slugs,
+ * so renaming one here silently drops slides from the reel.
  *
  * ADDING A STUDIO
  *   1. drop photos in  public/studios/<slug>/*.jpg   (1920px+ wide, landscape)
- *   2. drop an icon at public/brand/icons/<slug>.svg
+ *   2. point `icon` at a file in public/brand/icons/ - the field is a PATH and
+ *      not a convention, so the filename need not match the slug, and for
+ *      several studios it does not
  *   3. add an entry below
  * Nothing else needs to change.
  *

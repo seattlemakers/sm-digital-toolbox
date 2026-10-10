@@ -18,7 +18,7 @@
  * a list and a lookup table with no data behind it.
  */
 import type { SmEvent } from '../lib/events';
-import { STUDIO_BY_SLUG, studiosForCategories, type Studio } from '../data/studios';
+import { STUDIO_BY_SLUG, studiosForCategories, type Studio } from '../data/calendar-studios';
 import {
   monthKey,
   monthLabel,

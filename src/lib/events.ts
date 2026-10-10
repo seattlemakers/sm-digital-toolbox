@@ -1,4 +1,4 @@
-import { STUDIOS, studiosForCategories, type Studio } from '../data/studios';
+import { STUDIOS, studiosForCategories, type Studio } from '../data/calendar-studios';
 
 export type SmEvent = {
   id: number;

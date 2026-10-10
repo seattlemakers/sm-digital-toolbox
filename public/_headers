@@ -1,0 +1,19 @@
+# Headers for the static assets, applied by Cloudflare Workers at the edge.
+#
+# WHY THIS FILE EXISTS AT ALL: /data/space.json is published for other Seattle
+# Makers web projects to read, and a browser on another origin cannot read it
+# without an access-control-allow-origin header. Astro is `output: 'static'`,
+# so that endpoint is prerendered to a file and served by the Worker's ASSETS
+# binding - a header set on the Response inside space.json.ts is built away and
+# never reaches anybody. It has to be set here.
+#
+# It is the same wall /today runs into from the other side: seattlemakers.org
+# sends no such header, which is the entire reason worker/index.js exists.
+#
+# ONLY `npm run serve` CAN VERIFY THIS. Neither `astro dev` nor `astro preview`
+# goes through the Worker, so both will happily serve the file with no header
+# and no complaint.
+
+/data/*
+  access-control-allow-origin: *
+  cache-control: public, max-age=300, stale-while-revalidate=86400

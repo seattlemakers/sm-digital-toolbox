@@ -15,7 +15,7 @@
     "events": "node scripts/fetch-events.mjs",
     "floorplan": "node scripts/read-floorplan.mjs > src/data/floorplan.ts",
     "check": "astro check",
-    "test": "node --experimental-strip-types --no-warnings scripts/test-day-status.mjs && node --experimental-strip-types --no-warnings scripts/test-summarise.mjs && node --experimental-strip-types --no-warnings scripts/test-month.mjs && node --experimental-strip-types --no-warnings scripts/test-hours.mjs && node scripts/test-event-image.mjs && node --experimental-strip-types --no-warnings scripts/test-parse-calendar.mjs",
+    "test": "node --experimental-strip-types --no-warnings scripts/test-day-status.mjs && node --experimental-strip-types --no-warnings scripts/test-summarise.mjs && node --experimental-strip-types --no-warnings scripts/test-month.mjs && node --experimental-strip-types --no-warnings scripts/test-hours.mjs && node scripts/test-event-image.mjs && node --experimental-strip-types --no-warnings scripts/test-parse-calendar.mjs && node --experimental-strip-types --no-warnings scripts/test-space.mjs",
     "qr": "node scripts/make-qr.mjs"
   },
   "dependencies": {

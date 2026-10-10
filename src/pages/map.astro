@@ -21,9 +21,17 @@
  */
 import Base from '../layouts/Base.astro';
 import { toolById, pageTitle } from '../data/tools';
-import { SPOTS, studiosWithoutSpot, type Spot } from '../data/rooms';
+import {
+  SPACES,
+  SPACE_BY_ID,
+  STUDIO_BY_SLUG,
+  FLOOR_NAME,
+  byCode,
+  studiosWithoutSpace,
+  type Space,
+} from '../data/space';
 import { FLOORPLAN, FLOORS, STROKE, type Floor, type Layer } from '../data/floorplan';
-import { SPACE_STUDIO_BY_SLUG } from '../data/space-studios';
+import { kindOf, isLabelled } from '../lib/map-plan';
 
 const TOOL = toolById('map');
 
@@ -37,13 +45,7 @@ const TOOL = toolById('map');
  */
 const LAYERS: Layer[] = ['stairs', 'exterior', 'interior'];
 
-/** What each floor is called on the page. The geometry is the drawing's. */
-const FLOOR_NAME: Record<Floor, { title: string; sub: string }> = {
-  upstairs: { title: 'Upstairs', sub: '2nd floor' },
-  downstairs: { title: 'Downstairs', sub: '1st floor' },
-};
-
-const spot = (id: string) => SPOTS.find((s) => s.id === id)!;
+const spot = (id: string) => SPACE_BY_ID.get(id)!;
 
 /**
  * The drawing's label sizes were set in Archivo Narrow and the site sets
@@ -53,55 +55,36 @@ const spot = (id: string) => SPOTS.find((s) => s.id === id)!;
 const LABEL_SCALE = 0.88;
 const path = (points: readonly (readonly number[])[]) =>
   `M${points.map((p) => p.join(' ')).join(' L')} Z`;
-const ORPHANS = studiosWithoutSpot();
+const ORPHANS = studiosWithoutSpace();
 
 /**
- * Every space on a floor, in reading order, each room followed by its own
- * zones.
+ * Every space on a floor, in reading order.
  *
- * The drawing's order is the order the author drew in - U15 sits between U9 and
- * U10, D20 between D7 and D8 - which is nothing to do with how the building
- * reads and makes a list of fifty-seven rows impossible to check against. The
- * codes sort numerically rather than as text, so U10 does not land between U1
- * and U2, and a zone sorts under the room it belongs to rather than into a
- * block of its own at the end: "is the Jewelry Studio inside Metal Studios?" is
- * exactly the question this table is here to have answered, and it can only be
- * answered if the two are next to each other.
+ * SPACES is already sorted - each room followed by its own zones, codes
+ * numeric - because that ordering is part of the published contract rather
+ * than this page's preference. See data/space. All this does is filter.
  */
-const codeAt = (id: string): [number, number] => {
-  const [, major, minor = '0'] = id.match(/^[A-Z](\d+)(?:\.(\d+))?$/) ?? [];
-  return [Number(major), Number(minor)];
-};
-const byCode = (a: Spot, b: Spot) =>
-  codeAt(a.id)[0] - codeAt(b.id)[0] || codeAt(a.id)[1] - codeAt(b.id)[1];
+const rowsOn = (floor: Floor): Space[] => SPACES.filter((s) => s.floor === floor);
 
-function rowsOn(floor: Floor): Spot[] {
-  const here = SPOTS.filter((s) => s.floor === floor);
-  return here
-    .filter((s) => s.shape === 'room')
-    .sort(byCode)
-    .flatMap((room) => [room, ...here.filter((s) => s.room === room.id).sort(byCode)]);
-}
+const ROOMS = SPACES.filter((s) => s.shape === 'room');
+const ZONES = SPACES.filter((s) => s.shape === 'zone');
 
 /**
  * What colour a space lights up in: its studio's, or nothing.
  *
  * Only a space that IS a studio has one. A room whose studios are all in its
  * zones - the Fab Lab, the Megastudio, the Garage - deliberately has none: it
- * holds two disciplines and is not either of them, so it falls back to the
- * plan's own green. Every space carries at most one studio, so the first is
- * the only.
+ * holds two disciplines and is not either of them, so it falls back to grey
+ * through the var()'s own default. Every space carries at most one studio, so
+ * the first is the only.
  *
  * `style` is left off entirely rather than set empty, so the CSS falls through
- * to the default in its own var() rather than to an empty custom property.
+ * to that default rather than to an empty custom property.
  */
-const litStyle = (sp: Spot) => {
-  const studio = sp.studios.length > 0 ? SPACE_STUDIO_BY_SLUG.get(sp.studios[0])! : null;
+const litStyle = (sp: Space) => {
+  const studio = sp.studios.length > 0 ? STUDIO_BY_SLUG.get(sp.studios[0])! : null;
   return studio ? `--studio: ${studio.colour}` : undefined;
 };
-
-const ROOMS = SPOTS.filter((s) => s.shape === 'room');
-const ZONES = SPOTS.filter((s) => s.shape === 'zone');
 
 /**
  * The space's name and who works in it, in its hover title.
@@ -111,8 +94,8 @@ const ZONES = SPOTS.filter((s) => s.shape === 'zone');
  * studio is in which room is the mapping this page exists for.
  */
 function tooltip(id: string): string {
-  const sp = SPOTS.find((s) => s.id === id)!;
-  const studios = sp.studios.map((slug) => SPACE_STUDIO_BY_SLUG.get(slug)!.name);
+  const sp = spot(id);
+  const studios = sp.studios.map((slug) => STUDIO_BY_SLUG.get(slug)!.name);
   // The longer name, where there is one. A hover has room the plan does not -
   // it is why the drawing's label can stay short enough to fit its own walls.
   return studios.length ? `${sp.display} — ${studios.join(', ')}` : sp.display;
@@ -149,7 +132,7 @@ function tooltip(id: string): string {
       FLOORS.map((floor) => (
         <section class="mp-floor" data-floor={floor}>
           <h2 class="mp-floor-h">
-            {FLOOR_NAME[floor].title}
+            {FLOOR_NAME[floor].name}
             <span>{FLOOR_NAME[floor].sub}</span>
           </h2>
 
@@ -159,7 +142,7 @@ function tooltip(id: string): string {
                 class="mp-plan"
                 viewBox={FLOORPLAN[floor].viewBox}
                 role="img"
-                aria-label={`Floorplan of the ${FLOOR_NAME[floor].title.toLowerCase()} floor`}
+                aria-label={`Floorplan of the ${FLOOR_NAME[floor].name.toLowerCase()} floor`}
               >
                 {/* North is up on the drawing, so it is up here. The one thing on
                     the plan that is not the building, and it earns the space:
@@ -189,9 +172,9 @@ function tooltip(id: string): string {
                       or at the space itself. */}
                   {FLOORPLAN[floor].rooms.map((r) => (
                     <path
-                      class:list={['mp-room', !spot(r.id).drawn && 'is-quiet']}
+                      class:list={['mp-room', !isLabelled(spot(r.id)) && 'is-quiet']}
                       d={path(r.points)}
-                      data-kind={spot(r.id).kind}
+                      data-kind={kindOf(spot(r.id))}
                       data-spot={r.id}
                       style={litStyle(spot(r.id))}
                     >
@@ -230,8 +213,8 @@ function tooltip(id: string): string {
                       decision somebody made with the plan in front of them. */}
                   {FLOORPLAN[floor].rooms.map((r) => (
                     <text
-                      class:list={['mp-name', !spot(r.id).drawn && 'is-quiet']}
-                      data-kind={spot(r.id).kind}
+                      class:list={['mp-name', !isLabelled(spot(r.id)) && 'is-quiet']}
+                      data-kind={kindOf(spot(r.id))}
                       data-spot={r.id}
                       x={r.at[0]}
                       y={r.at[1]}
@@ -247,7 +230,7 @@ function tooltip(id: string): string {
 
                   {FLOORPLAN[floor].zones.map((z) => (
                     <text
-                      class:list={['mp-zone-name', !spot(z.id).drawn && 'is-quiet']}
+                      class:list={['mp-zone-name', !isLabelled(spot(z.id)) && 'is-quiet']}
                       data-spot={z.id}
                       x={z.at[0]}
                       y={z.at[1]}
@@ -273,8 +256,8 @@ function tooltip(id: string): string {
                 <div class="mp-list-head">
                   <span>Spaces</span>
                   <span>
-                    {SPOTS.filter((sp) => sp.floor === floor && sp.shape === 'room').length} rooms ·{' '}
-                    {SPOTS.filter((sp) => sp.floor === floor && sp.shape === 'zone').length} zones
+                    {SPACES.filter((sp) => sp.floor === floor && sp.shape === 'room').length} rooms ·{' '}
+                    {SPACES.filter((sp) => sp.floor === floor && sp.shape === 'zone').length} zones
                   </span>
                 </div>
 
@@ -293,7 +276,7 @@ function tooltip(id: string): string {
                           data-spot={sp.id}
                           data-shape={sp.shape}
                           style={litStyle(sp)}
-                          class:list={[!sp.drawn && 'is-unlabelled']}
+                          class:list={[!isLabelled(sp) && 'is-unlabelled']}
                         >
                           <td class="mp-code">{sp.id}</td>
                           <td class="mp-space">
@@ -302,14 +285,14 @@ function tooltip(id: string): string {
                                 as walls and left unnamed on the plan, so a reviewer
                                 looking for CLOSET would not find one. Said here rather
                                 than left to be noticed. */}
-                            {!sp.drawn && <span class="mp-flag">not labelled</span>}
+                            {!isLabelled(sp) && <span class="mp-flag">not labelled</span>}
                           </td>
                           <td class="mp-who">
                             {sp.studios.length === 0 ? (
                               <span class="mp-dash">—</span>
                             ) : (
                               sp.studios.map((slug) => {
-                                const st = SPACE_STUDIO_BY_SLUG.get(slug)!;
+                                const st = STUDIO_BY_SLUG.get(slug)!;
                                 return (
                                   <span class="mp-who-one">
                                     <img src={st.badge} alt="" width="22" height="22" />
@@ -354,9 +337,7 @@ function tooltip(id: string): string {
         against something else should not have to be told these exist. */}
     <p class="mp-files">
       <span>Also as data</span>
-      <a href="/map/rooms.json">rooms.json</a>
-      <a href="/map/zones.json">zones.json</a>
-      <a href="/map/studios.json">studios.json</a>
+      <a href="/data/space.json">space.json</a>
     </p>
 
     <p class="mp-note">

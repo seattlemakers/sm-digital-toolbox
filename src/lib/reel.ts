@@ -1,6 +1,6 @@
 import { pickByStudio, type SmEvent } from './events';
 import { studiosWithPhotos } from './photos';
-import type { Studio } from '../data/studios';
+import type { Studio } from '../data/calendar-studios';
 
 export type Slide =
   | { type: 'brand' }

@@ -1,6 +1,6 @@
 import { readdirSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { STUDIOS, type Studio } from '../data/studios';
+import { STUDIOS, type Studio } from '../data/calendar-studios';
 
 /**
  * Studio photos are discovered from the filesystem at build time rather than

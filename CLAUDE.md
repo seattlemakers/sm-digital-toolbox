@@ -117,10 +117,12 @@ Done:
 - Colour badges for all 14 at `public/brand/studios/`, cut from the brand sheet
   by `scripts/crop-studio-badges.mjs`. **computer lab** and **leatherworking**
   exist as marks for the first time.
-- `src/data/rooms.ts` is no longer a list of rooms. It is one mapping - the
-  drawing's own id to the studios that work in that space - and nothing else.
-- `src/data/space-studios.ts` is the map's **own** studio list, forked from
-  `studios.ts` on 2026-10-06. Nothing on `/map` reads `studios.ts` any more.
+- **`src/data/space/` is the centralised data**, as of 2026-10-10:
+  `studios.json` and `mappings.json` are the editable rows, `index.ts` joins
+  them to the drawing and validates. `src/data/calendar-studios.ts` is the
+  calendar's one-off and is frozen.
+- **`/data/space.json`** publishes it for other Seattle Makers projects - one
+  fetch, CORS'd by `public/_headers`.
 - Each floor is **a plan beside its own list** - every room and zone on that
   floor, with its code, its parent and its studio - for review before any of
   this is relied on. The list scrolls in its own box, and hovering either side
@@ -130,9 +132,8 @@ Done:
 - **A space can carry a longer display name than the plan can print**, via
   `DISPLAY_NAMES` in rooms.ts - "Woodshop 2" on the drawing, "Woodshop 2:
   Machine Room" in the list and the hover.
-- The page links **`/map/rooms.json`, `/map/zones.json` and
-  `/map/studios.json`** - the same names in a form somebody can diff or paste
-  into a message. Generated, read-only, consumed by nothing.
+- The page links **`/data/space.json`** - the same names in a form somebody can
+  diff, paste into a message, or build another tool on.
 
 Label maker (`/labels`) is built and verified against a print-to-PDF. Most of
 the *Implementation notes* below are about it.
@@ -2143,13 +2144,27 @@ table answers "is this data right", which is the job in front of it. The two
 functions are what a studio list is built from - `placeOf()` holds the "Fab Lab,
 laser end" rule - and are left in rooms.ts for when it comes back.
 
-**The map has its own studio list, and the fork was the point.** `studios.ts`
-exists to feed the calendar: three of its five fields are bridges to one -
-`eventCategories` (the raw category slugs the site puts on an event anchor),
-`preferEvent` (which class to advertise) and `icon` (the mono vector the reel
-and the door posters need). None of those is a fact about the building, and the
-calendar behind them is being replaced, so several of its names were settled
-against needs that are about to stop existing.
+**The calendar's list is a one-off and is frozen.** `calendar-studios.ts`
+(`studios.ts` until 2026-10-10) feeds the calendar and the reel, and three of
+its five fields are bridges to a booking system: `eventCategories`,
+`preferEvent`, and an `icon` that `calendar.ts` assigns straight to an
+`img.src` and therefore needs as a non-null string. None of those is a fact
+about the building, which is why the lists stayed apart rather than merging -
+`icon?: string` on a shared record is a type error in two places.
+
+**Its slugs must not be reconciled with the central list.** `public/studios/`
+photo folders are keyed to *these* slugs, because `lib/photos.ts` calls
+`photosFor(studio.slug)` against this list - so renaming `cnc` here to match
+`cnc-routing` would silently drop slides from the reel. `test-space.mjs` checks
+every photo folder against this list for exactly that reason.
+
+**The icons were NOT renamed to match the central slugs**, and the badge
+precedent does not transfer. The badges are *generated* - `crop-studio-badges.mjs`
+writes `${SLUGS[i]}.png` - so renaming those was an array edit and a re-run. The
+icons are hand-extracted from the brand's Illustrator master and are named for
+what they are on that sheet. `icon` is a path rather than a convention, which
+this file already proved before any of this: `leatherworking` points at
+`sewing.svg`.
 
 `space-studios.ts` carries four fields - slug, name, badge, colour - which is
 exactly what the map prints. The two lists are **expected to drift**, and that
@@ -2252,22 +2267,44 @@ place is visible on the plan, where a display name for a room that does not
 exist is a string nothing ever looks up, and it fails by simply never
 appearing.
 
-**The three JSON files are output, not source.** `/map/rooms.json`,
-`/map/zones.json`, `/map/studios.json` - generated from the same data the page
-renders, linked from the page, and consumed by nothing in the repo. They exist
-because reviewing forty-three names against somebody else's list is a thing you
-do in a text editor, not by reading a web page.
+**Rows are JSON, rules are TypeScript, and the split is the design.** The data
+was centralised on 2026-10-10 into `src/data/space/`: `studios.json` and
+`mappings.json` hold the rows a form, a script or an agent could write, and
+`index.ts` holds the reasoning, the derivation and the validation.
 
-Endpoints rather than files in public/, for the dummy calendar's reason: a copy
-in public/ is a copy that goes stale with nothing saying so. `src/pages/map.astro`
-and `src/pages/map/*.json.ts` coexist happily - the page builds to
-`map/index.html` and the endpoints sit beside it.
+The reason is not "JSON is easy to write". It is that **any editor which
+round-trips a file destroys its comments**, and the thirty lines explaining why
+the Landing has no label are worth more than having them beside the ids they
+discuss. Keeping them in a file no editor rewrites makes them safe by
+construction. The cost is that nothing type-checks a row as you type, so
+`index.ts` validates shape as well as references - keys present, colours a hex
+triple, no duplicate slug - all of it throwing at module load. Each throw was
+checked by breaking it on purpose.
 
-`studios.json`'s `where` uses `placeOf()`, so it prints the *drawing's* names
-("Woodshop 2", "Fab Lab, laser cutting studio") rather than the display ones.
-That is deliberate - it is the name on the plan, which is what somebody holding
-the file and looking at the wall needs - and rooms.json carries both against
-the same code if the longer one is wanted.
+`mappings.json` holds **no room names**. The drawing is the one place a space is
+named, so an editing UI can add a *display* name and cannot rename a room.
+
+**The published file is a contract, not a dump.** `/data/space.json` - one
+fetch, replacing three that were 52% redundant. What it leaves out is the point:
+no geometry, no `kind`, nothing about which names our drawing prints. Rules it
+keeps, because a consumer will rely on each: optional keys absent rather than
+empty; stable order, set in `data/space` rather than in the page; `updated`
+taken from the rows rather than the build clock, because a per-build timestamp
+makes every diff non-empty and every cache entry new.
+
+**CORS lives in `public/_headers`, and without it the whole exercise fails.**
+`output: 'static'` means the endpoint is prerendered to a file and served by the
+Worker's ASSETS binding, so a header set on the `Response` inside the endpoint
+is built away and never reaches anybody. Another origin would hit exactly the
+wall `/today` hits with seattlemakers.org - which is the entire reason
+`worker/index.js` exists. **Only `npm run serve` can verify it**: neither
+`astro dev` nor `astro preview` goes through the Worker, and both will serve the
+file with no header and no complaint.
+
+**Asset paths are never rebuilt from a slug.** `unknown`'s badge is an `.svg`
+where the other fourteen are `.png`, and `cnc-routing`'s icon is `cnc.svg`. The
+published file says so in its own `notes`, and `test-space.mjs` pins both rows
+precisely because they are the ones a tidy-minded refactor would "fix".
 
 **A zone is a named area inside a room, with no wall between them**, and that is
 the distinction the old tape colours were reaching for and never quite had.
@@ -2476,7 +2513,7 @@ stairs, which is the one thing about a staircase worth naming - true in the
 abstract, and wrong on this plan. It is a 49-unit slot between a restroom and a
 stair, in the corner of the floor that already carries the most ink, and the
 name had to be wedged into it. The stairs drawn beside it already say what it
-is. Fifteen of the fifty-seven spaces are unlabelled now.
+is. Sixteen of the fifty-seven spaces are unlabelled now.
 
 **There is no colour on the plan at rest, as of 2026-10-06.** The studios were a
 green wash - `--color-sm-green-mid` at 0.2, with a 0.08 hint for a room whose
@@ -2551,6 +2588,22 @@ by comparing each label's rendered width against its own room's: at 0.88 two
 labels of fifty-five are tight - Landing at 45.2 units in 49.3, Closet at 32.9
 in 37.9 - and none actually overflow. Shrinking the other fifty-three to give
 those two more air would be the wrong trade.
+
+**`kind` is a fact and `drawn` is rendering**, which is why only one of them
+left the data on 2026-10-10. "Is this a workshop, a corridor, or neither" is a
+question about the building, so its inputs - `studios`, `studiosWithin`,
+`circulation` - are data; folding them into three buckets is `kindOf()` in
+`lib/map-plan.ts`. "We do not print this room's name on our drawing" is about
+one picture, so `isLabelled()` lives there whole.
+
+**The two name regexes became explicit id lists, and that was the real fix.**
+`CIRCULATION` and `UNDRAWN` matched against `name` - and `name` comes from
+`floorplan.svg`, which has been hand-edited four times, **twice to rename a
+space**. A rename would have silently erased a room's label or handed one back,
+with nothing failing and nobody looking. The ids are checked against the drawing
+at module load instead, so a redraw that drops one fails the build. The id sets
+were derived by running the old regexes rather than retyped, so the swap changed
+no behaviour: ten circulation, sixteen unlabelled.
 
 **A zone's name is tellable from a room's by CASE, and a weight was not
 enough.** Until 2026-10-06 the only differences were 700 against 600 and ink

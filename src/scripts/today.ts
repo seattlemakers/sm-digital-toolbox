@@ -26,7 +26,7 @@
  * kilobyte rather than the whole calendar.
  */
 import type { SmEvent } from '../lib/events';
-import { studiosForCategories, type Studio } from '../data/studios';
+import { studiosForCategories, type Studio } from '../data/calendar-studios';
 import { openState, greeting, hoursNote } from '../lib/hours';
 import {
   statuses,

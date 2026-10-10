@@ -1,0 +1,107 @@
+{
+  "updated": "2026-10-10",
+  "studios": [
+    {
+      "slug": "laser-cutting",
+      "name": "Laser Cutting",
+      "colour": "#ef1c26",
+      "badge": "/brand/studios/laser-cutting.png",
+      "icon": "/brand/icons/laser-cutting.svg"
+    },
+    {
+      "slug": "3d-printing",
+      "name": "3D Printing",
+      "colour": "#ea5300",
+      "badge": "/brand/studios/3d-printing.png",
+      "icon": "/brand/icons/3d-printing.svg"
+    },
+    {
+      "slug": "woodshop",
+      "name": "Woodshop",
+      "colour": "#ffb61b",
+      "badge": "/brand/studios/woodshop.png",
+      "icon": "/brand/icons/woodshop.svg"
+    },
+    {
+      "slug": "sewing",
+      "name": "Sewing",
+      "colour": "#92318c",
+      "badge": "/brand/studios/sewing.png",
+      "icon": "/brand/icons/sewing.svg"
+    },
+    {
+      "slug": "electronics",
+      "name": "Electronics",
+      "colour": "#29a641",
+      "badge": "/brand/studios/electronics.png",
+      "icon": "/brand/icons/electronics.svg"
+    },
+    {
+      "slug": "cnc-routing",
+      "name": "CNC Routing",
+      "colour": "#945612",
+      "badge": "/brand/studios/cnc-routing.png",
+      "icon": "/brand/icons/cnc.svg"
+    },
+    {
+      "slug": "ceramics",
+      "name": "Ceramics",
+      "colour": "#e85579",
+      "badge": "/brand/studios/ceramics.png",
+      "icon": "/brand/icons/ceramics.svg"
+    },
+    {
+      "slug": "screen-printing",
+      "name": "Screen Printing",
+      "colour": "#43b0a5",
+      "badge": "/brand/studios/screen-printing.png",
+      "icon": "/brand/icons/screen-printing.svg"
+    },
+    {
+      "slug": "arts-crafts",
+      "name": "Arts & Crafts",
+      "colour": "#9cc001",
+      "badge": "/brand/studios/arts-crafts.png",
+      "icon": "/brand/icons/arts-crafts.svg"
+    },
+    {
+      "slug": "leather-studio",
+      "name": "Leather",
+      "colour": "#853321",
+      "badge": "/brand/studios/leather-studio.png"
+    },
+    {
+      "slug": "metalworking",
+      "name": "Metalworking",
+      "colour": "#8e7479",
+      "badge": "/brand/studios/metalworking.png",
+      "icon": "/brand/icons/metalworking.svg"
+    },
+    {
+      "slug": "software",
+      "name": "Software",
+      "colour": "#5a41ab",
+      "badge": "/brand/studios/software.png"
+    },
+    {
+      "slug": "av-studio",
+      "name": "A/V",
+      "colour": "#3563a6",
+      "badge": "/brand/studios/av-studio.png",
+      "icon": "/brand/icons/av-studio.svg"
+    },
+    {
+      "slug": "jewelry",
+      "name": "Jewelry",
+      "colour": "#a90c5c",
+      "badge": "/brand/studios/jewelry.png",
+      "icon": "/brand/icons/lapidary.svg"
+    },
+    {
+      "slug": "unknown",
+      "name": "???",
+      "colour": "#1a1a1a",
+      "badge": "/brand/studios/unknown.svg"
+    }
+  ]
+}

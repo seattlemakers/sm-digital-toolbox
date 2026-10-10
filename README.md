@@ -234,7 +234,9 @@ Photos are discovered from the filesystem, so this is mostly drag-and-drop:
 
 1. Put landscape JPEGs (1920px wide or better) in `public/studios/<slug>/`.
    They appear in filename order; `01.jpg`, `02.jpg`, `03.jpg` is the convention.
-2. If the studio is new, add an icon at `public/brand/icons/<slug>.(png|svg)`
+2. If the studio is new, point its `icon` at a file in `public/brand/icons/`.
+   The field is a path, not a convention - several studios reference a file
+   named for the brand sheet rather than for their own slug
    and a line to `STUDIOS` in [`src/data/studios.ts`](src/data/studios.ts).
 
 The reel picks the change up on the next build. Two photos per studio are used
