@@ -124,6 +124,7 @@ ok(studiosOf('U1.2')[0] === 'woodshop', 'Big CNC should belong to the woodshop')
 ok(studiosOf('U5.1')[0] === 'woodshop', 'the Woodshop 2 CNC zone should belong to the woodshop');
 ok(!studios.some((s) => s.slug.startsWith('cnc')), 'cnc should no longer be a studio of its own');
 ok(mappings['U5']?.tagline === 'Machine Room', 'Woodshop 2 should still carry its tagline');
+ok(mappings['U6']?.tagline === 'Bench Room', 'Woodshop 1 should carry its tagline');
 ok(mappings['D15']?.tagline === 'Hand Building & Glazing', 'Ceramics 1 should carry its tagline');
 // The first taglines on ZONES rather than rooms. Worth pinning because the
 // plan wraps a tagline against the space's own width, and a zone is small.

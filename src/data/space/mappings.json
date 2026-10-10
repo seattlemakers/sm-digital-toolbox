@@ -7,7 +7,7 @@
     "U3.2": { "studios": ["metalworking"], "tagline": "Welding & Fabrication" },
     "U5": { "studios": ["woodshop"], "tagline": "Machine Room" },
     "U5.1": { "studios": ["woodshop"] },
-    "U6": { "studios": ["woodshop"] },
+    "U6": { "studios": ["woodshop"], "tagline": "Bench Room" },
     "U7": { "studios": ["printmaking"] },
     "U8": { "studios": ["woodshop"] },
     "U9": { "studios": ["unknown"] },
