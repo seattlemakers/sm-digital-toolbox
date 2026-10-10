@@ -2424,7 +2424,7 @@ row without competing with the badge beside it, which is where the colour is
 already doing its work.
 
 **A zone can be rentable space rather than a discipline, and it simply has no
-entry.** The Builder Studios are let rather than taught in, so no slug:
+entry.** The Member Studios are let rather than taught in, so no slug:
 studios.ts is the list of things the *calendar* tags classes with, and "somebody
 rents this" is not one of them - putting it there to make the zone look complete
 would have broken the one rule that file exists to hold. A space with nothing in
@@ -2505,7 +2505,9 @@ re-apply there.
    runs (854.4,488.4) to (810.8,532) at slope -1 and therefore crosses x=829 at
    513.8; stopping at 518 would have left the wall hanging four units short of
    the thing it is supposed to meet.
-2. **"Maker Studios" renamed to "Builder Studios"** (`zlabel-D1.1`).
+2. **D1.1 renamed twice** (`zlabel-D1.1`): "Maker Studios" -> "Builder
+   Studios" on 2026-10-05, then -> **"Member Studios"** on 2026-10-10. One
+   tspan each time; the pair of lines and the anchor never moved.
 3. **"Screen Printing Studio" renamed to "Printmaking Studio"** (`zlabel-U10.2`),
    following the studio's own rename. Three name tspans became two, so the
    anchor moved 83.3 -> 87.2 to keep the rendered pair optically where the trio
