@@ -164,20 +164,22 @@ function planLines(sp: Space): { text: string; tag: boolean }[] {
 }
 
 /**
- * A space lights in the colour of whatever works in it, studio or resource.
+ * A space lights in its STUDIO's colour, and a resource has no colour here.
  *
- * A resource carries a colour for the same reason it carries a badge: the
- * hover answers "what is this space", and "the computer lab" is as good an
- * answer as "ceramics". What the colour must NOT be taken to mean is studio
- * standing - that is the list's job, where the row says RESOURCE in words.
+ * Colour on this plan means one thing - a studio works in this space - and a
+ * resource deliberately is not one. Lighting the computer lab in its own
+ * purple would say the opposite of what the data now says, in the plan's
+ * loudest signal.
+ *
+ * So a resource falls through to the `var(--studio, slate)` default, like the
+ * kitchen and the corridors: grey means only "this is what you are pointing
+ * at". Resources keep a `colour` in the data and in the published file,
+ * because it is a real attribute of the mark and a consumer may want it; this
+ * page is the one that must not use it.
  */
 const litStyle = (sp: Space) => {
-  const mark = sp.studios.length
-    ? STUDIO_BY_SLUG.get(sp.studios[0])!
-    : sp.resources.length
-      ? RESOURCE_BY_SLUG.get(sp.resources[0])!
-      : null;
-  return mark ? `--studio: ${mark.colour}` : undefined;
+  const studio = sp.studios.length > 0 ? STUDIO_BY_SLUG.get(sp.studios[0])! : null;
+  return studio ? `--studio: ${studio.colour}` : undefined;
 };
 
 /**
@@ -219,9 +221,9 @@ function tooltip(id: string): string {
     <p class="mp-lede">
       Each floor's plan sits beside everything it is drawn from. Worth checking
       three things: the <b>name</b> of each space, which spaces are <b>zones</b>{' '}
-      of a larger room, and what works in each one - a <b>studio</b>, or a{' '}
-      <b>resource</b>, which is maintained and taught in like a studio but is
-      not one you hold a membership to.{' '}
+      of a larger room, and the <b>studio</b> against each one. A space flagged{' '}
+      <b>resource</b> is maintained and taught in like a studio but is not one
+      you hold a membership to.{' '}
       <b>{ROOMS.length} rooms and {ZONES.length} zones</b> in all. Hovering
       either side lights the other.
     </p>
@@ -386,7 +388,7 @@ function tooltip(id: string): string {
                       <tr>
                         <th class="mp-th-code">Code</th>
                         <th>Space</th>
-                        <th>Studio / resource</th>
+                        <th>Studio</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -405,6 +407,11 @@ function tooltip(id: string): string {
                                 looking for CLOSET would not find one. Said here rather
                                 than left to be noticed. */}
                             {!isLabelled(sp) && <span class="mp-flag">not labelled</span>}
+                            {/* Beside the SPACE rather than beside what works
+                                in it, because it is a fact about the room:
+                                this one is shared, and holding a single-studio
+                                membership neither grants it nor bars it. */}
+                            {sp.resources.length > 0 && <span class="mp-flag is-resource">resource</span>}
                           </td>
                           <td class="mp-who">
                             {sp.studios.length === 0 && sp.resources.length === 0 ? (
@@ -432,7 +439,6 @@ function tooltip(id: string): string {
                                     <span class="mp-who-one">
                                       {rs.badge && <img src={rs.badge} alt="" width="22" height="22" />}
                                       {rs.name}
-                                      <span class="mp-flag is-resource">resource</span>
                                     </span>
                                   );
                                 })}

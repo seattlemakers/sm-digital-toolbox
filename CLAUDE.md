@@ -2231,13 +2231,33 @@ about a room whose *zones* differ, which the throw above cannot catch. The Lower
 Commons is the case: leather is a studio in it and arts & crafts is a resource
 in it, so the room reads as a studio room that also holds a resource.
 
-**The chip in the list is the only thing on this page that says which.** The
-plan cannot say it - a resource lights in its own colour like a studio, because
-the hover answers "what is this space" and "the computer lab" is as good an
-answer as "ceramics". So the row says **RESOURCE** in words, as a chip on paper
-rather than the quiet 80% grey "not labelled" gets: that one is an aside about
-our drawing, this one is a fact about the building that decides whether somebody
-is standing in their own studio.
+**A resource lights GREY on the plan, and that is the point of the hover.**
+Colour here means one thing - a studio works in this space - so lighting the
+computer lab in its own purple would say the opposite of what the data says, in
+the plan's loudest signal. A resource falls through to the
+`var(--studio, slate)` default like the kitchen and the corridors, where grey
+means only "this is what you are pointing at". Checked by reading the lit fill
+after the 140ms transition has settled: all five come back `rgb(92, 99, 96)`,
+the same as a hallway, while ceramics and the woodshop keep their own.
+
+It was tried the other way first - resources lighting in their own colour, on
+the argument that the hover answers "what is this space" and "the computer lab"
+is as good an answer as "ceramics". True about the hover and wrong about the
+plan: the colour is the key, and a key with two meanings is not one. A side
+benefit is that the Fume Room stopped lighting in `unknown`'s brand ink, which
+was the heaviest thing on the upstairs plan for a room nobody can name.
+
+Resources keep a `colour` in the data and in the published file - it is a real
+attribute of the mark and a consumer may want it. This page is the one that
+must not use it.
+
+**The flag sits beside the SPACE, not beside what works in it**, and the column
+header is plain "Studio" again. A resource is a fact about the *room* - this one
+is shared, and a single-studio membership neither grants it nor bars it - so it
+belongs next to the room's name, where "not labelled" already lives. It is a
+chip on paper rather than that one's quiet 80% grey: "not labelled" is an aside
+about our drawing, and this decides whether somebody is standing in their own
+studio.
 
 **"???" is a resource now, and the point survives the move.** The Fume Room has
 something working in it that nobody has named, which is a different claim from
