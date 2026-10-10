@@ -112,7 +112,8 @@ Done:
   `src/data/floorplan.ts`. It replaced a raster trace on 2026-10-05.
 - **All 14 studios placed, across rooms and zones.** A studio is wherever its
   work happens: woodshop is two rooms and three zones, ceramics is four rooms,
-  metalworking is a zone in the Garage plus a zone in the Metal Shop,
+  metalworking is a zone in the Garage plus a zone in the room now called
+  TBD,
   printmaking is a room and a zone. None is without a space.
 - Colour badges for all 14 at `public/brand/studios/`, cut from the brand sheet
   by `scripts/crop-studio-badges.mjs`. **computer lab** and **leatherworking**
@@ -2112,7 +2113,7 @@ decides which fill wins - the same trap as `.t-row.is-bare` on the board.
 
 **Zones went `pointer-events: none` -> `all` for it.** They sit over their room,
 so without it the Jewelry Studio could not be hovered at all and the cursor
-reported Metal Studios instead. `all` rather than the default, which hits only
+reported the room around it instead. `all` rather than the default, which hits only
 painted pixels: a zone with no fill would otherwise be hoverable along its
 dashes and nowhere else. The zone's own tooltip inside the zone is the better
 answer anyway.
@@ -2136,7 +2137,7 @@ wrap.
 own order is the order the author drew in - U15 between U9 and U10, D20 between
 D7 and D8 - which is nothing to do with how the building reads. Sorting as text
 is no better: U10 lands between U1 and U2. And the single most reviewable fact
-here is "the Jewelry Studio is inside Metal Studios", which can only be checked
+here is "the Jewelry Studio is inside U3", which can only be checked
 if the two are adjacent, so zones are interleaved rather than blocked at the
 end.
 
@@ -2450,12 +2451,18 @@ zones, which is the same shape as the Garage, the Fab Lab and the Upper Commons:
 any one of the things it holds**, and carries no studio of its own. The
 duplicate name disappears because there is no longer a duplicate.
 
-It was "Metal Studios" until 2026-10-10 and is **Metal Shop** now, which brings
-the collision back within a word: the room is the Metal Shop and the zone inside
-it is still "Metalshop 2". They no longer print on top of each other - that was
-the actual fault, and the zone has its own anchor - but a reader seeing both at
-once has to look twice. Worth settling the zone's name next time the drawing is
-open.
+It was "Metal Studios" until 2026-10-10, then **Metal Shop** for an afternoon -
+which brought the collision back within a word, since the zone inside it was
+still "Metalshop 2". Settled the same day, and the other way round from the
+first fix: the **zones** took the room's spelling, as "Metal Shop 1" and "Metal
+Shop 2", and the **room** gave the name up for **TBD**.
+
+That is the rule above applied properly rather than a second exception to it. A
+room holding the jewelry studio and a metal shop is not itself the metal shop,
+and TBD says so while admitting nobody has named it yet - which is honest, and
+is a prompt every time somebody opens the plan. The spelling moving the other
+way is incidental: "Metal Shop" is how the building spells it everywhere else,
+so the zones were the two places still disagreeing.
 
 Worth remembering next time a room needs splitting: the question is not which
 zone to leave undrawn, it is whether the room's name still describes the whole
@@ -2492,7 +2499,7 @@ to do nothing, not the last - every instance has looked like a specificity bug
 and none has been one. The tell is that `document.styleSheets` does not contain
 the selector at all.
 
-**`floorplan.svg` has been hand-edited seven times, and that is a hazard worth
+**`floorplan.svg` has been hand-edited nine times, and that is a hazard worth
 knowing about.** The file is exported from a design tool, so **the next export
 drops every one of these silently**. If any of them reappears as a fault, this
 is why; the real fix belongs in the original drawing, and this list is what to
@@ -2517,7 +2524,12 @@ re-apply there.
    into `zone-U3.1` (jewelry, the left third) and `zone-U3.2` (metalshop, the
    right two thirds) at x=324.7, with all three labels repositioned to stack
    inside a room only 108 units tall. The room's own outline is untouched.
-   Renamed again to **"Metal Shop"** on 2026-10-10 (`label-U3`, one tspan).
+   Renamed to **"Metal Shop"** on 2026-10-10 and to **"TBD"** the same day
+   (`label-U3`, one tspan), while the two zones gained a space - `Metalshop` ->
+   `Metal Shop` in `zlabel-U1.1` and `zlabel-U3.2`, one tspan each. Both zone
+   names were already broken over two lines, so the wider word changed neither
+   the line count nor the anchor, and the cap engages on neither: 32.3 units in
+   a 69.5-unit zone at U3.2, against 37.2 of slack.
 5. **"Utility Closet" renamed to "Utility Room"** (`label-D2`), one tspan. Its
    label stays off the plan: `UNLABELLED_IDS` is keyed by id, so the rename
    could not silently put the name back - which under the old `.*\bCloset$`
@@ -2533,6 +2545,15 @@ re-apply there.
    one at 78 units wide, but two keeps the anchor, the line count and the
    vertical centring exactly as the author set them, and matches how every
    other narrow zone label in that room is broken.
+8. **Three label anchors moved on 2026-10-10**, and none of them is a rename.
+   `label-U10` (Upper Commons) was 40 units left of its room's centre, where
+   the author had put it to clear the Electronics Studio zone label - which it
+   no longer needs to, since those labels sit well below it. `label-D1` (Lower
+   Commons) went to the room's **area centroid** rather than its bbox centre,
+   because D1 is an L and the Leather Studio tail drags the bbox centre 62
+   units down out of the room's mass. `label-D7` (Lobby) is neither: its area
+   centroid is *below* where it already sat, so it is a hand nudge of 18 units
+   into the entrance throat.
 
 **The generated file is `npm run floorplan`**, which is the extractor with its
 stdout pointed at `src/data/floorplan.ts`. It had no npm script until

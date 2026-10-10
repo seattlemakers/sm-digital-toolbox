@@ -106,8 +106,8 @@ export type Space = (Room | Zone) & {
  * The drawing's own order is the order the author drew in - U15 between U9 and
  * U10, D20 between D7 and D8 - which is nothing to do with how the building
  * reads. Sorting as text is no better: U10 lands between U1 and U2. And the
- * single most checkable fact here is "the Jewelry Studio is inside Metal
- * Studios", which only reads if the two are adjacent.
+ * single most checkable fact here is "the Jewelry Studio is inside U3", which
+ * only reads if the two are adjacent.
  *
  * This is part of the published contract, not a page's preference, which is why
  * it lives here rather than in map.astro where it started.
