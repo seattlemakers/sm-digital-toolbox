@@ -123,7 +123,9 @@ ok(studiosOf('U9')[0] === 'unknown', 'the Fume Room should still be the ??? stud
 ok(studiosOf('U1.2')[0] === 'woodshop', 'Big CNC should belong to the woodshop');
 ok(studiosOf('U5.1')[0] === 'woodshop', 'the Woodshop 2 CNC zone should belong to the woodshop');
 ok(!studios.some((s) => s.slug.startsWith('cnc')), 'cnc should no longer be a studio of its own');
-ok(mappings['U5']?.display === 'Woodshop 2: Machine Room', 'Woodshop 2 should still carry its display name');
+ok(mappings['U5']?.tagline === 'Machine Room', 'Woodshop 2 should still carry its tagline');
+ok(mappings['D15']?.tagline === 'Hand Building & Glazing', 'Ceramics 1 should carry its tagline');
+ok(byId.get('D2')?.name === 'Utility Room', 'D2 should be the Utility Room');
 
 for (const f of fails) console.error(`  ✗ ${f}`);
 console.log(`  ${pass} passed, ${fails.length} failed`);

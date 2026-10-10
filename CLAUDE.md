@@ -129,9 +129,9 @@ Done:
   lights the same space in the other. The studio list is gone.
 - Three weights of wall - exterior, interior, stairs - and the doorways are
   pen-ups in the path data rather than anything marked.
-- **A space can carry a longer display name than the plan can print**, via
-  `DISPLAY_NAMES` in rooms.ts - "Woodshop 2" on the drawing, "Woodshop 2:
-  Machine Room" in the list and the hover.
+- **A space can carry a tagline**, via `tagline` in `mappings.json`. The plan
+  prints it as a second line under the name - "CERAMICS 1" over "HAND BUILDING
+  & GLAZING" - and the lists print the name alone.
 - The page links **`/data/space.json`** - the same names in a form somebody can
   diff, paste into a message, or build another tool on.
 
@@ -2265,31 +2265,43 @@ badge cutter's `SLUGS`, because that array is **positional** against fourteen
 rings on the brand sheet and must neither shrink nor reorder. The sheet still
 has a CNC ring; a studio leaving the building does not erase the artwork.
 
-**A space can have two names, and which one you see is a question of room.**
-Added 2026-10-10. A label on the plan has to fit inside its own walls - the cap
-at load only ever shrinks one that does not - so what the drawing can say is
-"Woodshop 2". The list beside it and the hover have no such constraint, and
-"Woodshop 2: Machine Room" is the name that tells somebody what is in there.
+**A space can carry a tagline: the name says which room it is, the tagline says
+what happens in it.** "Ceramics 1" over "Hand Building & Glazing".
 
-    the plan   the drawing's own name, on the author's own lines
-    the list   DISPLAY_NAMES where there is one
-    the hover  DISPLAY_NAMES where there is one
-    the JSON   both, always, even when they are the same string
+    the plan   the name on the author's own lines, then the tagline under it
+    the lists  the name alone
+    the hover  "Name: Tagline - Studios"
+    the JSON   `tagline`, absent where there is none
 
-**It is a second name and never a replacement**, which is what keeps it safe:
-the drawing's name stays what everything is keyed to and what is printed on the
-plan, so a display name cannot drift the map out of step with the building. The
-worst a wrong one can do is read oddly in a list.
+**It went through a worse shape first, and the worse shape is instructive.** It
+was one `display` field holding "Ceramics 1: Hand Building & Glazing", with the
+lists printing it and the plan printing the short name. Two things were wrong:
 
-The JSON carries both even when they match, because a reviewer checking names
-needs to see *which* spaces have a second one - collapsing them when equal
-hides exactly that.
+- **The renderer had to find a colon** to set the two halves differently, which
+  is inferring structure from punctuation - the thing this file warns about
+  everywhere else - and it rested on an author remembering to type one. Two
+  fields need no parsing and cannot be mistyped into one.
+- **It made the name shrink.** A display name wrapped into the room went
+  through the width cap as one block, so "Ceramics 1" came out at 8.64 against
+  its drawn 9.68. With a tagline only the *tagline* has to fit, at 0.8 of the
+  size, and the name is back to full: measured at 9.68 on all three.
+
+**The tagline is translucent rather than a colour of its own** - `fill-opacity`
+multiplies whatever the name is painted in, so the pair stays together through
+every state the label has, the lit one included. A `fill` would have needed a
+second rule for each state.
+
+**The tagline is wrapped here and the name never is.** The name's line breaks
+are the author's, made with the plan in front of them. The tagline has no
+layout in the drawing because it does not exist there, so it is wrapped greedily
+against the room's own width at 0.53 of the size per character - Figtree's
+average advance. It only has to be close, because the cap at load measures the
+real shaped text.
 
 An id with no space throws at module load, the same as a studio pinned to one.
 That check matters more here than it does for studios: a studio in the wrong
-place is visible on the plan, where a display name for a room that does not
-exist is a string nothing ever looks up, and it fails by simply never
-appearing.
+place is visible on the plan, where a tagline on a room that does not exist is
+a string nothing ever looks up, and it fails by simply never appearing.
 
 **Rows are JSON, rules are TypeScript, and the split is the design.** The data
 was centralised on 2026-10-10 into `src/data/space/`: `studios.json` and
@@ -2480,7 +2492,7 @@ to do nothing, not the last - every instance has looked like a specificity bug
 and none has been one. The tell is that `document.styleSheets` does not contain
 the selector at all.
 
-**`floorplan.svg` has been hand-edited five times, and that is a hazard worth
+**`floorplan.svg` has been hand-edited six times, and that is a hazard worth
 knowing about.** The file is exported from a design tool, so **the next export
 drops every one of these silently**. If any of them reappears as a fault, this
 is why; the real fix belongs in the original drawing, and this list is what to
@@ -2504,7 +2516,11 @@ re-apply there.
    right two thirds) at x=324.7, with all three labels repositioned to stack
    inside a room only 108 units tall. The room's own outline is untouched.
    Renamed again to **"Metal Shop"** on 2026-10-10 (`label-U3`, one tspan).
-5. **"Leatherworking Studio" renamed to "Leather Studio"** (`zlabel-D1.2`),
+5. **"Utility Closet" renamed to "Utility Room"** (`label-D2`), one tspan. Its
+   label stays off the plan: `UNLABELLED_IDS` is keyed by id, so the rename
+   could not silently put the name back - which under the old `.*\bCloset$`
+   pattern it would have, with nothing failing and nobody looking.
+6. **"Leatherworking Studio" renamed to "Leather Studio"** (`zlabel-D1.2`),
    following the studio's own rename. One tspan changed - `Leatherworking` to
    `Leather` - rather than collapsing the pair onto one line: the name fits on
    one at 78 units wide, but two keeps the anchor, the line count and the

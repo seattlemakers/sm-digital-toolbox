@@ -9,13 +9,13 @@ import { STUDIOS, SPACES, FLOORS, FLOOR_NAME, UPDATED } from '../../data/space';
  * which names our drawing prints. Those describe one picture of the building.
  *
  * It replaced /map/{rooms,zones,studios}.json on 2026-10-10, which were three
- * fetches and 52% redundant - `display` repeated `name` on 56 of 57 spaces, a
+ * fetches and 52% redundant - a `display` field repeated `name` on 56 of 57, a
  * zone's floor always matched its parent's, and `studios[].where` was 23
  * entries of a join the consumer can do.
  *
  * RULES THIS FILE KEEPS, because a consumer will rely on each one:
  *
- *   absent, not empty   No `display` when it equals `name`, no `studios` when
+ *   absent, not empty   No `tagline` where a space has none, no `studios` when
  *                       there are none, no `in` on a room. Most of that 52%.
  *   stable order        Studios in list order; spaces by floor, then numeric
  *                       code, each zone directly after its room. Set in
@@ -47,7 +47,7 @@ export const GET: APIRoute = () => {
     code: s.id,
     floor: s.floor,
     name: s.name,
-    ...(s.display !== s.name ? { display: s.display } : {}),
+    ...(s.tagline ? { tagline: s.tagline } : {}),
     ...(s.room ? { in: s.room } : {}),
     ...(s.studios.length ? { studios: s.studios } : {}),
   }));

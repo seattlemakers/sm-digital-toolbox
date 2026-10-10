@@ -11,7 +11,7 @@
  * ROWS ARE JSON, RULES ARE HERE, and the split is the whole design.
  *
  * The rows - studio names and colours, which studios are in which space, the
- * longer display names - live in studios.json and mappings.json so that a form,
+ * taglines - live in studios.json and mappings.json so that a form,
  * a script or an agent can write one. The reasoning, the derivation and the
  * validation live in this file, where an editor round-tripping those files
  * cannot touch them. That is the real reason, more than "JSON is easy to
@@ -26,8 +26,7 @@
  *
  * THE DRAWING OWNS NAMES AND SHAPES. mappings.json holds no room names at all:
  * `floorplan.svg` is the single place a space is named, and a name can only be
- * changed there. An editing UI can add a *display* name; it cannot rename a
- * room.
+ * changed there. An editing UI can add a *tagline*; it cannot rename a room.
  */
 import studioRows from './studios.json';
 import mappingRows from './mappings.json';
@@ -61,7 +60,7 @@ export type Studio = {
 export const STUDIOS: Studio[] = studioRows.studios;
 export const STUDIO_BY_SLUG = new Map(STUDIOS.map((s) => [s.slug, s]));
 
-type Mapping = { studios?: string[]; display?: string; circulation?: boolean };
+type Mapping = { studios?: string[]; tagline?: string; circulation?: boolean };
 const MAPPINGS = mappingRows.spaces as Record<string, Mapping>;
 
 /** When the rows last changed, for the published file. Not the build clock. */
@@ -81,8 +80,16 @@ export const FLOOR_NAME: Record<Floor, { name: string; sub: string; level: numbe
 export type Space = (Room | Zone) & {
   floor: Floor;
   shape: 'room' | 'zone';
-  /** The longer name where there is one, else the drawing's. */
-  display: string;
+  /**
+   * A second line for the plan, where a space has one.
+   *
+   * The name says which room it is and the tagline says what happens in it -
+   * "Ceramics 1" over "Hand Building & Glazing". Two fields rather than one
+   * "Ceramics 1: Hand Building & Glazing", because a renderer that wants to set
+   * the two differently should not have to find a colon to do it, and because
+   * nothing then rests on an author remembering to type one.
+   */
+  tagline?: string;
   /** For a zone, the room it sits in. */
   room?: string;
   /** Studios working in this space itself. */
@@ -131,7 +138,7 @@ export const SPACES: Space[] = FLOORS.flatMap((floor) => {
     ...s,
     floor,
     shape,
-    display: MAPPINGS[s.id]?.display ?? s.name,
+    tagline: MAPPINGS[s.id]?.tagline,
     studios: MAPPINGS[s.id]?.studios ?? [],
     studiosWithin: within,
     circulation: MAPPINGS[s.id]?.circulation ?? false,

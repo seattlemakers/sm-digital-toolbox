@@ -81,6 +81,55 @@ const ZONES = SPACES.filter((s) => s.shape === 'zone');
  * `style` is left off entirely rather than set empty, so the CSS falls through
  * to that default rather than to an empty custom property.
  */
+/**
+ * The lines the PLAN prints for a space.
+ *
+ * Where there is no display name this is the drawing's own wrapping, which is a
+ * decision the author made with the plan in front of them and is not to be
+ * recomputed. A display name has no such layout - it does not exist in the
+ * drawing - so it is wrapped here, greedily, against the room's own width.
+ *
+ * 0.53 is Figtree's average advance as a fraction of its size. It only has to
+ * be close: the cap at load measures the real shaped text and shrinks anything
+ * still too wide for its walls.
+ */
+const WRAP_ADVANCE = 0.53;
+const TAG_SCALE = 0.8;
+
+/**
+ * The lines the plan prints for a space: its name, then its tagline.
+ *
+ * The NAME keeps the drawing's own wrapping, which is a decision the author
+ * made with the plan in front of them and is not to be recomputed. The TAGLINE
+ * has no layout in the drawing - it does not exist there - so it is wrapped
+ * here, greedily, against the room's own width.
+ *
+ * 0.53 is Figtree's average advance as a fraction of its size. It only has to
+ * be close: the cap at load measures the real shaped text and shrinks anything
+ * still too wide for its walls.
+ */
+function planLines(sp: Space): { text: string; tag: boolean }[] {
+  const name = sp.lines.map((text) => ({ text, tag: false }));
+  if (!sp.tagline) return name;
+
+  const xs = sp.points.map((pt) => pt[0]);
+  const room = Math.max(...xs) - Math.min(...xs) - 6;
+  const per = Math.max(6, Math.floor(room / (sp.size * LABEL_SCALE * TAG_SCALE * WRAP_ADVANCE)));
+
+  const out: string[] = [];
+  let line = '';
+  for (const word of sp.tagline.split(' ')) {
+    const next = line ? `${line} ${word}` : word;
+    if (next.length > per && line) {
+      out.push(line);
+      line = word;
+    } else line = next;
+  }
+  if (line) out.push(line);
+
+  return [...name, ...out.map((text) => ({ text, tag: true }))];
+}
+
 const litStyle = (sp: Space) => {
   const studio = sp.studios.length > 0 ? STUDIO_BY_SLUG.get(sp.studios[0])! : null;
   return studio ? `--studio: ${studio.colour}` : undefined;
@@ -96,9 +145,8 @@ const litStyle = (sp: Space) => {
 function tooltip(id: string): string {
   const sp = spot(id);
   const studios = sp.studios.map((slug) => STUDIO_BY_SLUG.get(slug)!.name);
-  // The longer name, where there is one. A hover has room the plan does not -
-  // it is why the drawing's label can stay short enough to fit its own walls.
-  return studios.length ? `${sp.display} — ${studios.join(', ')}` : sp.display;
+  const name = sp.tagline ? `${sp.name}: ${sp.tagline}` : sp.name;
+  return studios.length ? `${name} — ${studios.join(', ')}` : name;
 }
 ---
 
@@ -220,9 +268,13 @@ function tooltip(id: string): string {
                       y={r.at[1]}
                       style={`font-size: ${r.size * LABEL_SCALE}px`}
                     >
-                      {r.lines.map((line, i) => (
-                        <tspan x={r.at[0]} dy={i ? r.size * LABEL_SCALE : 0}>
-                          {line}
+                      {planLines(spot(r.id)).map((line, i) => (
+                        <tspan
+                          x={r.at[0]}
+                          dy={i ? r.size * LABEL_SCALE * (line.tag ? TAG_SCALE : 1) : 0}
+                          class:list={[line.tag && 'mp-tagline']}
+                        >
+                          {line.text}
                         </tspan>
                       ))}
                     </text>
@@ -236,9 +288,13 @@ function tooltip(id: string): string {
                       y={z.at[1]}
                       style={`font-size: ${z.size * LABEL_SCALE}px`}
                     >
-                      {z.lines.map((line, i) => (
-                        <tspan x={z.at[0]} dy={i ? z.size * LABEL_SCALE * 1.15 : 0}>
-                          {line}
+                      {planLines(spot(z.id)).map((line, i) => (
+                        <tspan
+                          x={z.at[0]}
+                          dy={i ? z.size * LABEL_SCALE * 1.15 * (line.tag ? TAG_SCALE : 1) : 0}
+                          class:list={[line.tag && 'mp-tagline']}
+                        >
+                          {line.text}
                         </tspan>
                       ))}
                     </text>
@@ -280,7 +336,7 @@ function tooltip(id: string): string {
                         >
                           <td class="mp-code">{sp.id}</td>
                           <td class="mp-space">
-                            <span class="mp-space-name">{sp.display}</span>
+                            <span class="mp-space-name">{sp.name}</span>
                             {/* The fourteen hallways, staircases and closets are drawn
                                 as walls and left unnamed on the plan, so a reviewer
                                 looking for CLOSET would not find one. Said here rather
@@ -344,7 +400,7 @@ function tooltip(id: string): string {
       Every name, shape and label position above comes from{' '}
       <b>data/floorplan.svg</b>, which is drawn by hand rather than traced.{' '}
       <b>data/space/</b> adds what the drawing cannot know: which studios work
-      where, and the longer names the plan has no room to print.
+      where, and the taglines under the names.
     </p>
   </main>
 </Base>
@@ -512,6 +568,16 @@ function tooltip(id: string): string {
      Uppercase and tracked, which is the floorplan convention and stays legible
      at sizes where a lowercase name would not. Three weights, so a broom
      cupboard stops shouting as loudly as the Megastudio. */
+  /* A tagline is the second thing on a label, so it is set as the second
+     thing: smaller, lighter, and translucent rather than a colour of its own -
+     fill-opacity multiplies whatever the name is already painted in, so the
+     pair stays together through every state the label has, lit included. */
+  .mp-tagline {
+    font-size: 0.8em;
+    font-weight: 500;
+    fill-opacity: 0.68;
+  }
+
   .mp-name {
     font-family: var(--font-display);
     font-weight: 700;
