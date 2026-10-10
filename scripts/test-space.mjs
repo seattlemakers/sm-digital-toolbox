@@ -113,8 +113,11 @@ const within = (roomId) =>
   [...byId.values()].filter((s) => s.room === roomId).flatMap((z) => studiosOf(z.id));
 
 ok(studiosOf('U15').length === 0 && within('U15').length === 2, 'the Fab Lab should be a studio only through its zones');
-ok(mappings['U19']?.circulation === true, 'Check-in should be circulation');
-ok(!studiosOf('U19').length, 'Check-in should carry no studio');
+// Check-in merged into the Staff Desk on 2026-10-10. The partition between
+// them is still drawn, so the wall layer must still carry it.
+ok(!byId.has('U19'), 'Check-in should no longer be a space of its own');
+ok(byId.get('U4')?.name === 'Staff Desk', 'U4 should be the Staff Desk');
+ok(byId.get('U4')?.points.some((pt) => pt[1] === 340), 'the Staff Desk should reach the wall Check-in sat against');
 ok(byId.get('D14')?.name === 'Ceramics Storage', '"Ceramics Storage" should still be a room of its own');
 ok(byId.get('D1.3')?.shape === 'zone', 'Storage should still be a zone of the Lower Commons');
 ok(studiosOf('U9')[0] === 'unknown', 'the Fume Room should still be the ??? studio');
