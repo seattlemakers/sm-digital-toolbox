@@ -2080,7 +2080,7 @@ the cursor - the same reason the zone highlight is an overlay.
 
 **A space that IS a studio lights in that studio's own colour.** Everything else
 - a corridor, the kitchen, a room that merely *contains* studios - falls back to
-**grey** through the `var(--studio, ...)` default. The Fab Lab, the Megastudio
+**grey** through the `var(--studio, ...)` default. The Fab Lab, the Upper Commons
 and the Garage are deliberately in the second group: each holds two disciplines
 and is not either of them.
 
@@ -2349,7 +2349,7 @@ the Garage. The building divides into rooms, and a room divides into zones.
 
 So **a studio pins to the zone when there is one, and to the room otherwise** -
 laser-cutting is on `U15.2`, not on `U15`. The map can then answer "the Fab Lab,
-laser end" rather than just "the Fab Lab", and the Megastudio can hold
+laser end" rather than just "the Fab Lab", and the Upper Commons can hold
 electronics and screen printing without either claiming the whole room.
 
 **Zones are drawn dashed, because a dash is the convention for a boundary you
@@ -2445,7 +2445,7 @@ called Metalshop 2 prints the name twice, on top of itself, both labels sitting
 near the same centre.
 
 That was solving the symptom. The room was renamed and both halves became
-zones, which is the same shape as the Garage, the Fab Lab and the Megastudio:
+zones, which is the same shape as the Garage, the Fab Lab and the Upper Commons:
 **a room that is entirely subdivided is named for what it holds rather than for
 any one of the things it holds**, and carries no studio of its own. The
 duplicate name disappears because there is no longer a duplicate.
@@ -2492,7 +2492,7 @@ to do nothing, not the last - every instance has looked like a specificity bug
 and none has been one. The tell is that `document.styleSheets` does not contain
 the selector at all.
 
-**`floorplan.svg` has been hand-edited six times, and that is a hazard worth
+**`floorplan.svg` has been hand-edited seven times, and that is a hazard worth
 knowing about.** The file is exported from a design tool, so **the next export
 drops every one of these silently**. If any of them reappears as a fault, this
 is why; the real fix belongs in the original drawing, and this list is what to
@@ -2522,7 +2522,12 @@ re-apply there.
    label stays off the plan: `UNLABELLED_IDS` is keyed by id, so the rename
    could not silently put the name back - which under the old `.*\bCloset$`
    pattern it would have, with nothing failing and nobody looking.
-6. **"Leatherworking Studio" renamed to "Leather Studio"** (`zlabel-D1.2`),
+6. **The two commons** (`label-D1`, `label-U10`): "Big Room" -> **"Lower
+   Commons"** and "Megastudio" -> **"Upper Commons"**, one tspan each. Both are
+   longer than what they replaced and both still fit at the drawn size - the
+   cap touches neither - because they are the two biggest rooms on their
+   floors.
+7. **"Leatherworking Studio" renamed to "Leather Studio"** (`zlabel-D1.2`),
    following the studio's own rename. One tspan changed - `Leatherworking` to
    `Leather` - rather than collapsing the pair onto one line: the name fits on
    one at 78 units wide, but two keeps the anchor, the line count and the
@@ -2587,7 +2592,7 @@ the building, mist for the floor, white for a room - plus the walls and the
 names. Circulation still gets no fill, so a corridor shows the floorplate
 through it and reads as the space between rooms, which is what it is. Every zone
 is dashed in slate, studio or not: the boundary is worth drawing - it is what
-lets the Megastudio show electronics at one end and screen printing at the other
+lets the Upper Commons show electronics at one end and screen printing at the other
 - but which side of it is a studio is the list's answer and the hover's, not a
 thing to carry in a stroke colour.
 
@@ -2664,7 +2669,7 @@ no behaviour: ten circulation, sixteen unlabelled.
 enough.** Until 2026-10-06 the only differences were 700 against 600 and ink
 against slate - which work when the two names are side by side and do nothing at
 all when the label you are looking at is the only one in view. "Electronics
-Studio" inside the Megastudio read as a room.
+Studio" inside the Upper Commons read as a room.
 
 Case is what the eye reads first, so **a room is uppercase and a zone is
 upper-and-lower**. It is the plan convention for a space inside a space, it is

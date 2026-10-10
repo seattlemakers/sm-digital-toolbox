@@ -83,7 +83,7 @@ export const UNLABELLED_IDS: readonly string[] = [
   'U22', // Landing
   'U23', // Stairs
   // downstairs
-  'D1.3', // Storage, a zone of the Big Room - a zone keeps its dashed
+  'D1.3', // Storage, a zone of the Lower Commons - a zone keeps its dashed
   // boundary either way, so only the name goes
   'D2', // Utility Room
   'D8', // Closet

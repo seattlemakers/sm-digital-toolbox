@@ -73,7 +73,7 @@ const ZONES = SPACES.filter((s) => s.shape === 'zone');
  * What colour a space lights up in: its studio's, or nothing.
  *
  * Only a space that IS a studio has one. A room whose studios are all in its
- * zones - the Fab Lab, the Megastudio, the Garage - deliberately has none: it
+ * zones - the Fab Lab, the Upper Commons, the Garage - deliberately has none: it
  * holds two disciplines and is not either of them, so it falls back to grey
  * through the var()'s own default. Every space carries at most one studio, so
  * the first is the only.
@@ -509,7 +509,7 @@ function tooltip(id: string): string {
      The studio zones were the last of it: their dashes were green and their
      labels green-dark, which is a second, quieter version of the same claim the
      wash was making. Every zone is slate now, studio or not. The boundary is
-     still worth drawing - it is what lets the Megastudio show electronics at
+     still worth drawing - it is what lets the Upper Commons show electronics at
      one end and screen printing at the other - but which side of it is a studio
      is the list's answer and the hover's, not a thing to carry in a stroke
      colour.
@@ -567,7 +567,7 @@ function tooltip(id: string): string {
 
      Uppercase and tracked, which is the floorplan convention and stays legible
      at sizes where a lowercase name would not. Three weights, so a broom
-     cupboard stops shouting as loudly as the Megastudio. */
+     cupboard stops shouting as loudly as the Upper Commons. */
   /* A tagline is the second thing on a label, so it is set as the second
      thing: smaller, lighter, and translucent rather than a colour of its own -
      fill-opacity multiplies whatever the name is already painted in, so the

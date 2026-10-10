@@ -116,7 +116,7 @@ ok(studiosOf('U15').length === 0 && within('U15').length === 2, 'the Fab Lab sho
 ok(mappings['U19']?.circulation === true, 'Check-in should be circulation');
 ok(!studiosOf('U19').length, 'Check-in should carry no studio');
 ok(byId.get('D14')?.name === 'Ceramics Storage', '"Ceramics Storage" should still be a room of its own');
-ok(byId.get('D1.3')?.shape === 'zone', 'Storage should still be a zone of the Big Room');
+ok(byId.get('D1.3')?.shape === 'zone', 'Storage should still be a zone of the Lower Commons');
 ok(studiosOf('U9')[0] === 'unknown', 'the Fume Room should still be the ??? studio');
 // CNC collapsed into the woodshop on 2026-10-10. Both of its zones are still
 // zones - a machine still lives in each - they just belong to woodshop now.
