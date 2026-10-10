@@ -37,13 +37,6 @@
       "icon": "/brand/icons/electronics.svg"
     },
     {
-      "slug": "cnc-routing",
-      "name": "CNC Routing",
-      "colour": "#945612",
-      "badge": "/brand/studios/cnc-routing.png",
-      "icon": "/brand/icons/cnc.svg"
-    },
-    {
       "slug": "ceramics",
       "name": "Ceramics",
       "colour": "#e85579",
@@ -51,10 +44,10 @@
       "icon": "/brand/icons/ceramics.svg"
     },
     {
-      "slug": "screen-printing",
-      "name": "Screen Printing",
+      "slug": "printmaking",
+      "name": "Printmaking",
       "colour": "#43b0a5",
-      "badge": "/brand/studios/screen-printing.png",
+      "badge": "/brand/studios/printmaking.png",
       "icon": "/brand/icons/screen-printing.svg"
     },
     {

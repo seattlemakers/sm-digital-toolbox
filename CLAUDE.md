@@ -111,9 +111,9 @@ Done:
   positions. `scripts/read-floorplan.mjs` reads the lot into
   `src/data/floorplan.ts`. It replaced a raster trace on 2026-10-05.
 - **All 14 studios placed, across rooms and zones.** A studio is wherever its
-  work happens: woodshop is two rooms, ceramics is four, cnc is two zones in
-  different rooms, metalworking is a zone in the Garage plus a zone in Metal
-  Studios. None is now without a space.
+  work happens: woodshop is two rooms and three zones, ceramics is four rooms,
+  metalworking is a zone in the Garage plus a zone in the Metal Shop,
+  printmaking is a room and a zone. None is without a space.
 - Colour badges for all 14 at `public/brand/studios/`, cut from the brand sheet
   by `scripts/crop-studio-badges.mjs`. **computer lab** and **leatherworking**
   exist as marks for the first time.
@@ -2234,12 +2234,19 @@ slugs, so studios.ts points at `jewelry.png` and `cnc-routing.png` while calling
 those studios lapidary and cnc. Nothing there renders a badge; the paths are
 kept honest so they do not rot.
 
-**cnc routing covers both its zones, confirmed 2026-10-06** - the Big CNC in the
-Garage (U1.2) and the CNC in Woodshop 2 (U5.1) are one studio working in two
-places. It stays one entry, and the note is in space-studios.ts rather than only
-here, because a studio in two rooms on opposite sides of a floor is exactly the
-shape that invites somebody to "fix" it by splitting it. **computer lab** is
-still open: on the plan and the brand sheet, never on a schedule.
+**cnc stopped being a studio on 2026-10-10 and became part of the woodshop.**
+It had been confirmed four days earlier as one studio across two zones - the Big
+CNC in the Garage (U1.2) and the CNC in Woodshop 2 (U5.1) - and then collapsed
+entirely. Both zones are still zones, because a machine still lives in each;
+they belong to `woodshop` now, which is why the woodshop is the one studio
+spread over two rooms and three zones.
+
+What is left behind is deliberate: `cnc-routing.png` stays in
+`public/brand/studios/` and `cnc-routing` stays in the badge cutter's `SLUGS`,
+because that array is **positional** against fourteen rings on the brand sheet
+and must neither shrink nor reorder. The calendar's own list still carries `cnc`
+and still points at that badge. A studio leaving the building does not take its
+artwork with it.
 
 **A space can have two names, and which one you see is a question of room.**
 Added 2026-10-10. A label on the plan has to fit inside its own walls - the cap
@@ -2408,11 +2415,18 @@ jewelry third as a zone - because a zone called "Metalshop 2" inside a room
 called Metalshop 2 prints the name twice, on top of itself, both labels sitting
 near the same centre.
 
-That was solving the symptom. The room is now **Metal Studios** and both halves
-are zones, which is the same shape as the Garage, the Fab Lab and the
-Megastudio: **a room that is entirely subdivided is named for what it holds
-rather than for any one of the things it holds**, and carries no studio of its
-own. The duplicate name disappears because there is no longer a duplicate.
+That was solving the symptom. The room was renamed and both halves became
+zones, which is the same shape as the Garage, the Fab Lab and the Megastudio:
+**a room that is entirely subdivided is named for what it holds rather than for
+any one of the things it holds**, and carries no studio of its own. The
+duplicate name disappears because there is no longer a duplicate.
+
+It was "Metal Studios" until 2026-10-10 and is **Metal Shop** now, which brings
+the collision back within a word: the room is the Metal Shop and the zone inside
+it is still "Metalshop 2". They no longer print on top of each other - that was
+the actual fault, and the zone has its own anchor - but a reader seeing both at
+once has to look twice. Worth settling the zone's name next time the drawing is
+open.
 
 Worth remembering next time a room needs splitting: the question is not which
 zone to leave undrawn, it is whether the room's name still describes the whole
@@ -2463,10 +2477,11 @@ re-apply there.
    513.8; stopping at 518 would have left the wall hanging four units short of
    the thing it is supposed to meet.
 2. **"Maker Studios" renamed to "Builder Studios"** (`zlabel-D1.1`).
-3. **The subdivision of Metal Studios.** U3 renamed from "Metalshop 2", split
+3. **The subdivision of the Metal Shop.** U3 renamed from "Metalshop 2", split
    into `zone-U3.1` (jewelry, the left third) and `zone-U3.2` (metalshop, the
    right two thirds) at x=324.7, with all three labels repositioned to stack
    inside a room only 108 units tall. The room's own outline is untouched.
+   Renamed again to **"Metal Shop"** on 2026-10-10 (`label-U3`, one tspan).
 4. **"Leatherworking Studio" renamed to "Leather Studio"** (`zlabel-D1.2`),
    following the studio's own rename. One tspan changed - `Leatherworking` to
    `Leather` - rather than collapsing the pair onto one line: the name fits on

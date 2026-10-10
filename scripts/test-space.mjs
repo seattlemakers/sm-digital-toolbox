@@ -57,8 +57,8 @@ ok(
   'unknown’s badge should still be the .svg that breaks the slug-to-path shortcut',
 );
 ok(
-  studios.find((s) => s.slug === 'cnc-routing')?.icon === '/brand/icons/cnc.svg',
-  'cnc-routing’s icon should still point at the brand sheet’s own filename',
+  studios.find((s) => s.slug === 'printmaking')?.icon === '/brand/icons/screen-printing.svg',
+  'printmaking’s icon should still point at the brand sheet’s own filename',
 );
 
 // --- 2. the badge cutter's positional array --------------------------------
@@ -118,6 +118,11 @@ ok(!studiosOf('U19').length, 'Check-in should carry no studio');
 ok(byId.get('D14')?.name === 'Ceramics Storage', '"Ceramics Storage" should still be a room of its own');
 ok(byId.get('D1.3')?.shape === 'zone', 'Storage should still be a zone of the Big Room');
 ok(studiosOf('U9')[0] === 'unknown', 'the Fume Room should still be the ??? studio');
+// CNC collapsed into the woodshop on 2026-10-10. Both of its zones are still
+// zones - a machine still lives in each - they just belong to woodshop now.
+ok(studiosOf('U1.2')[0] === 'woodshop', 'Big CNC should belong to the woodshop');
+ok(studiosOf('U5.1')[0] === 'woodshop', 'the Woodshop 2 CNC zone should belong to the woodshop');
+ok(!studios.some((s) => s.slug.startsWith('cnc')), 'cnc should no longer be a studio of its own');
 ok(mappings['U5']?.display === 'Woodshop 2: Machine Room', 'Woodshop 2 should still carry its display name');
 
 for (const f of fails) console.error(`  ✗ ${f}`);

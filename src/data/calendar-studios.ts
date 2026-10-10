@@ -88,7 +88,7 @@ export const STUDIOS: Studio[] = [
   { slug: 'electronics',     name: 'electronics',     icon: '/brand/icons/electronics.svg', badge: '/brand/studios/electronics.png', colour: '#29a641',     eventCategories: ['electronics'], preferEvent: 'Programmable LEDs' },
   { slug: 'cnc',             name: 'cnc',             icon: '/brand/icons/cnc.svg', badge: '/brand/studios/cnc-routing.png', colour: '#945612',             eventCategories: ['cnc', 'cnc-routing'] },
   { slug: 'ceramics',        name: 'ceramics',        icon: '/brand/icons/ceramics.svg', badge: '/brand/studios/ceramics.png', colour: '#e85579',        eventCategories: ['ceramics'] },
-  { slug: 'screen-printing', name: 'screen printing', icon: '/brand/icons/screen-printing.svg', badge: '/brand/studios/screen-printing.png', colour: '#43b0a5', eventCategories: ['print-making'] },
+  { slug: 'screen-printing', name: 'screen printing', icon: '/brand/icons/screen-printing.svg', badge: '/brand/studios/printmaking.png', colour: '#43b0a5', eventCategories: ['print-making'] },
   { slug: 'arts-crafts',     name: 'arts & crafts',   icon: '/brand/icons/arts-crafts.svg', badge: '/brand/studios/arts-crafts.png', colour: '#9cc001',     eventCategories: ['crafts'] },
   // The icon sheet has no leatherworking mark, so it borrows sewing's for now.
   // The two share a calendar tag already (`leatherworking-sewing`), which makes
