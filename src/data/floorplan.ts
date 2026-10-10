@@ -87,16 +87,27 @@ export type Zone = Room & { room: string };
  * Both sit outside the walls, which is the whole point. "Member Entrance" is
  * below the upstairs south wall, under the doorway that is the pen-up between
  * x=333.5 and x=360.9. "Main Entrance" is inside the recessed porch downstairs
- * - the triangular notch bitten out of the east wall, whose two diagonal faces
- * carry the lobby's two doors. That notch is outside the floorplate, which is
- * checkable rather than a figure of speech: isPointInFill on the plate is
- * false there.
+ * - the triangular notch bitten out of the east wall. That notch is outside the
+ * floorplate, which is checkable rather than a figure of speech: isPointInFill
+ * on the plate is false there.
+ *
+ * THE ARROW RUNS FROM OUTSIDE TO IN, tail first, head inside the building, and
+ * it must pass through the doorway rather than near it. Both were checked with
+ * isPointInStroke rather than placed by eye: there is exactly ONE door at each
+ * entrance, and at the porch it is the LOWER diagonal face - the upper one is
+ * solid wall for its whole length.
+ *
+ *   member   straight north through the gap at x=333.5-360.9, y=340
+ *   main     north-west across the lower diagonal, crossing it at (820.5,
+ *            454.5), which is that doorway's own midpoint
  */
 export type Entrance = {
   id: string;
   lines: string[];
   at: Pt;
   size: number;
+  /** [tail, head] - tail outside the building, head inside it. */
+  arrow: readonly [Pt, Pt];
 };
 
 /** What each floor states about itself. Everything else is worked out. */
@@ -176,7 +187,7 @@ export const BUILDING: Record<Floor, FloorRows> = {
         lines: ["Stairs"], at: [305, 332.6], size: 7.2,
         points: [[290, 244.9], [320.3, 244.9], [320.3, 340], [290, 340]] },
       { id: "U19", name: "Member Check-In", fill: "#e6e2d6",
-        lines: ["Member","Check-In"], at: [357.2, 319.7], size: 11,
+        lines: ["Member","Check-In"], at: [357.2, 315.5], size: 11,
         points: [[320.3, 301], [394.2, 301], [394.2, 340], [320.3, 340]] },
       { id: "U20", name: "Hallway", fill: "#e6e2d6",
         lines: ["Hallway"], at: [576.8, 330.5], size: 11,
@@ -224,7 +235,7 @@ export const BUILDING: Record<Floor, FloorRows> = {
         points: [[324.7, 96.5], [394.2, 96.5], [394.2, 205], [324.7, 205]] },
     ],
     entrances: [
-      { id: "member", lines: ["Member Entrance"], at: [347.2, 348], size: 7 },
+      { id: "member", lines: ["Member Entrance"], at: [347.2, 349.5], size: 7, arrow: [[347.2, 342.5], [347.2, 331.5]] },
     ],
   },
   downstairs: {
@@ -317,7 +328,7 @@ export const BUILDING: Record<Floor, FloorRows> = {
         points: [[290, 379], [359, 379], [359, 561.8], [290, 561.8]] },
     ],
     entrances: [
-      { id: "main", lines: ["Main","Entrance"], at: [833, 432], size: 7 },
+      { id: "main", lines: ["Main","Entrance"], at: [833, 432], size: 7, arrow: [[824, 451], [812, 463]] },
     ],
   },
 };

@@ -97,6 +97,34 @@ const WRAP_ADVANCE = 0.53;
 const TAG_SCALE = 0.8;
 
 /**
+ * An entrance arrow, as two paths: a shaft and a solid head.
+ *
+ * The head is drawn rather than hung on a `marker-end`, which is the usual way
+ * and is wrong here for two reasons. A marker needs an id, and this page draws
+ * two plans, so the id would have to be made unique per floor or one marker
+ * would quietly serve both. And `marker-end` inherits the path's stroke width
+ * by default, so the head's size would be tied to the shaft's weight rather
+ * than chosen - on a plan this small that is the difference between an arrow
+ * and a blob. Three points and a `Z` have neither problem.
+ *
+ * The shaft stops short of the point by most of the head's length, so the two
+ * meet without the stroke's own cap poking out of the tip.
+ */
+const HEAD = 3.4;
+const HALF = 1.9;
+function arrow([tail, head]: readonly [readonly [number, number], readonly [number, number]]) {
+  const [dx, dy] = [head[0] - tail[0], head[1] - tail[1]];
+  const len = Math.hypot(dx, dy);
+  const [ux, uy] = [dx / len, dy / len];
+  const base = [head[0] - ux * HEAD, head[1] - uy * HEAD];
+  const r = (n: number) => Math.round(n * 100) / 100;
+  return {
+    shaft: `M${r(tail[0])} ${r(tail[1])} L${r(base[0] + ux * 0.6)} ${r(base[1] + uy * 0.6)}`,
+    head: `M${r(head[0])} ${r(head[1])} L${r(base[0] - uy * HALF)} ${r(base[1] + ux * HALF)} L${r(base[0] + uy * HALF)} ${r(base[1] - ux * HALF)} Z`,
+  };
+}
+
+/**
  * The lines the plan prints for a space: its name, then its tagline.
  *
  * The NAME keeps the drawing's own wrapping, which is a decision the author
@@ -303,13 +331,15 @@ function tooltip(id: string): string {
                   {/* The ways in, which name a door from outside rather than
                       naming a space. They carry no id in the review list and
                       nothing hovers them - there is no room to light up. */}
-                  {FLOORPLAN[floor].entrances.map((e) => (
+                  {FLOORPLAN[floor].entrances.map((e) => [
+                    <path class="mp-arrow-shaft" d={arrow(e.arrow).shaft} />,
+                    <path class="mp-arrow-head" d={arrow(e.arrow).head} />,
                     <text class="mp-entrance" x={e.at[0]} y={e.at[1]} style={`font-size: ${e.size * LABEL_SCALE}px`}>
                       {e.lines.map((line, i) => (
                         <tspan x={e.at[0]} dy={i ? e.size * LABEL_SCALE * 1.15 : 0}>{line}</tspan>
                       ))}
-                    </text>
-                  ))}
+                    </text>,
+                  ])}
                 </g>
               </svg>
             </div>
@@ -658,6 +688,26 @@ function tooltip(id: string): string {
      not inside anything. It is the lightest thing here at 70%: it sits on the
      grey outside the building, where there is nothing to compete with, and a
      label out there at full strength pulls the eye off the plan. */
+  /* The arrow is the same slate as its label and a touch stronger, because a
+     1-unit line at this scale is nearly nothing while the words beside it have
+     whole letterforms to be read by. Both are unhoverable: there is no space
+     under them to light up. */
+  .mp-arrow-shaft {
+    fill: none;
+    stroke: var(--color-sm-slate);
+    stroke-width: 1.1;
+    stroke-linecap: butt;
+    opacity: 0.85;
+    pointer-events: none;
+  }
+
+  .mp-arrow-head {
+    fill: var(--color-sm-slate);
+    stroke: none;
+    opacity: 0.85;
+    pointer-events: none;
+  }
+
   .mp-entrance {
     font-family: var(--font-display);
     font-weight: 600;

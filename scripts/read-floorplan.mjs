@@ -197,8 +197,14 @@ function entrancesOf(prefix) {
   const open = svg.indexOf(`<g id="${prefix}-entrances"`);
   if (open < 0) return [];
   const block = svg.slice(open, svg.indexOf('</g>', open));
+  const arrowOf = (id) => {
+    const d = block.match(new RegExp(`<path id="arrow-${id}"[^>]*\\sd="M([-\\d.]+) ([-\\d.]+) L([-\\d.]+) ([-\\d.]+)"`));
+    if (!d) throw new Error(`floorplan: entrance "${id}" has no arrow`);
+    return [[Number(d[1]), Number(d[2])], [Number(d[3]), Number(d[4])]];
+  };
   return [...block.matchAll(/<text id="entrance-([^"]+)"([^>]*)>([\s\S]*?)<\/text>/g)].map((m) => ({
     id: m[1],
+    arrow: arrowOf(m[1]),
     lines: [...m[3].matchAll(/<tspan[^>]*>([\s\S]*?)<\/tspan>/g)]
       .map((t) => t[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim())
       .filter(Boolean),
@@ -241,7 +247,7 @@ ${f.rooms.map(shape).join('\n')}
 ${f.zones.map(shape).join('\n')}
     ],
     entrances: [
-${f.entrances.map((e) => `      { id: ${q(e.id)}, lines: ${q(e.lines)}, at: [${e.at.join(', ')}], size: ${e.size} },`).join('\n')}
+${f.entrances.map((e) => `      { id: ${q(e.id)}, lines: ${q(e.lines)}, at: [${e.at.join(', ')}], size: ${e.size}, arrow: [[${e.arrow[0].join(', ')}], [${e.arrow[1].join(', ')}]] },`).join('\n')}
     ],
   },`,
   )

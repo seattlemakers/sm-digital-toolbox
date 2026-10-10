@@ -2381,16 +2381,46 @@ export would destroy.
 **Where they sit was measured, not eyeballed.** "Member Entrance" goes under
 the upstairs south wall, centred on the doorway that is the pen-up between
 x=333.5 and x=360.9. "Main Entrance" goes inside the **recessed porch** - the
-triangular notch bitten out of the east wall downstairs, whose two diagonal
-faces carry the lobby's own two doors. That notch is outside the floorplate,
-which is a checkable claim rather than a figure of speech: `isPointInFill` on
-the plate is false at every corner of both labels.
+triangular notch bitten out of the east wall downstairs. That notch is outside
+the floorplate, which is a checkable claim rather than a figure of speech:
+`isPointInFill` on the plate is false at every corner of both labels.
+
+**The porch has ONE door, not two, and the first note here said two.** Written
+from reading the path data, where `L802.4 436.4 L810.7 444.7` looks like two
+segments with something between them and is in fact one continuous pen stroke
+turning a corner at the apex. Probing the rendered wall with `isPointInStroke`
+settles it in a line: the **upper** diagonal is solid for its whole length, and
+the single opening is on the **lower** face, 27 units across, centred on
+(820.5, 454.5). Worth the two seconds - an arrow drawn through the wrong face
+would have been confidently wrong on a sign about how to get in.
 
 The first position for it was wrong and the check caught it. At `[833, 429]`
 the block's top-left corner crossed the upper diagonal, because the porch
 narrows to nothing at its apex and the widest line is "ENTRANCE" at 36 units.
 Three units further down the triangle is 41.6 units wide at the top of the
 block and 47.6 at the bottom, so `[833, 432]` clears both faces.
+
+**Each label has an arrow, and the arrow is the part that can be wrong.** A
+name outside the building says a door is near; an arrow says *which* door and
+which way through it, and if it is misplaced it says that confidently. So the
+data holds `[tail, head]` - tail outside, head inside - and four things are
+asserted rather than looked at: the tail is outside the floorplate, the head is
+inside it, neither endpoint lands on a wall, and **no point along the shaft
+touches wall stroke at all**, which is what proves the arrow goes through the
+opening rather than over the masonry beside it.
+
+**The head is drawn, not a `marker-end`.** Markers need an id, and this page
+draws two plans, so one marker would quietly serve both floors unless the id
+were made unique per floor. Worse, `marker-end` takes its scale from the path's
+stroke width by default, which ties the head's size to the shaft's weight - on
+a plan this small that is the difference between an arrow and a blob. Three
+points and a `Z` have neither problem. The shaft stops just short of the point,
+or its own cap pokes out of the tip.
+
+**The Member Check-In label moved up 4 units to make room**, 319.7 -> 315.5.
+Its arrow has to live in the strip between the wall and that label, and at the
+old anchor there were 4.7 units of it - enough for the shaft or the head, not
+both.
 
 **They are roman, not italic**, which matters on a plan where italic already
 means "a zone inside a room" - an entrance is not inside anything. Uppercase

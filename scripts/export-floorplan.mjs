@@ -102,7 +102,14 @@ function drawing() {
       g('entrances', b.entrances.map((e) => {
         const dy = (e.size * 1.1).toFixed(2);
         const tspans = e.lines.map((t, i) => `<tspan x="${e.at[0]}" dy="${i ? dy : 0}">${esc(t)}</tspan>`).join('');
-        return `<text id="entrance-${e.id}" x="${e.at[0]}" y="${e.at[1]}" font-size="${e.size}">${tspans}</text>`;
+        // The arrow is a plain two-point line. The head is the renderer's -
+        // drawing one here would put a second, differently-sized arrowhead in
+        // the file for anything that opened it.
+        const [t, h] = e.arrow;
+        return (
+          `<path id="arrow-${e.id}" fill="none" stroke="#5c6360" stroke-width="1.1" d="M${t[0]} ${t[1]} L${h[0]} ${h[1]}"></path>` +
+          `<text id="entrance-${e.id}" x="${e.at[0]}" y="${e.at[1]}" font-size="${e.size}">${tspans}</text>`
+        );
       }).join('')),
       '  </g>',
     ].join('\n');
