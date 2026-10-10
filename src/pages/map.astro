@@ -25,11 +25,9 @@ import {
   SPACES,
   SPACE_BY_ID,
   STUDIO_BY_SLUG,
-  RESOURCE_BY_SLUG,
   FLOOR_NAME,
   byCode,
   studiosWithoutSpace,
-  resourcesWithoutSpace,
   type Space,
 } from '../data/space';
 import { FLOORPLAN, FLOORS, STROKE, type Floor, type Layer } from '../data/floorplan';
@@ -57,10 +55,7 @@ const spot = (id: string) => SPACE_BY_ID.get(id)!;
 const LABEL_SCALE = 0.88;
 const path = (points: readonly (readonly number[])[]) =>
   `M${points.map((p) => p.join(' ')).join(' L')} Z`;
-const ORPHANS = [
-  ...studiosWithoutSpace().map((s) => ({ name: s.name, what: 'studio' })),
-  ...resourcesWithoutSpace().map((r) => ({ name: r.name, what: 'resource' })),
-];
+const ORPHANS = studiosWithoutSpace();
 
 /**
  * Every space on a floor, in reading order.
@@ -191,12 +186,11 @@ const litStyle = (sp: Space) => {
  */
 function tooltip(id: string): string {
   const sp = spot(id);
-  const who = [
-    ...sp.studios.map((slug) => STUDIO_BY_SLUG.get(slug)!.name),
-    ...sp.resources.map((slug) => `${RESOURCE_BY_SLUG.get(slug)!.name} (resource)`),
-  ];
+  const studios = sp.studios.map((slug) => STUDIO_BY_SLUG.get(slug)!.name);
   const name = sp.tagline ? `${sp.name}: ${sp.tagline}` : sp.name;
-  return who.length ? `${name} — ${who.join(', ')}` : name;
+  // "(resource)" rather than a studio name, because there is no studio here.
+  const tail = studios.length ? studios.join(', ') : sp.resource ? 'resource' : '';
+  return tail ? `${name} — ${tail}` : name;
 }
 ---
 
@@ -411,38 +405,21 @@ function tooltip(id: string): string {
                                 in it, because it is a fact about the room:
                                 this one is shared, and holding a single-studio
                                 membership neither grants it nor bars it. */}
-                            {sp.resources.length > 0 && <span class="mp-flag is-resource">resource</span>}
+                            {sp.resource && <span class="mp-flag is-resource">resource</span>}
                           </td>
                           <td class="mp-who">
-                            {sp.studios.length === 0 && sp.resources.length === 0 ? (
+                            {sp.studios.length === 0 ? (
                               <span class="mp-dash">—</span>
                             ) : (
-                              <Fragment>
-                                {sp.studios.map((slug) => {
-                                  const st = STUDIO_BY_SLUG.get(slug)!;
-                                  return (
-                                    <span class="mp-who-one">
-                                      <img src={st.badge} alt="" width="22" height="22" />
-                                      {st.name}
-                                    </span>
-                                  );
-                                })}
-                                {/* A resource says so in words. It is the one
-                                    thing about this row a reviewer cannot read
-                                    off the plan, off the colour or off the
-                                    badge - and it is the thing that decides
-                                    whether a single-studio member is standing
-                                    in their studio or in a shared room. */}
-                                {sp.resources.map((slug) => {
-                                  const rs = RESOURCE_BY_SLUG.get(slug)!;
-                                  return (
-                                    <span class="mp-who-one">
-                                      {rs.badge && <img src={rs.badge} alt="" width="22" height="22" />}
-                                      {rs.name}
-                                    </span>
-                                  );
-                                })}
-                              </Fragment>
+                              sp.studios.map((slug) => {
+                                const st = STUDIO_BY_SLUG.get(slug)!;
+                                return (
+                                  <span class="mp-who-one">
+                                    <img src={st.badge} alt="" width="22" height="22" />
+                                    {st.name}
+                                  </span>
+                                );
+                              })
                             )}
                           </td>
                         </tr>
@@ -463,8 +440,8 @@ function tooltip(id: string): string {
           <h2>Still to place</h2>
           <ul>
             <li>
-              <b>{ORPHANS.map((o) => `${o.name} (${o.what})`).join(', ')}</b> — no space
-              on the plan claims {ORPHANS.length === 1 ? 'this' : 'these'} yet.
+              <b>{ORPHANS.map((st) => st.name).join(', ')}</b> — no space on the plan
+              claims {ORPHANS.length === 1 ? 'this studio' : 'these studios'} yet.
             </li>
           </ul>
         </section>

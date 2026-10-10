@@ -29,7 +29,6 @@
  * changed there. An editing UI can add a *tagline*; it cannot rename a room.
  */
 import studioRows from './studios.json';
-import resourceRows from './resources.json';
 import mappingRows from './mappings.json';
 import { FLOORPLAN, FLOORS, type Floor, type Room, type Zone } from '../floorplan';
 
@@ -64,39 +63,33 @@ export const STUDIO_BY_SLUG = new Map(STUDIOS.map((s) => [s.slug, s]));
 /**
  * A RESOURCE is a space with a studio's descriptors and none of its standing.
  *
- * Added 2026-10-10. The same things are true of it that are true of a studio -
+ * The sanding room, the fume room, the computer lab, the A/V room, the mini
+ * makerspace. The same things are true of one that are true of a studio -
  * somebody maintains it, classes run in it, the calendar tags it - but it is
  * not a discipline you would buy a membership to, and **single-studio
  * membership is the whole reason the distinction has to exist in the data**. A
- * member with one studio should not find that the sanding room or the computer
- * lab counts as their studio, nor that it is barred to them because it is
- * somebody else's.
+ * member with one studio should not find that the sanding room counts as their
+ * studio, nor that it is barred to them as somebody else's.
  *
- * Five of them, and the split is a reclassification rather than a deletion:
- * four were entries in studios.json that only ever served one space each
- * (`unknown`, `software`, `av-studio`, `arts-crafts`), and `sanding` is new -
- * the Sanding Room was pinned to the woodshop, which is a real studio with
- * rooms of its own, so removing it there needed something to replace it rather
- * than nothing.
+ * IT IS A FLAG ON THE SPACE, NOT A THING OF ITS OWN, and that was the second
+ * answer. The first gave each one a record beside the studios - slug, name,
+ * colour, badge - and `software`, `av-studio`, `arts-crafts` and `unknown`
+ * moved into it from studios.json. It read wrong immediately: a named,
+ * badged row in the Studio column is a studio however the column is
+ * labelled, and three of the five names only restated the room's own
+ * ("Sanding" in the Sanding Room). Those studios do not exist, so nothing
+ * should name them.
  *
- * SAME SHAPE AS A STUDIO ON PURPOSE. Slug, name, colour, optional badge - so
- * anything rendering one can render the other, and a resource promoted to a
- * studio later is a move between two files rather than a rewrite. `badge` is
- * optional only because `sanding` has no mark on the brand sheet; the other
- * four keep the marks they already had, which is also why their slugs did not
- * change - a slug names a badge file, and `crop-studio-badges.mjs` zips its own
- * list positionally against fourteen rings.
+ * What a resource has instead is the room. A resource IS the Computer Lab,
+ * which is already named, already drawn and already in the list. When
+ * maintenance staff or calendar tags arrive they hang off the space, which is
+ * the thing that actually has them.
  */
-export type Resource = Omit<Studio, 'badge'> & { badge?: string };
-
-export const RESOURCES: Resource[] = resourceRows.resources;
-export const RESOURCE_BY_SLUG = new Map(RESOURCES.map((r) => [r.slug, r]));
-
-type Mapping = { studios?: string[]; resources?: string[]; tagline?: string; circulation?: boolean };
+type Mapping = { studios?: string[]; tagline?: string; resource?: boolean; circulation?: boolean };
 const MAPPINGS = mappingRows.spaces as Record<string, Mapping>;
 
 /** When the rows last changed, for the published file. Not the build clock. */
-export const UPDATED = [mappingRows.updated, studioRows.updated, resourceRows.updated].sort().at(-1)!;
+export const UPDATED = mappingRows.updated > studioRows.updated ? mappingRows.updated : studioRows.updated;
 
 /**
  * What each floor is called. Page-local in map.astro until 2026-10-10, which
@@ -128,13 +121,8 @@ export type Space = (Room | Zone) & {
   studios: string[];
   /** For a room, studios working in its zones. Empty on a zone. */
   studiosWithin: string[];
-  /**
-   * Resources in this space itself - see `Resource`. Kept apart from `studios`
-   * rather than folded in with a flag, because every question worth asking of
-   * this data is one or the other: "which studios are on this floor" must not
-   * return the computer lab, and "is this room a studio" must answer no.
-   */
-  resources: string[];
+  /** Shared rather than a studio - see the note above `Space`. */
+  resource: boolean;
   /** A corridor, a stair, a landing, the check-in desk. */
   circulation: boolean;
 };
@@ -180,7 +168,7 @@ export const SPACES: Space[] = FLOORS.flatMap((floor) => {
     tagline: MAPPINGS[s.id]?.tagline,
     studios: MAPPINGS[s.id]?.studios ?? [],
     studiosWithin: within,
-    resources: MAPPINGS[s.id]?.resources ?? [],
+    resource: MAPPINGS[s.id]?.resource ?? false,
     circulation: MAPPINGS[s.id]?.circulation ?? false,
   });
 
@@ -218,15 +206,6 @@ export function studiosWithoutSpace(): Studio[] {
   return STUDIOS.filter((s) => !placed.has(s.slug));
 }
 
-/**
- * The same for resources, and it needs saying separately rather than folded in:
- * a resource nothing claims is the same gap, and leaving it out of the check
- * would mean the newer of the two lists was the unguarded one.
- */
-export function resourcesWithoutSpace(): Resource[] {
-  const placed = new Set(SPACES.flatMap((s) => s.resources));
-  return RESOURCES.filter((r) => !placed.has(r.slug));
-}
 
 // --- validation ------------------------------------------------------------
 //
@@ -259,23 +238,9 @@ for (const space of SPACES) {
       throw new Error(`mappings.json: "${space.id}" names studio "${slug}", which is not in studios.json`);
     }
   }
-  for (const slug of space.resources) {
-    if (!RESOURCE_BY_SLUG.has(slug)) {
-      throw new Error(`mappings.json: "${space.id}" names resource "${slug}", which is not in resources.json`);
-    }
-  }
   // A space is one or the other. Both would make "is this a studio" a question
-  // with two answers, which is exactly what the split exists to prevent.
-  if (space.studios.length && space.resources.length) {
-    throw new Error(`mappings.json: "${space.id}" has both studios and resources; a space is one or the other`);
+  // with two answers, which is exactly what the distinction exists to prevent.
+  if (space.studios.length && space.resource) {
+    throw new Error(`mappings.json: "${space.id}" is marked a resource and names a studio; it is one or the other`);
   }
-}
-
-// The two lists share a namespace as far as a reader is concerned, so a slug in
-// both would make every lookup depend on which map was consulted first.
-for (const r of RESOURCES) {
-  const where = `resources.json: "${r.slug ?? '(no slug)'}"`;
-  if (!r.slug || !r.name || !r.colour) throw new Error(`${where} is missing slug, name or colour`);
-  if (!HEX.test(r.colour)) throw new Error(`${where} has colour "${r.colour}", which is not a #rrggbb triple`);
-  if (STUDIO_BY_SLUG.has(r.slug)) throw new Error(`${where} is also a studio; a slug means one thing`);
 }

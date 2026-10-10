@@ -45,7 +45,7 @@ export type Kind = 'studio' | 'resource' | 'circulation' | 'room';
 export const kindOf = (space: Space): Kind =>
   space.studios.length > 0 || space.studiosWithin.length > 0
     ? 'studio'
-    : space.resources.length > 0
+    : space.resource
       ? 'resource'
       : space.circulation
         ? 'circulation'

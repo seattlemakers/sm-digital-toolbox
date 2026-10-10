@@ -115,8 +115,9 @@ Done:
   work happens: woodshop is two rooms and three zones, ceramics is four rooms,
   metalworking is a zone in the Garage plus a zone in the room now called TBD,
   printmaking is a room and a zone. None is without a space.
-- **5 resources beside them**, added 2026-10-10 - maintained and taught in like
-  a studio, not a studio you hold a membership to. See *Studios and resources*.
+- **5 spaces flagged `resource`**, added 2026-10-10 - maintained and taught in
+  like a studio, but not one you hold a membership to, and naming no studio at
+  all. See *Studios and resources*.
 - Colour badges at `public/brand/studios/`, cut from the brand sheet by
   `scripts/crop-studio-badges.mjs`, which still cuts all **14** rings: four of
   those marks now belong to resources rather than studios.
@@ -2199,79 +2200,76 @@ counts as *their* studio, nor that it is barred to them as somebody else's. With
 one list those two questions have the same answer, and the answer is wrong
 either way.
 
-Five of them: **Sanding** (the Sanding Room), **???** (the Fume Room),
-**Software** (the Computer Lab), **A/V** (the A/V Room) and **Arts & Crafts**
-(the Mini Makerspace). Studios went 14 -> 10.
+Five of them: the **Sanding Room**, the **Fume Room**, the **Computer Lab**, the
+**A/V Room** and the **Mini Makerspace**. Studios went 14 -> 10.
 
-**It is a reclassification, not a deletion, except once.** Four were entries in
-studios.json that each only ever served one space, so they moved file and kept
-everything - name, colour, badge, slug. `sanding` is the new one, and it exists
-because the Sanding Room was pinned to the **woodshop**, which is a real studio
-with rooms of its own: taking it out of the woodshop needed something to put in
-its place rather than nothing.
+**It is a flag on the space, not a thing of its own, and that was the second
+answer.** The first gave each one a record beside the studios - slug, name,
+colour, badge - and moved `software`, `av-studio`, `arts-crafts` and `unknown`
+into it out of studios.json. It read wrong immediately, for a reason worth
+keeping: **a named, badged row in the Studio column is a studio however the
+column is labelled.** Three of the five names only restated the room's own
+("Sanding" in the Sanding Room), and the whole point was that those studios do
+not exist - so nothing should name them.
 
-**Same shape as a studio on purpose** - slug, name, colour, optional badge - so
-anything that renders one renders the other, and a resource promoted to a studio
-later is a move between two files rather than a rewrite. `badge` is optional
-only because `sanding` has no mark on the brand sheet.
+What a resource has instead is **the room**. A resource IS the Computer Lab,
+which is already named, already drawn and already in the list. When maintenance
+staff or calendar tags arrive they hang off the space, which is the thing that
+actually has them. `"U16": { "resource": true }`, beside `circulation`, which
+is the same shape of fact.
 
-**The slugs did not change, and that is deliberate.** A slug names a badge file,
-and `crop-studio-badges.mjs` zips its own `SLUGS` **positionally** against the
-fourteen rings on the sheet - so `av-studio` stays `av-studio` even though
-nothing calls it a studio any more. The cutter still cuts fourteen; four of them
-are resources now.
+**The four marks stay on disk and nothing points at them.**
+`crop-studio-badges.mjs` zips `SLUGS` **positionally** against the fourteen
+rings on the brand sheet and throws on a count mismatch, so deleting
+`software.png` or `av-studio.png` would break the generator for the ten studios
+that are real. `unknown.svg` was drawn rather than cut and is now referenced by
+nothing at all; `npm test` pins its existence so a tidy-up does not take it.
 
 **A space is one or the other, and data/space throws if it is both.** Checked by
-breaking it: adding `studios` back beside `resources` on U8 fails the build
-naming the space. Two answers to "is this a studio" is exactly what the split
-exists to prevent.
+breaking it: adding `studios` back beside `resource: true` on U8 fails the build
+naming the space.
 
 **At the room level studio wins**, which is not a contradiction - that rule is
 about a room whose *zones* differ, which the throw above cannot catch. The Lower
-Commons is the case: leather is a studio in it and arts & crafts is a resource
-in it, so the room reads as a studio room that also holds a resource.
+Commons is the case: leather is a studio in it and the Mini Makerspace is a
+resource in it, so the room reads as a studio room that also holds a resource.
 
-**A resource lights GREY on the plan, and that is the point of the hover.**
-Colour here means one thing - a studio works in this space - so lighting the
-computer lab in its own purple would say the opposite of what the data says, in
-the plan's loudest signal. A resource falls through to the
-`var(--studio, slate)` default like the kitchen and the corridors, where grey
-means only "this is what you are pointing at". Checked by reading the lit fill
-after the 140ms transition has settled: all five come back `rgb(92, 99, 96)`,
-the same as a hallway, while ceramics and the woodshop keep their own.
+**A resource lights GREY on the plan.** Colour here means one thing - a studio
+works in this space - so lighting the computer lab in a colour of its own would
+say the opposite of what the data says, in the plan's loudest signal. It falls
+through to the `var(--studio, slate)` default like the kitchen and the
+corridors, where grey means only "this is what you are pointing at". Checked by
+reading the lit fill *after* the 140ms transition has settled - the trap this
+page has fallen into twice: all five come back `rgb(92, 99, 96)`, the same as a
+hallway, while ceramics and the woodshop keep their own.
 
-It was tried the other way first - resources lighting in their own colour, on
-the argument that the hover answers "what is this space" and "the computer lab"
-is as good an answer as "ceramics". True about the hover and wrong about the
-plan: the colour is the key, and a key with two meanings is not one. A side
-benefit is that the Fume Room stopped lighting in `unknown`'s brand ink, which
-was the heaviest thing on the upstairs plan for a room nobody can name.
+A side benefit is that the Fume Room stopped lighting in brand ink, which was
+the heaviest thing on the upstairs plan for the one room nobody can name.
 
-Resources keep a `colour` in the data and in the published file - it is a real
-attribute of the mark and a consumer may want it. This page is the one that
-must not use it.
+**The flag sits beside the SPACE and the Studio column shows a dash.** A
+resource is a fact about the *room* - this one is shared, and a single-studio
+membership neither grants it nor bars it - so it belongs next to the room's
+name, where "not labelled" already lives, and the Studio column says what it
+always said: nothing works here that you can hold a membership to. It is a chip
+on paper rather than "not labelled"'s quiet 80% grey, because that one is an
+aside about our drawing and this decides whether somebody is standing in their
+own studio.
 
-**The flag sits beside the SPACE, not beside what works in it**, and the column
-header is plain "Studio" again. A resource is a fact about the *room* - this one
-is shared, and a single-studio membership neither grants it nor bars it - so it
-belongs next to the room's name, where "not labelled" already lives. It is a
-chip on paper rather than that one's quiet 80% grey: "not labelled" is an aside
-about our drawing, and this decides whether somebody is standing in their own
-studio.
+**The Fume Room's "???" is gone with the entity, and what it was saying is worth
+keeping in mind.** `unknown` was a real studio entry - name `???`, brand ink,
+a badge **drawn** at `/brand/studios/unknown.svg` rather than cut from the
+sheet - and it existed to make a distinction: a room with no studio says
+"nothing works here", where `???` said "something does, and we cannot name it".
+The resource flag now says the first half and drops the second. That is the
+right trade while the room is shared rather than somebody's studio, but if it
+turns out to be a studio after all, the mark is still on disk.
 
-**"???" is a resource now, and the point survives the move.** The Fume Room has
-something working in it that nobody has named, which is a different claim from
-the blank a room with nothing gets - one says "nothing works here", the other
-says "something does, and we cannot name it". Rather than invent a name or lose
-the fact, `unknown` is a real entry: name `???`, colour the brand ink, and a
-badge **drawn** at
-`/brand/studios/unknown.svg` rather than cut from the sheet, because it is not
-on the sheet. Its geometry is measured off the others so it sits in a row with
-them - 184 square, disc radius 84.5 on a centre of 91.5, a 4-unit ring.
-
-**Do not add that slug to `crop-studio-badges.mjs`.** It zips `SLUGS` against
-the rings it finds on the sheet and throws when the counts differ, so a
-fifteenth entry breaks the generator for the fourteen that are real.
+**Never add a slug to `crop-studio-badges.mjs` that is not a ring on the
+sheet, and never reorder the ones that are.** It zips `SLUGS` positionally
+against the rings it finds and throws when the counts differ, so a fifteenth
+entry breaks the generator for the fourteen that are real - and a reordering
+silently cuts every badge from the wrong mark. `unknown.svg` was drawn rather
+than cut for exactly this reason.
 
 **The map's names are Title Case and the calendar's are lowercase, and that is
 the fork earning its keep.** studios.ts stays lowercase because title-casing it

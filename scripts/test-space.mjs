@@ -31,7 +31,6 @@ import { STUDIOS as CALENDAR_STUDIOS } from '../src/data/calendar-studios.ts';
 
 const read = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const { studios } = read('src/data/space/studios.json');
-const { resources } = read('src/data/space/resources.json');
 const { spaces: mappings, updated } = read('src/data/space/mappings.json');
 
 let pass = 0;
@@ -39,8 +38,8 @@ const fails = [];
 const ok = (cond, what) => (cond ? pass++ : fails.push(what));
 
 // --- 1. every asset path resolves -----------------------------------------
-for (const s of [...studios, ...resources]) {
-  if (s.badge) ok(existsSync(`public${s.badge}`), `${s.slug}: badge ${s.badge} is not on disk`);
+for (const s of studios) {
+  ok(existsSync(`public${s.badge}`), `${s.slug}: badge ${s.badge} is not on disk`);
   if (s.icon) ok(existsSync(`public${s.icon}`), `${s.slug}: icon ${s.icon} is not on disk`);
 }
 
@@ -52,21 +51,14 @@ ok(
   `expected 1 studio with no icon, found ${studios.filter((s) => !s.icon).length}`,
 );
 
-// A studio must have a badge; a RESOURCE may not, and sanding is the only one
-// without - there is no sanding mark on the brand sheet.
 for (const s of studios) ok(s.badge, `${s.slug}: a studio must have a badge`);
-ok(
-  resources.filter((r) => !r.badge).map((r) => r.slug).join() === 'sanding',
-  'sanding should be the only resource with no badge',
-);
 
-// Nothing may rebuild an asset path from a slug - this is the row that proves
-// why, and it is the one a careless refactor would "tidy up". It moved from
-// studios.json to resources.json on 2026-10-10 and the point is unchanged.
-ok(
-  resources.find((r) => r.slug === 'unknown')?.badge.endsWith('.svg'),
-  'unknown’s badge should still be the .svg that breaks the slug-to-path shortcut',
-);
+// Four marks on the sheet belong to no studio since 2026-10-10 - software,
+// av-studio, arts-crafts and the drawn unknown.svg. The FILES must stay:
+// crop-studio-badges.mjs zips SLUGS positionally against fourteen rings and
+// throws on a count mismatch, so deleting one breaks the generator for the ten
+// that are real. Checked below with the rest of SLUGS.
+ok(existsSync('public/brand/studios/unknown.svg'), 'unknown.svg should survive the resource change');
 ok(
   studios.find((s) => s.slug === 'printmaking')?.icon === '/brand/icons/screen-printing.svg',
   'printmaking’s icon should still point at the brand sheet’s own filename',
@@ -131,34 +123,37 @@ ok(byId.get('D14')?.name === 'Ceramics Storage', '"Ceramics Storage" should stil
 ok(byId.get('D1.3')?.shape === 'zone', 'Storage should still be a zone of the Lower Commons');
 // --- resources, added 2026-10-10 ------------------------------------------
 //
-// Five spaces that were studios and are not any more. The distinction is what
-// makes single-studio membership mean anything, so each one is pinned by id.
-const resourcesOf = (id) => mappings[id]?.resources ?? [];
-for (const [id, slug, what] of [
-  ['U8', 'sanding', 'the Sanding Room'],
-  ['U9', 'unknown', 'the Fume Room'],
-  ['U16', 'software', 'the Computer Lab'],
-  ['D3', 'av-studio', 'the A/V Room'],
-  ['D1.5', 'arts-crafts', 'the Mini Makerspace'],
+// Five spaces that were studios and are not any more. The flag is what makes
+// single-studio membership mean anything, so each one is pinned by id - and
+// each must name NO studio, which is the half a careless edit would undo.
+for (const [id, what] of [
+  ['U8', 'the Sanding Room'],
+  ['U9', 'the Fume Room'],
+  ['U16', 'the Computer Lab'],
+  ['D3', 'the A/V Room'],
+  ['D1.5', 'the Mini Makerspace'],
 ]) {
-  ok(resourcesOf(id)[0] === slug, `${what} should carry the "${slug}" resource`);
-  ok(!studiosOf(id).length, `${what} should carry no studio`);
+  ok(mappings[id]?.resource === true, `${what} should be flagged a resource`);
+  ok(!studiosOf(id).length, `${what} should name no studio`);
 }
+ok(
+  Object.values(mappings).filter((m) => m.resource).length === 5,
+  'there should be exactly 5 resources',
+);
 
 // The woodshop kept its own rooms when the Sanding Room left it.
 ok(studiosOf('U5')[0] === 'woodshop' && studiosOf('U6')[0] === 'woodshop', 'the woodshop should still hold both woodshops');
 
+// The studios those spaces used to carry are gone from the list entirely.
+for (const slug of ['software', 'av-studio', 'arts-crafts', 'unknown', 'sanding']) {
+  ok(!slugs.has(slug), `"${slug}" should no longer be a studio`);
+}
+
 // A space is one or the other. data/space throws on this too; here it is
 // checked against the rows themselves, which is what an editor would write.
 for (const [id, m] of Object.entries(mappings)) {
-  ok(!(m.studios?.length && m.resources?.length), `${id} has both studios and resources`);
+  ok(!(m.studios?.length && m.resource), `${id} is a resource and names a studio`);
 }
-
-// A slug means one thing across both files.
-const resourceSlugs = new Set(resources.map((r) => r.slug));
-for (const r of resources) ok(!slugs.has(r.slug), `"${r.slug}" is both a studio and a resource`);
-ok(resourceSlugs.size === resources.length, 'resources.json has a duplicate slug');
-for (const r of resources) ok(/^#[0-9a-f]{6}$/.test(r.colour), `${r.slug}: colour "${r.colour}" is not a #rrggbb triple`);
 // CNC collapsed into the woodshop on 2026-10-10. Both of its zones are still
 // zones - a machine still lives in each - they just belong to woodshop now.
 ok(studiosOf('U1.2')[0] === 'woodshop', 'Big CNC should belong to the woodshop');
