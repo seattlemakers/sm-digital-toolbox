@@ -111,14 +111,15 @@ Done:
   positions, with the floorplate and the frame derived from the walls. The
   drawing is an export of it. It replaced a raster trace on 2026-10-05, and
   became the source of truth rather than the output on 2026-10-10.
-- **All 14 studios placed, across rooms and zones.** A studio is wherever its
+- **All 10 studios placed, across rooms and zones.** A studio is wherever its
   work happens: woodshop is two rooms and three zones, ceramics is four rooms,
-  metalworking is a zone in the Garage plus a zone in the room now called
-  TBD,
+  metalworking is a zone in the Garage plus a zone in the room now called TBD,
   printmaking is a room and a zone. None is without a space.
-- Colour badges for all 14 at `public/brand/studios/`, cut from the brand sheet
-  by `scripts/crop-studio-badges.mjs`. **computer lab** and **leatherworking**
-  exist as marks for the first time.
+- **5 resources beside them**, added 2026-10-10 - maintained and taught in like
+  a studio, not a studio you hold a membership to. See *Studios and resources*.
+- Colour badges at `public/brand/studios/`, cut from the brand sheet by
+  `scripts/crop-studio-badges.mjs`, which still cuts all **14** rings: four of
+  those marks now belong to resources rather than studios.
 - **`src/data/space/` is the centralised data**, as of 2026-10-10:
   `studios.json` and `mappings.json` are the editable rows, `index.ts` joins
   them to the drawing and validates. `src/data/calendar-studios.ts` is the
@@ -2185,11 +2186,65 @@ in the building call the room are different questions, and forcing one answer
 onto both is what produced the names below. Forked 2026-10-06; `/map` reads
 only the new one, every other page only the old one.
 
-**"???" is a studio, and that is the point.** The Fume Room has something
-working in it that nobody has named, which is a different claim from the blank a
-room with no studio gets - one says "not a studio", the other says "a studio we
-cannot name". Rather than invent a name or lose the fact, `unknown` is a real
-entry: name `???`, colour the brand ink, and a badge **drawn** at
+### Studios and resources
+
+**A RESOURCE is a space with a studio's descriptors and none of its standing**,
+and the distinction went into the data on 2026-10-10. The same things are true
+of one that are true of a studio - somebody maintains it, classes run in it, the
+calendar tags it - but it is not a discipline you would buy a membership to.
+
+**Single-studio membership is the whole reason it has to exist in the data.** A
+member with one studio should not find that the sanding room or the computer lab
+counts as *their* studio, nor that it is barred to them as somebody else's. With
+one list those two questions have the same answer, and the answer is wrong
+either way.
+
+Five of them: **Sanding** (the Sanding Room), **???** (the Fume Room),
+**Software** (the Computer Lab), **A/V** (the A/V Room) and **Arts & Crafts**
+(the Mini Makerspace). Studios went 14 -> 10.
+
+**It is a reclassification, not a deletion, except once.** Four were entries in
+studios.json that each only ever served one space, so they moved file and kept
+everything - name, colour, badge, slug. `sanding` is the new one, and it exists
+because the Sanding Room was pinned to the **woodshop**, which is a real studio
+with rooms of its own: taking it out of the woodshop needed something to put in
+its place rather than nothing.
+
+**Same shape as a studio on purpose** - slug, name, colour, optional badge - so
+anything that renders one renders the other, and a resource promoted to a studio
+later is a move between two files rather than a rewrite. `badge` is optional
+only because `sanding` has no mark on the brand sheet.
+
+**The slugs did not change, and that is deliberate.** A slug names a badge file,
+and `crop-studio-badges.mjs` zips its own `SLUGS` **positionally** against the
+fourteen rings on the sheet - so `av-studio` stays `av-studio` even though
+nothing calls it a studio any more. The cutter still cuts fourteen; four of them
+are resources now.
+
+**A space is one or the other, and data/space throws if it is both.** Checked by
+breaking it: adding `studios` back beside `resources` on U8 fails the build
+naming the space. Two answers to "is this a studio" is exactly what the split
+exists to prevent.
+
+**At the room level studio wins**, which is not a contradiction - that rule is
+about a room whose *zones* differ, which the throw above cannot catch. The Lower
+Commons is the case: leather is a studio in it and arts & crafts is a resource
+in it, so the room reads as a studio room that also holds a resource.
+
+**The chip in the list is the only thing on this page that says which.** The
+plan cannot say it - a resource lights in its own colour like a studio, because
+the hover answers "what is this space" and "the computer lab" is as good an
+answer as "ceramics". So the row says **RESOURCE** in words, as a chip on paper
+rather than the quiet 80% grey "not labelled" gets: that one is an aside about
+our drawing, this one is a fact about the building that decides whether somebody
+is standing in their own studio.
+
+**"???" is a resource now, and the point survives the move.** The Fume Room has
+something working in it that nobody has named, which is a different claim from
+the blank a room with nothing gets - one says "nothing works here", the other
+says "something does, and we cannot name it". Rather than invent a name or lose
+the fact, `unknown` is a real entry: name `???`, colour the brand ink, and a
+badge **drawn** at
 `/brand/studios/unknown.svg` rather than cut from the sheet, because it is not
 on the sheet. Its geometry is measured off the others so it sits in a row with
 them - 184 square, disc radius 84.5 on a centre of 91.5, a 4-unit ring.

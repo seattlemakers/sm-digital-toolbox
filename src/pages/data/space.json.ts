@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { STUDIOS, SPACES, FLOORS, FLOOR_NAME, UPDATED } from '../../data/space';
+import { STUDIOS, RESOURCES, SPACES, FLOORS, FLOOR_NAME, UPDATED } from '../../data/space';
 
 /**
  * The building, published for anything that wants it.
@@ -35,13 +35,16 @@ import { STUDIOS, SPACES, FLOORS, FLOOR_NAME, UPDATED } from '../../data/space';
  * header set on this Response never reaches anybody.
  */
 export const GET: APIRoute = () => {
-  const studios = STUDIOS.map((s) => ({
+  const mark = (s: { slug: string; name: string; colour: string; badge?: string; icon?: string }) => ({
     slug: s.slug,
     name: s.name,
     colour: s.colour,
-    badge: s.badge,
+    ...(s.badge ? { badge: s.badge } : {}),
     ...(s.icon ? { icon: s.icon } : {}),
-  }));
+  });
+
+  const studios = STUDIOS.map(mark);
+  const resources = RESOURCES.map(mark);
 
   const spaces = SPACES.map((s) => ({
     code: s.id,
@@ -50,6 +53,7 @@ export const GET: APIRoute = () => {
     ...(s.tagline ? { tagline: s.tagline } : {}),
     ...(s.room ? { in: s.room } : {}),
     ...(s.studios.length ? { studios: s.studios } : {}),
+    ...(s.resources.length ? { resources: s.resources } : {}),
   }));
 
   return new Response(
@@ -64,12 +68,14 @@ export const GET: APIRoute = () => {
         licence: 'MIT',
         notes: [
           'A space with `in` is a zone: a named area inside that room, with no wall between them.',
+          'A resource is maintained, taught in and tagged like a studio, but is not one you hold a membership to. A space is one or the other, never both.',
           'Asset paths are root-relative; resolve them against assetBase. Never rebuild one from a slug.',
           'Names come from the hand-drawn floorplan and can only be changed there; `display` is a second, longer name.',
           'Drawing data - outlines, walls, label positions - is deliberately not here. It would be a separate /data/plan.json.',
         ],
         floors: FLOORS.map((id) => ({ id, ...FLOOR_NAME[id] })),
         studios,
+        resources,
         spaces,
       },
       null,

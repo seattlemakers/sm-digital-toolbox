@@ -31,6 +31,7 @@ import { STUDIOS as CALENDAR_STUDIOS } from '../src/data/calendar-studios.ts';
 
 const read = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const { studios } = read('src/data/space/studios.json');
+const { resources } = read('src/data/space/resources.json');
 const { spaces: mappings, updated } = read('src/data/space/mappings.json');
 
 let pass = 0;
@@ -38,22 +39,32 @@ const fails = [];
 const ok = (cond, what) => (cond ? pass++ : fails.push(what));
 
 // --- 1. every asset path resolves -----------------------------------------
-for (const s of studios) {
-  ok(existsSync(`public${s.badge}`), `${s.slug}: badge ${s.badge} is not on disk`);
+for (const s of [...studios, ...resources]) {
+  if (s.badge) ok(existsSync(`public${s.badge}`), `${s.slug}: badge ${s.badge} is not on disk`);
   if (s.icon) ok(existsSync(`public${s.icon}`), `${s.slug}: icon ${s.icon} is not on disk`);
 }
 
-// The three with no vector are a fact worth pinning: if one gains an icon the
-// count changes here, which is the prompt to check the others.
+// leather-studio is the one studio with no vector mark - the brand sheet has
+// no leatherworking icon. If that count changes, something gained or lost an
+// icon and the others are worth a look.
 ok(
-  studios.filter((s) => !s.icon).length === 3,
-  `expected 3 studios with no icon, found ${studios.filter((s) => !s.icon).length}`,
+  studios.filter((s) => !s.icon).length === 1,
+  `expected 1 studio with no icon, found ${studios.filter((s) => !s.icon).length}`,
+);
+
+// A studio must have a badge; a RESOURCE may not, and sanding is the only one
+// without - there is no sanding mark on the brand sheet.
+for (const s of studios) ok(s.badge, `${s.slug}: a studio must have a badge`);
+ok(
+  resources.filter((r) => !r.badge).map((r) => r.slug).join() === 'sanding',
+  'sanding should be the only resource with no badge',
 );
 
 // Nothing may rebuild an asset path from a slug - this is the row that proves
-// why, and it is the one a careless refactor would "tidy up".
+// why, and it is the one a careless refactor would "tidy up". It moved from
+// studios.json to resources.json on 2026-10-10 and the point is unchanged.
 ok(
-  studios.find((s) => s.slug === 'unknown')?.badge.endsWith('.svg'),
+  resources.find((r) => r.slug === 'unknown')?.badge.endsWith('.svg'),
   'unknown’s badge should still be the .svg that breaks the slug-to-path shortcut',
 );
 ok(
@@ -118,7 +129,36 @@ ok(!studiosOf('U19').length, 'Member Check-In should carry no studio');
 ok(byId.get('U19')?.name === 'Member Check-In', 'U19 should be the Member Check-In');
 ok(byId.get('D14')?.name === 'Ceramics Storage', '"Ceramics Storage" should still be a room of its own');
 ok(byId.get('D1.3')?.shape === 'zone', 'Storage should still be a zone of the Lower Commons');
-ok(studiosOf('U9')[0] === 'unknown', 'the Fume Room should still be the ??? studio');
+// --- resources, added 2026-10-10 ------------------------------------------
+//
+// Five spaces that were studios and are not any more. The distinction is what
+// makes single-studio membership mean anything, so each one is pinned by id.
+const resourcesOf = (id) => mappings[id]?.resources ?? [];
+for (const [id, slug, what] of [
+  ['U8', 'sanding', 'the Sanding Room'],
+  ['U9', 'unknown', 'the Fume Room'],
+  ['U16', 'software', 'the Computer Lab'],
+  ['D3', 'av-studio', 'the A/V Room'],
+  ['D1.5', 'arts-crafts', 'the Mini Makerspace'],
+]) {
+  ok(resourcesOf(id)[0] === slug, `${what} should carry the "${slug}" resource`);
+  ok(!studiosOf(id).length, `${what} should carry no studio`);
+}
+
+// The woodshop kept its own rooms when the Sanding Room left it.
+ok(studiosOf('U5')[0] === 'woodshop' && studiosOf('U6')[0] === 'woodshop', 'the woodshop should still hold both woodshops');
+
+// A space is one or the other. data/space throws on this too; here it is
+// checked against the rows themselves, which is what an editor would write.
+for (const [id, m] of Object.entries(mappings)) {
+  ok(!(m.studios?.length && m.resources?.length), `${id} has both studios and resources`);
+}
+
+// A slug means one thing across both files.
+const resourceSlugs = new Set(resources.map((r) => r.slug));
+for (const r of resources) ok(!slugs.has(r.slug), `"${r.slug}" is both a studio and a resource`);
+ok(resourceSlugs.size === resources.length, 'resources.json has a duplicate slug');
+for (const r of resources) ok(/^#[0-9a-f]{6}$/.test(r.colour), `${r.slug}: colour "${r.colour}" is not a #rrggbb triple`);
 // CNC collapsed into the woodshop on 2026-10-10. Both of its zones are still
 // zones - a machine still lives in each - they just belong to woodshop now.
 ok(studiosOf('U1.2')[0] === 'woodshop', 'Big CNC should belong to the woodshop');

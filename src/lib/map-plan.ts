@@ -14,7 +14,7 @@
  */
 import { SPACE_BY_ID, type Space } from '../data/space';
 
-export type Kind = 'studio' | 'circulation' | 'room';
+export type Kind = 'studio' | 'resource' | 'circulation' | 'room';
 
 /**
  * What a space is FOR, which is the one thing worth colouring it by.
@@ -30,16 +30,26 @@ export type Kind = 'studio' | 'circulation' | 'room';
  *
  *   studio       - somebody's discipline works here, in the space itself or in
  *                  one of its zones.
+ *   resource     - the sanding room, the computer lab: maintained, taught in
+ *                  and tagged like a studio, but not one you hold a membership
+ *                  to. Added 2026-10-10 - see `Resource` in data/space.
  *   circulation  - how you get between the others. Takes the floorplate's own
  *                  colour, because a corridor IS the leftover floor.
  *   room         - everything else, from the kitchen to a broom closet.
+ *
+ * Studio wins over resource where a room has one of each - which cannot happen
+ * in a space itself, because data/space throws on it, but can happen to a room
+ * whose zones differ. The Lower Commons is the case: leather and arts & crafts
+ * sit in it, and it is a studio room that also holds a resource.
  */
 export const kindOf = (space: Space): Kind =>
   space.studios.length > 0 || space.studiosWithin.length > 0
     ? 'studio'
-    : space.circulation
-      ? 'circulation'
-      : 'room';
+    : space.resources.length > 0
+      ? 'resource'
+      : space.circulation
+        ? 'circulation'
+        : 'room';
 
 /**
  * Spaces the plan knows about and does not name.

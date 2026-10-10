@@ -1,0 +1,10 @@
+{
+  "updated": "2026-10-10",
+  "resources": [
+    { "slug": "sanding", "name": "Sanding", "colour": "#5c6360" },
+    { "slug": "unknown", "name": "???", "colour": "#1a1a1a", "badge": "/brand/studios/unknown.svg" },
+    { "slug": "software", "name": "Software", "colour": "#5a41ab", "badge": "/brand/studios/software.png" },
+    { "slug": "av-studio", "name": "A/V", "colour": "#3563a6", "badge": "/brand/studios/av-studio.png" },
+    { "slug": "arts-crafts", "name": "Arts & Crafts", "colour": "#9cc001", "badge": "/brand/studios/arts-crafts.png" }
+  ]
+}
