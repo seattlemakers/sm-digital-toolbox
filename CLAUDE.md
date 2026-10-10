@@ -2230,6 +2230,14 @@ leather studio" and "A/V Room - a/v studio" were each a word of repetition
 saying nothing. Both studios dropped "studio" on 2026-10-06 and the rooms kept
 theirs, so the pair now reads as the room and what is done in it.
 
+**A room may also keep a name the studio has given up.** U7 is the "Screen
+Printing Darkroom" while the studio that works in it is **printmaking**, which
+screen printing was called until earlier the same day. That is not a leftover:
+screen printing is one technique inside printmaking, and the darkroom is where
+that one technique burns its screens. The rule is the same in both directions -
+the drawing names rooms, this list names disciplines, and neither has to
+follow the other.
+
 Changing a *room* name means changing `floorplan.svg`, which is an export from a
 design tool - so it belongs in the original drawing rather than in the file
 here, or the next export silently puts it back. Changing a *studio* name is one
@@ -2567,7 +2575,13 @@ re-apply there.
    other narrow room here - "Compressor"/"Room", "Sanding"/"Room" - and the
    anchor rose half a line, 324.5 -> 319.7, so the taller block stays centred:
    measured at 0.7 units off the room's middle with 7.7 of clearance below.
-9. **Three label anchors moved on 2026-10-10**, and none of them is a rename.
+9. **"Darkroom" renamed to "Screen Printing Darkroom"** (`label-U7`) on
+   2026-10-10. One tspan became three: "Screen Printing" alone needs about 97
+   units of a 79.6-unit room, so the two words cannot even share a line. The
+   anchor rose a full line, 60.6 -> 50.9, which centres the taller block in a
+   room only 53.9 units tall - 11.7 units of clearance above and 10.4 below,
+   and no cap.
+10. **Three label anchors moved on 2026-10-10**, and none of them is a rename.
    `label-U10` (Upper Commons) was 40 units left of its room's centre, where
    the author had put it to clear the Electronics Studio zone label - which it
    no longer needs to, since those labels sit well below it. `label-D1` (Lower
