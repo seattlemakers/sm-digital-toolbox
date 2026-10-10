@@ -30,8 +30,8 @@
     "D10": { "studios": ["sewing"] },
     "D12": { "studios": ["ceramics"] },
     "D14": { "studios": ["ceramics"] },
-    "D15": { "studios": ["ceramics"] },
-    "D16": { "studios": ["ceramics"] },
+    "D15": { "studios": ["ceramics"], "display": "Ceramics 1: Hand Building & Glazing" },
+    "D16": { "studios": ["ceramics"], "display": "Ceramics 2: Throwing Wheels" },
     "D18": { "circulation": true },
     "D22": { "circulation": true },
     "D23": { "circulation": true }

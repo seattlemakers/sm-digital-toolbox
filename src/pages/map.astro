@@ -343,8 +343,8 @@ function tooltip(id: string): string {
     <p class="mp-note">
       Every name, shape and label position above comes from{' '}
       <b>data/floorplan.svg</b>, which is drawn by hand rather than traced.{' '}
-      <b>data/rooms.ts</b> adds what the drawing cannot know: which studios
-      work where, and the longer names the plan has no room to print.
+      <b>data/space/</b> adds what the drawing cannot know: which studios work
+      where, and the longer names the plan has no room to print.
     </p>
   </main>
 </Base>
@@ -793,6 +793,17 @@ function tooltip(id: string): string {
 
   .mp-space-name {
     font-family: var(--font-display);
+    /* Display names are longer than the plan can print - that is what they are
+       for - so the long ones wrap, and from 2026-10-10 one of fifty-seven does.
+       `pretty` rather than `balance`: balance evens the line lengths, which
+       reads as ragged against the hard left edge these sit on, and the labels
+       on /labels make the same call for the same reason.
+
+       It is policy rather than a fix for any particular name. Checked on
+       "Ceramics 1: Hand Building & Glazing", which it leaves breaking after the
+       ampersand - supported and applied, it simply has nothing better to pick,
+       because the only other break leaves a much shorter first line. */
+    text-wrap: pretty;
     font-size: 0.9375rem;
     font-weight: 600;
     color: var(--color-sm-ink);
