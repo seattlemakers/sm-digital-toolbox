@@ -113,7 +113,9 @@ const ZONES = SPOTS.filter((s) => s.shape === 'zone');
 function tooltip(id: string): string {
   const sp = SPOTS.find((s) => s.id === id)!;
   const studios = sp.studios.map((slug) => SPACE_STUDIO_BY_SLUG.get(slug)!.name);
-  return studios.length ? `${sp.name} — ${studios.join(', ')}` : sp.name;
+  // The longer name, where there is one. A hover has room the plan does not -
+  // it is why the drawing's label can stay short enough to fit its own walls.
+  return studios.length ? `${sp.display} — ${studios.join(', ')}` : sp.display;
 }
 ---
 
@@ -295,7 +297,7 @@ function tooltip(id: string): string {
                         >
                           <td class="mp-code">{sp.id}</td>
                           <td class="mp-space">
-                            <span class="mp-space-name">{sp.name}</span>
+                            <span class="mp-space-name">{sp.display}</span>
                             {/* The fourteen hallways, staircases and closets are drawn
                                 as walls and left unnamed on the plan, so a reviewer
                                 looking for CLOSET would not find one. Said here rather
@@ -346,11 +348,22 @@ function tooltip(id: string): string {
     {/* The counts moved into the Room data heading, where they are a count of
         the table underneath them. Said in both places they disagreed: this one
         was the 29 rooms the plan labels, that one is all 43. */}
+    {/* The same names, in a form somebody can diff, paste into a message or
+        hand to whoever keeps the building's own list. Linked rather than left
+        to be discovered: a reviewer who wants to check forty-three names
+        against something else should not have to be told these exist. */}
+    <p class="mp-files">
+      <span>Also as data</span>
+      <a href="/map/rooms.json">rooms.json</a>
+      <a href="/map/zones.json">zones.json</a>
+      <a href="/map/studios.json">studios.json</a>
+    </p>
+
     <p class="mp-note">
       Every name, shape and label position above comes from{' '}
       <b>data/floorplan.svg</b>, which is drawn by hand rather than traced.{' '}
-      <b>data/rooms.ts</b> adds the one thing the drawing cannot know: which
-      studios work where.
+      <b>data/rooms.ts</b> adds what the drawing cannot know: which studios
+      work where, and the longer names the plan has no room to print.
     </p>
   </main>
 </Base>
@@ -927,9 +940,38 @@ function tooltip(id: string): string {
     color: var(--color-sm-ink-2);
   }
 
+  .mp-files {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 1rem;
+    margin-top: 2.5rem;
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+  }
+
+  .mp-files span {
+    color: var(--color-sm-slate);
+  }
+
+  .mp-files a {
+    color: var(--color-sm-green);
+    text-decoration: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-sm-green) 35%, transparent);
+  }
+
+  .mp-files a:hover,
+  .mp-files a:focus-visible {
+    color: var(--color-sm-green-dark);
+    border-bottom-color: currentColor;
+  }
+
   .mp-note {
     max-width: 62ch;
-    margin-top: 2.5rem;
+    margin-top: 1.1rem;
     font-size: 0.9375rem;
     line-height: 1.65;
     color: var(--color-sm-slate);

@@ -70,6 +70,34 @@ export const STUDIOS_IN: Record<string, string[]> = {
 };
 
 /**
+ * A longer name for the page than the drawing can carry.
+ *
+ * A label on the plan has to fit inside its own room - the cap at load only
+ * ever shrinks one that does not - so what the drawing can say is "Woodshop 2".
+ * The list beside it and the hover have no such constraint, and "Woodshop 2:
+ * Machine Room" is the name that actually tells somebody what is in there.
+ *
+ * So the two are allowed to differ, and which one you get depends on where
+ * there is room for it:
+ *
+ *   the plan   the drawing's own name, broken on the author's own lines
+ *   the list   this, where there is one
+ *   the hover  this, where there is one
+ *   the JSON   both, so a reviewer can see they are different
+ *
+ * It is a SECOND name and never a replacement. The drawing's name stays the
+ * one everything is keyed to and the one printed on the plan, so a display
+ * name cannot drift the map out of step with the building - the worst a wrong
+ * one can do is read oddly in a list.
+ *
+ * Most spaces need no entry. An id that is not in the drawing throws at module
+ * load, the same as a studio pinned to a space that does not exist.
+ */
+export const DISPLAY_NAMES: Record<string, string> = {
+  'U5': 'Woodshop 2: Machine Room',
+};
+
+/**
  * What a space is FOR, which is the one thing worth colouring it by.
  *
  * The drawing's own fills are a map-colouring rather than a key - adjacent
@@ -136,6 +164,8 @@ export type Spot = (Room | Zone) & {
   kind: Kind;
   /** False for the hallways, stairs and closets - see UNDRAWN. */
   drawn: boolean;
+  /** The longer name where there is one, else the drawing's. See DISPLAY_NAMES. */
+  display: string;
   /** For a zone, the room it sits in. */
   room?: string;
   studios: string[];
@@ -163,6 +193,7 @@ export const SPOTS: Spot[] = FLOORS.flatMap((floor) => {
         shape: 'room' as const,
         kind: kindOf(r.name, [...studios, ...zoneStudios(r.id)]),
         drawn: !UNDRAWN.test(r.name),
+        display: DISPLAY_NAMES[r.id] ?? r.name,
         studios,
       };
     }),
@@ -174,6 +205,7 @@ export const SPOTS: Spot[] = FLOORS.flatMap((floor) => {
         shape: 'zone' as const,
         kind: kindOf(z.name, studios),
         drawn: !UNDRAWN.test(z.name),
+        display: DISPLAY_NAMES[z.id] ?? z.name,
         studios,
       };
     }),
@@ -229,7 +261,9 @@ export function undrawnOn(floor: Floor): string {
 
 // A studio pinned to a space the drawing does not have is a studio in a
 // building that no longer exists - far more likely after a redraw than a typo.
-for (const id of Object.keys(STUDIOS_IN)) {
+// A display name for one is the same mistake, and is worse in one way: it fails
+// silently, because a name nothing looks up simply never appears.
+for (const id of [...Object.keys(STUDIOS_IN), ...Object.keys(DISPLAY_NAMES)]) {
   if (!SPOT_BY_ID.has(id)) {
     throw new Error(`rooms.ts: "${id}" is not a room or zone in floorplan.svg`);
   }

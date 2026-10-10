@@ -127,6 +127,12 @@ Done:
   lights the same space in the other. The studio list is gone.
 - Three weights of wall - exterior, interior, stairs - and the doorways are
   pen-ups in the path data rather than anything marked.
+- **A space can carry a longer display name than the plan can print**, via
+  `DISPLAY_NAMES` in rooms.ts - "Woodshop 2" on the drawing, "Woodshop 2:
+  Machine Room" in the list and the hover.
+- The page links **`/map/rooms.json`, `/map/zones.json` and
+  `/map/studios.json`** - the same names in a form somebody can diff or paste
+  into a message. Generated, read-only, consumed by nothing.
 
 Label maker (`/labels`) is built and verified against a print-to-PDF. Most of
 the *Implementation notes* below are about it.
@@ -2219,6 +2225,49 @@ places. It stays one entry, and the note is in space-studios.ts rather than only
 here, because a studio in two rooms on opposite sides of a floor is exactly the
 shape that invites somebody to "fix" it by splitting it. **computer lab** is
 still open: on the plan and the brand sheet, never on a schedule.
+
+**A space can have two names, and which one you see is a question of room.**
+Added 2026-10-10. A label on the plan has to fit inside its own walls - the cap
+at load only ever shrinks one that does not - so what the drawing can say is
+"Woodshop 2". The list beside it and the hover have no such constraint, and
+"Woodshop 2: Machine Room" is the name that tells somebody what is in there.
+
+    the plan   the drawing's own name, on the author's own lines
+    the list   DISPLAY_NAMES where there is one
+    the hover  DISPLAY_NAMES where there is one
+    the JSON   both, always, even when they are the same string
+
+**It is a second name and never a replacement**, which is what keeps it safe:
+the drawing's name stays what everything is keyed to and what is printed on the
+plan, so a display name cannot drift the map out of step with the building. The
+worst a wrong one can do is read oddly in a list.
+
+The JSON carries both even when they match, because a reviewer checking names
+needs to see *which* spaces have a second one - collapsing them when equal
+hides exactly that.
+
+An id with no space throws at module load, the same as a studio pinned to one.
+That check matters more here than it does for studios: a studio in the wrong
+place is visible on the plan, where a display name for a room that does not
+exist is a string nothing ever looks up, and it fails by simply never
+appearing.
+
+**The three JSON files are output, not source.** `/map/rooms.json`,
+`/map/zones.json`, `/map/studios.json` - generated from the same data the page
+renders, linked from the page, and consumed by nothing in the repo. They exist
+because reviewing forty-three names against somebody else's list is a thing you
+do in a text editor, not by reading a web page.
+
+Endpoints rather than files in public/, for the dummy calendar's reason: a copy
+in public/ is a copy that goes stale with nothing saying so. `src/pages/map.astro`
+and `src/pages/map/*.json.ts` coexist happily - the page builds to
+`map/index.html` and the endpoints sit beside it.
+
+`studios.json`'s `where` uses `placeOf()`, so it prints the *drawing's* names
+("Woodshop 2", "Fab Lab, laser cutting studio") rather than the display ones.
+That is deliberate - it is the name on the plan, which is what somebody holding
+the file and looking at the wall needs - and rooms.json carries both against
+the same code if the longer one is wanted.
 
 **A zone is a named area inside a room, with no wall between them**, and that is
 the distinction the old tape colours were reaching for and never quite had.
