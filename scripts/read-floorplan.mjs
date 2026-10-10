@@ -186,6 +186,27 @@ const FLOORS = [
   { key: 'downstairs', group: 'downstairs', prefix: 'down', side: 'D' },
 ];
 
+/**
+ * The entrance layer: names for the ways in, placed outside the walls.
+ *
+ * Scoped to one floor's group rather than scanned across the document, because
+ * an entrance id is a bare word - "main", "member" - with none of the U/D
+ * prefix that tells a room which floor it is on.
+ */
+function entrancesOf(prefix) {
+  const open = svg.indexOf(`<g id="${prefix}-entrances"`);
+  if (open < 0) return [];
+  const block = svg.slice(open, svg.indexOf('</g>', open));
+  return [...block.matchAll(/<text id="entrance-([^"]+)"([^>]*)>([\s\S]*?)<\/text>/g)].map((m) => ({
+    id: m[1],
+    lines: [...m[3].matchAll(/<tspan[^>]*>([\s\S]*?)<\/tspan>/g)]
+      .map((t) => t[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim())
+      .filter(Boolean),
+    at: [Number(m[2].match(/\sx="([-\d.]+)"/)[1]), Number(m[2].match(/\sy="([-\d.]+)"/)[1])],
+    size: Number(m[2].match(/font-size="([\d.]+)"/)?.[1] ?? 7),
+  }));
+}
+
 const floors = FLOORS.map((f) => ({
   ...f,
   offsetY: offsetOf(f.group),
@@ -196,6 +217,7 @@ const floors = FLOORS.map((f) => ({
   },
   rooms: ROOMS.filter((r) => r.id.startsWith(f.side)),
   zones: ZONES.filter((z) => z.id.startsWith(f.side)),
+  entrances: entrancesOf(f.prefix),
 }));
 
 const q = (s) => JSON.stringify(s);
@@ -217,6 +239,9 @@ ${f.rooms.map(shape).join('\n')}
     ],
     zones: [
 ${f.zones.map(shape).join('\n')}
+    ],
+    entrances: [
+${f.entrances.map((e) => `      { id: ${q(e.id)}, lines: ${q(e.lines)}, at: [${e.at.join(', ')}], size: ${e.size} },`).join('\n')}
     ],
   },`,
   )

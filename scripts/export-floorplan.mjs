@@ -66,6 +66,8 @@ const LAYER = {
     'stroke="none" fill="#1f2a24" font-family="\'Archivo Narrow\', sans-serif" font-weight="600" text-anchor="middle" letter-spacing="0.03em" style="text-transform:uppercase"',
   'zone-labels':
     'stroke="none" fill="#1f2a24" font-family="\'Archivo Narrow\', sans-serif" font-weight="600" font-style="italic" text-anchor="middle" letter-spacing="0.03em" style="text-transform:uppercase"',
+  entrances:
+    'stroke="none" fill="#5c6360" font-family="\'Archivo Narrow\', sans-serif" font-weight="600" text-anchor="middle" letter-spacing="0.06em" style="text-transform:uppercase"',
 };
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -95,6 +97,13 @@ function drawing() {
         .map((l) => `<path id="${p}-${l}" stroke-width="${STROKE[l]}" d="${b.d[l]}"></path>`).join('')),
       g('room-labels', b.rooms.map((r) => label(r, 'room')).join('')),
       g('zone-labels', b.zones.map((z) => label(z, 'zone')).join('')),
+      // An entrance has no shape and no code, so its label carries no prefix
+      // to put back - the id is the whole of its cross-reference.
+      g('entrances', b.entrances.map((e) => {
+        const dy = (e.size * 1.1).toFixed(2);
+        const tspans = e.lines.map((t, i) => `<tspan x="${e.at[0]}" dy="${i ? dy : 0}">${esc(t)}</tspan>`).join('');
+        return `<text id="entrance-${e.id}" x="${e.at[0]}" y="${e.at[1]}" font-size="${e.size}">${tspans}</text>`;
+      }).join('')),
       '  </g>',
     ].join('\n');
   }).join('\n');

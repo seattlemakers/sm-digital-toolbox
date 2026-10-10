@@ -2366,6 +2366,39 @@ where the other fourteen are `.png`, and `cnc-routing`'s icon is `cnc.svg`. The
 published file says so in its own `notes`, and `test-space.mjs` pins both rows
 precisely because they are the ones a tidy-minded refactor would "fix".
 
+**An entrance is named from outside, and it is the first thing on this plan
+that is not a space.** Two of them, added 2026-10-10: **Main Entrance** and
+**Member Entrance**. No shape, no studio, nothing in the review list - a name
+and a position, which is all they have in common with a room label.
+
+They are rows in `floorplan.ts` rather than two constants in map.astro,
+because the position of everything else on this plan is stated in one place and
+a label the drawing does not know about is one a redraw leaves behind. The flip
+is what made that cheap: before it, a new kind of label meant teaching the
+extractor, regenerating, and adding another entry to a list of things the next
+export would destroy.
+
+**Where they sit was measured, not eyeballed.** "Member Entrance" goes under
+the upstairs south wall, centred on the doorway that is the pen-up between
+x=333.5 and x=360.9. "Main Entrance" goes inside the **recessed porch** - the
+triangular notch bitten out of the east wall downstairs, whose two diagonal
+faces carry the lobby's own two doors. That notch is outside the floorplate,
+which is a checkable claim rather than a figure of speech: `isPointInFill` on
+the plate is false at every corner of both labels.
+
+The first position for it was wrong and the check caught it. At `[833, 429]`
+the block's top-left corner crossed the upper diagonal, because the porch
+narrows to nothing at its apex and the widest line is "ENTRANCE" at 36 units.
+Three units further down the triangle is 41.6 units wide at the top of the
+block and 47.6 at the bottom, so `[833, 432]` clears both faces.
+
+**They are roman, not italic**, which matters on a plan where italic already
+means "a zone inside a room" - an entrance is not inside anything. Uppercase
+and tracked like circulation, because both are read once to get your bearings
+rather than looked up, and the lightest thing on the page at 70%: out on the
+grey there is nothing to compete with, and full strength pulls the eye off the
+building.
+
 **A zone is a named area inside a room, with no wall between them**, and that is
 the distinction the old tape colours were reaching for and never quite had.
 "Laser Cutting Studio" is a zone within the Fab Lab; "Big CNC" is a zone within

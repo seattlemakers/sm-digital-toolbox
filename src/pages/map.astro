@@ -299,6 +299,17 @@ function tooltip(id: string): string {
                       ))}
                     </text>
                   ))}
+
+                  {/* The ways in, which name a door from outside rather than
+                      naming a space. They carry no id in the review list and
+                      nothing hovers them - there is no room to light up. */}
+                  {FLOORPLAN[floor].entrances.map((e) => (
+                    <text class="mp-entrance" x={e.at[0]} y={e.at[1]} style={`font-size: ${e.size * LABEL_SCALE}px`}>
+                      {e.lines.map((line, i) => (
+                        <tspan x={e.at[0]} dy={i ? e.size * LABEL_SCALE * 1.15 : 0}>{line}</tspan>
+                      ))}
+                    </text>
+                  ))}
                 </g>
               </svg>
             </div>
@@ -636,6 +647,25 @@ function tooltip(id: string): string {
     letter-spacing: 0.01em;
     text-anchor: middle;
     fill: var(--color-sm-slate);
+    pointer-events: none;
+  }
+
+  /* A way in, and the only type on this plan that is not naming a space.
+
+     Uppercase and tracked like circulation, because both are read once to get
+     your bearings rather than looked up; roman rather than italic, because
+     italic is the plan's word for "a zone inside a room" and an entrance is
+     not inside anything. It is the lightest thing here at 70%: it sits on the
+     grey outside the building, where there is nothing to compete with, and a
+     label out there at full strength pulls the eye off the plan. */
+  .mp-entrance {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-anchor: middle;
+    text-transform: uppercase;
+    fill: var(--color-sm-slate);
+    opacity: 0.7;
     pointer-events: none;
   }
 

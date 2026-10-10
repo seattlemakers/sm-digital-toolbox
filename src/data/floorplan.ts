@@ -76,6 +76,29 @@ export type Room = {
  */
 export type Zone = Room & { room: string };
 
+/**
+ * A way in, named from OUTSIDE the building.
+ *
+ * Not a room and not a zone: no shape, no studio, nothing in the review list.
+ * It is a name with a position, which is all it has in common with a room
+ * label - and the reason it lives here rather than in map.astro, since the
+ * position of everything on this plan is stated in one place.
+ *
+ * Both sit outside the walls, which is the whole point. "Member Entrance" is
+ * below the upstairs south wall, under the doorway that is the pen-up between
+ * x=333.5 and x=360.9. "Main Entrance" is inside the recessed porch downstairs
+ * - the triangular notch bitten out of the east wall, whose two diagonal faces
+ * carry the lobby's two doors. That notch is outside the floorplate, which is
+ * checkable rather than a figure of speech: isPointInFill on the plate is
+ * false there.
+ */
+export type Entrance = {
+  id: string;
+  lines: string[];
+  at: Pt;
+  size: number;
+};
+
 /** What each floor states about itself. Everything else is worked out. */
 export type FloorRows = {
   /** The drawing stacks the floors; this is the second one's own shift. */
@@ -83,6 +106,7 @@ export type FloorRows = {
   d: Record<Layer, string>;
   rooms: Room[];
   zones: Zone[];
+  entrances: Entrance[];
 };
 
 export type FloorPlan = FloorRows & {
@@ -199,6 +223,9 @@ export const BUILDING: Record<Floor, FloorRows> = {
         lines: ["Metal Shop 2"], at: [359.5, 152], size: 7,
         points: [[324.7, 96.5], [394.2, 96.5], [394.2, 205], [324.7, 205]] },
     ],
+    entrances: [
+      { id: "member", lines: ["Member Entrance"], at: [347.2, 348], size: 7 },
+    ],
   },
   downstairs: {
     offsetY: 50,
@@ -288,6 +315,9 @@ export const BUILDING: Record<Floor, FloorRows> = {
       { id: "D1.5", name: "Mini Makerspace", room: "D1", fill: null,
         lines: ["Mini","Makerspace"], at: [324.5, 464.8], size: 7,
         points: [[290, 379], [359, 379], [359, 561.8], [290, 561.8]] },
+    ],
+    entrances: [
+      { id: "main", lines: ["Main","Entrance"], at: [833, 432], size: 7 },
     ],
   },
 };
