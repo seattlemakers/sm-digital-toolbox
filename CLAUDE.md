@@ -107,7 +107,7 @@ Space map (`/map`) is built and verified in the browser, added 2026-09-29.
 Done:
 - **The building is drawn, named and zoned, not traced.**
   `src/data/floorplan.svg` is authored by hand and carries everything:
-  **42 rooms, 14 zones**, their names, their shapes, the walls and the label
+  **43 rooms, 12 zones**, their names, their shapes, the walls and the label
   positions. `scripts/read-floorplan.mjs` reads the lot into
   `src/data/floorplan.ts`. It replaced a raster trace on 2026-10-05.
 - **All 14 studios placed, across rooms and zones.** A studio is wherever its
@@ -2073,7 +2073,7 @@ to match, so the card goes back into flow and takes a height of its own.
 
 **Hovering either half lights the same space in the other**, which is what the
 side-by-side arrangement is for - a name in a list still has to be found on a
-drawing, and on a plan of fifty-six spaces that is the slow step. One
+drawing, and on a plan of forty-three spaces that is the slow step. One
 delegated handler per floor, scoped to that floor's pair so the upstairs list
 cannot light a downstairs room. It lights the fill and the name, never a stroke:
 a stroke that thickens moves the wall it is drawn on and the room twitches under
@@ -2086,7 +2086,7 @@ and the Garage are deliberately in the second group: each holds two disciplines
 and is not either of them.
 
 That fallback was the brand green until 2026-10-06, and grey is the better
-answer because the green was saying something. Fifteen of the fifty-six spaces
+answer because the green was saying something. Fifteen of the fifty-seven spaces
 have no studio at all, and lighting them in the one colour this site uses to
 mean "a studio" made the plan's loudest signal the one thing it is not about.
 Grey means only "this is what you are pointing at", which is all a hover on the
@@ -2514,9 +2514,9 @@ the selector at all.
 
 **`floorplan.svg` is hand-edited, and that is a hazard worth knowing about.**
 The file is exported from a design tool, so **the next export drops every one
-of these silently**. The list below is the record - it carried a running total
-until 2026-10-10, which went stale twice in one day, because an entry can cover
-more than one change. If any of them reappears as a fault, this
+of these silently**. This list is the record - it carried a running total until
+2026-10-10, which went stale twice in one day, because an entry can cover more
+than one change. If any of them reappears as a fault, this
 is why; the real fix belongs in the original drawing, and this list is what to
 re-apply there.
 
@@ -2560,14 +2560,13 @@ re-apply there.
    one at 78 units wide, but two keeps the anchor, the line count and the
    vertical centring exactly as the author set them, and matches how every
    other narrow zone label in that room is broken.
-8. **Check-in merged into the Staff Desk on 2026-10-10.** `room-U19` and
-   `label-U19` deleted, and `room-U4`'s right side carried from y=301 down to
-   y=340, which is exactly the union because the two shared that whole edge.
-   `label-U4` moved to the merged room's area centroid, (357, 229) ->
-   (351.6, 267.4): the old anchor was the middle of a much shorter room's top
-   bar, and the bbox centre is no good here either, since the staircase's notch
-   makes this an L. **The partition in `up-interior` is deliberately left** -
-   see the note under *Fourteen of the fifty-six spaces are not drawn*.
+8. **"Check-in" renamed to "Member Check-In"** (`label-U19`) on 2026-10-10.
+   One tspan became two: at 15 characters the name needs about 97 units of a
+   73.9-unit room, so on one line the cap would have shrunk it well below every
+   other room label on the floor. Two lines is how the author breaks every
+   other narrow room here - "Compressor"/"Room", "Sanding"/"Room" - and the
+   anchor rose half a line, 324.5 -> 319.7, so the taller block stays centred:
+   measured at 0.7 units off the room's middle with 7.7 of clearance below.
 9. **Three label anchors moved on 2026-10-10**, and none of them is a rename.
    `label-U10` (Upper Commons) was 40 units left of its room's centre, where
    the author had put it to clear the Electronics Studio zone label - which it
@@ -2591,7 +2590,7 @@ direction, not the walls: only the downstairs east pair has a horizontal-tread
 flight above a vertical-tread one. Guessing from the crop's proportions would
 have picked the wrong one.
 
-**Fourteen of the fifty-six spaces are not drawn, and the plan is mostly the
+**Fourteen of the forty-three spaces are not drawn, and the plan is mostly the
 better for it.** Hallways, staircases and closets are most of the ink and none
 of the answer - nobody opens a map to find the hallway, and a cupboard labelled
 CLOSET tells you only that somebody drew a cupboard. They stay in the data and
@@ -2608,24 +2607,17 @@ staircases and three hallways."* - and that line went with the room lists on
 2026-10-05. `undrawnOn()` still builds the sentence and nothing calls it; it is
 the only thing that names the spaces in the data but not on the plan.
 
-**Check-in was a space of its own and stopped being one on 2026-10-10.** It
-was the exception in this section - circulation, and deliberately still drawn,
-because it is somewhere you get sent and so has to be findable by name. It is
-now part of the **Staff Desk**, which is the same answer in one word: the name
-you send somebody to is the desk, and the desk is staffed.
+The **Member Check-In** desk is circulation too and is deliberately still
+drawn, because it is somewhere you get sent and so has to be findable by name.
+It was "Check-in" until 2026-10-10; the longer name needs two lines in a
+73.9-unit room, which is how the author breaks every other narrow room on that
+floor, and the anchor rose half a line to keep the taller block centred.
 
-**The wall between them is still drawn, and that is the whole shape of this
-edit.** The two shared the full edge y=301 from x=320.3 to 394.2, with a
-standard 18.4-unit doorway in it, so the merge is U4's outline with its right
-side carried down to y=340 - and `up-interior` is untouched. One room with a
-partition through it is what the building is; taking the wall out would have
-been a claim about the building rather than about the names on our plan, and
-this file's own rule is that the drawing beats anything we reconstruct.
-
-What it looks like is a room with an internal wall, which is unusual on a plan
-and is correct here. Checked with `isPointInStroke` and `isPointInFill` rather
-than by eye: the partition is struck on both sides of its doorway, the doorway
-is open, and the room is one fill above the line and below it.
+It was briefly merged into the Staff Desk the same day and that was reverted.
+Worth knowing why it did not work: the two are separated by a real partition
+with a standard 18.4-unit doorway, so a merge leaves one room with a wall
+through it - correct about the building, and a thing nobody reading a plan
+expects to see.
 
 **The Landing was the other exception and stopped being one on 2026-10-06.**
 The argument for naming it was that a landing is where you come *out* of the
@@ -2633,7 +2625,7 @@ stairs, which is the one thing about a staircase worth naming - true in the
 abstract, and wrong on this plan. It is a 49-unit slot between a restroom and a
 stair, in the corner of the floor that already carries the most ink, and the
 name had to be wedged into it. The stairs drawn beside it already say what it
-is. Sixteen of the fifty-six spaces are unlabelled now.
+is. Sixteen of the fifty-seven spaces are unlabelled now.
 
 **There is no colour on the plan at rest, as of 2026-10-06.** The studios were a
 green wash - `--color-sm-green-mid` at 0.2, with a 0.08 hint for a room whose
@@ -2643,7 +2635,7 @@ the plan's key.
 It came off once the list beside it and the hover between them did that job
 better. The wash answered "a studio is in here somewhere" to within a whole
 room; hovering a row says exactly which space, in that studio's own colour.
-Twenty tinted spaces out of fifty-six is a lot of green to carry for the
+Twenty tinted spaces out of fifty-seven is a lot of green to carry for the
 vaguer answer, and the plan reads as a building without it.
 
 So **colour on this plan now means one thing only: "this is the space you are
@@ -2666,7 +2658,7 @@ them is ink. The wall separates.
 **The `data-via` attribute went with the tint**, and with it the compound
 selector the lit rule needed in order to out-weigh it.
 
-**A name may not be wider than the room it names, and one of forty-two was.**
+**A name may not be wider than the room it names, and one of forty-three was.**
 The sizes are the drawing's own and are left alone - they were set with the plan
 in front of somebody, in drawing units, so they hold at every page size. What
 the author cannot check from inside a design tool is how a name sets in *our*
@@ -2690,12 +2682,13 @@ floor. Zero outside their room, zero overlapping.
 The studio column takes max-content on every row - the widest is "screen
 printing" with its badge, 140px - so what is left for a name is fixed however
 wide the window gets. At 24rem "Utility Closet" plus its NOT LABELLED tag needed
-173px of a 172px box and wrapped, alone among fifty-six rows. The tag also
+173px of a 172px box and wrapped, alone among fifty-seven rows. The tag also
 needs `white-space: nowrap`, or it breaks between its own two words and leaves
 LABELLED on a line by itself, reading as a second fact about the room.
 
 **Circulation is matched by name, and the drawing corroborates it.** The list is
-Stairs, Hallway, Landing. Without being asked, the author gave all four
+Stairs, Hallway, Landing, Member Check-In. Without being asked, the author gave
+all four
 staircases one fill and all five hallways-and-landings another - so two
 independent passes agree on the same set. The Lobby is deliberately out of it,
 and the drawing agrees there too: it is a place you wait rather than one you pass
@@ -2718,9 +2711,11 @@ one picture, so `isLabelled()` lives there whole.
 
 **The two name regexes became explicit id lists, and that was the real fix.**
 `CIRCULATION` and `UNDRAWN` matched against `name` - and `name` comes from
-`floorplan.svg`, which has been hand-edited four times, **twice to rename a
+`floorplan.svg`, which is hand-edited, and **several of those edits rename a
 space**. A rename would have silently erased a room's label or handed one back,
-with nothing failing and nobody looking. The ids are checked against the drawing
+with nothing failing and nobody looking. "Check-in" -> "Member Check-In" on
+2026-10-10 is the case: it is matched as circulation by id now, so the longer
+name could not quietly take the fill with it. The ids are checked against the drawing
 at module load instead, so a redraw that drops one fails the build. The id sets
 were derived by running the old regexes rather than retyped, so the swap changed
 no behaviour: ten circulation, sixteen unlabelled.
