@@ -55,19 +55,26 @@ const BOOK_URL = 'https://seattlemakers.org/events';
 /**
  * Which of a studio's calendar tags to link at, where it has more than one.
  *
- * Only cnc needs saying. Its events are split across two archives and neither
- * URL shows both: `/types/cnc/` has 3 (the certification series) and
- * `/types/cnc-routing/` has 5 - the same 3 plus the Big CNC certifications - so
- * cnc-routing is the superset and the one to point at. Passing both does not
- * work: `/types/cnc,cnc-routing/` silently resolves to `cnc` and drops the
- * rest, which is the soft-404 problem wearing a different hat.
+ * It is EMPTY as of 2026-10-10 and the mechanism is kept, because the trap it
+ * exists for is still there: a studio whose events are split across two
+ * archives cannot link to both. `/types/cnc,cnc-routing/` silently resolves to
+ * `cnc` and drops the rest, which is the soft-404 problem wearing a different
+ * hat.
+ *
+ * Its one entry used to be cnc -> cnc-routing. cnc stopped being a studio when
+ * it folded into the woodshop, and the woodshop keeps its own `woodworking`
+ * archive - 9 events against cnc-routing's 5. **So the woodshop's QR now misses
+ * the CNC certifications.** The sheet itself still prints them, because the
+ * events resolve to woodshop through eventCategories; it is only the scannable
+ * link that cannot cover both. Worth asking the site to tag CNC classes
+ * `woodworking` too, which would fix it at the source.
  *
  * leatherworking's two tags both resolve to the same single event, so its
  * first listed slug is fine and it needs no entry here.
  *
  * The real fix is one tag per studio - WISHLIST item 2.
  */
-const ARCHIVE_SLUG: Record<string, string> = { cnc: 'cnc-routing' };
+const ARCHIVE_SLUG: Record<string, string> = {};
 
 /** The link for what is being printed. The whole calendar, unless one studio. */
 function bookingUrl(c: Choice): string {

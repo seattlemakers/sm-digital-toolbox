@@ -146,7 +146,7 @@ function kindOf(e: SmEvent): string {
  * not tagged - the fix belongs on the event, not in a lookup table here that
  * would make the board look right while the source stayed wrong.
  *
- * A few events carry two (leatherworking + sewing, cnc + woodshop). Both are
+ * A few events carry two (leatherworking + sewing). Both are
  * shown: which of the two rooms it is actually in is a question for the
  * organiser, and picking one silently would answer it wrongly some of the time.
  */

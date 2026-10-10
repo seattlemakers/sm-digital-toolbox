@@ -1839,14 +1839,24 @@ comes from the studio's own `eventCategories`, so a studio with no tag has no
 slug and falls back to the whole calendar. The two studios that would soft-404
 are exactly the two with an empty `eventCategories`.
 
-**cnc is pinned to `cnc-routing`, and that is the only entry in
-`ARCHIVE_SLUG`.** Its events are split over two archives and neither shows
-both - `/types/cnc/` has the 3 certification-series dates, `/types/cnc-routing/`
-has those 3 plus the 2 Big CNC ones - so the superset wins. Passing both does
-not work: `/types/cnc,cnc-routing/` silently resolves to `cnc` and drops the
-rest, which is the soft-404 problem wearing a different hat. leatherworking is
+**`ARCHIVE_SLUG` is empty as of 2026-10-10, and the mechanism is kept for the
+trap rather than the entry.** A studio whose events are split over two archives
+cannot link to both: `/types/cnc,cnc-routing/` silently resolves to `cnc` and
+drops the rest, which is the soft-404 problem wearing a different hat.
+
+Its one entry was cnc -> cnc-routing, and cnc stopped being a studio when it
+folded into the woodshop. **The woodshop's QR now misses the CNC
+certifications**, because it points at its own `/types/woodworking/` - 9 events
+against cnc-routing's 5, so neither is a superset and the studio's own name
+wins. The *sheet* still prints them: the events resolve to woodshop through
+`eventCategories`, verified on October's woodshop sheet, which carries "Big CNC:
+Industrial 4' x 10'" and three CNC Certification Series dates. It is only the
+scannable link that cannot cover both.
+
+The fix is at the source rather than here - tagging CNC classes `woodworking`
+too - which is WISHLIST item 2, one reliable tag per studio. leatherworking is
 split the same way but both of its tags land on the same single event, so it
-needs no entry.
+never needed an entry.
 
 **The longer links cost modules, which is why `--qr` is 1.35in.** An archive
 link is about 50 characters against the bare calendar's 32, which pushes the
@@ -2241,12 +2251,19 @@ entirely. Both zones are still zones, because a machine still lives in each;
 they belong to `woodshop` now, which is why the woodshop is the one studio
 spread over two rooms and three zones.
 
-What is left behind is deliberate: `cnc-routing.png` stays in
-`public/brand/studios/` and `cnc-routing` stays in the badge cutter's `SLUGS`,
-because that array is **positional** against fourteen rings on the brand sheet
-and must neither shrink nor reorder. The calendar's own list still carries `cnc`
-and still points at that badge. A studio leaving the building does not take its
-artwork with it.
+It collapsed **everywhere**, not only on the map, which is the point of a
+studio ceasing to exist rather than being renamed: `calendar-studios.ts` lost
+its `cnc` row and the woodshop absorbed both of its tags, so CNC classes still
+resolve to a studio. The two real CNC photographs moved into
+`public/studios/woodshop/` as `04-` and `05-`; the three `50-deck-*` backstops
+in that folder were dropped, because the woodshop already had its own three
+under the same filenames. `studiosForCategories` dedupes by slug, so an event
+tagged `cnc` *and* `woodworking` now resolves to one studio rather than two.
+
+What stays behind is deliberate: `cnc-routing.png` and `cnc-routing` in the
+badge cutter's `SLUGS`, because that array is **positional** against fourteen
+rings on the brand sheet and must neither shrink nor reorder. The sheet still
+has a CNC ring; a studio leaving the building does not erase the artwork.
 
 **A space can have two names, and which one you see is a question of room.**
 Added 2026-10-10. A label on the plan has to fit inside its own walls - the cap
@@ -2463,7 +2480,7 @@ to do nothing, not the last - every instance has looked like a specificity bug
 and none has been one. The tell is that `document.styleSheets` does not contain
 the selector at all.
 
-**`floorplan.svg` has been hand-edited four times, and that is a hazard worth
+**`floorplan.svg` has been hand-edited five times, and that is a hazard worth
 knowing about.** The file is exported from a design tool, so **the next export
 drops every one of these silently**. If any of them reappears as a fault, this
 is why; the real fix belongs in the original drawing, and this list is what to
@@ -2477,12 +2494,17 @@ re-apply there.
    513.8; stopping at 518 would have left the wall hanging four units short of
    the thing it is supposed to meet.
 2. **"Maker Studios" renamed to "Builder Studios"** (`zlabel-D1.1`).
-3. **The subdivision of the Metal Shop.** U3 renamed from "Metalshop 2", split
+3. **"Screen Printing Studio" renamed to "Printmaking Studio"** (`zlabel-U10.2`),
+   following the studio's own rename. Three name tspans became two, so the
+   anchor moved 83.3 -> 87.2 to keep the rendered pair optically where the trio
+   was - our renderer drops the code line, so the block lost a third of its
+   height. Checked after: nothing outside its room, nothing overlapping.
+4. **The subdivision of the Metal Shop.** U3 renamed from "Metalshop 2", split
    into `zone-U3.1` (jewelry, the left third) and `zone-U3.2` (metalshop, the
    right two thirds) at x=324.7, with all three labels repositioned to stack
    inside a room only 108 units tall. The room's own outline is untouched.
    Renamed again to **"Metal Shop"** on 2026-10-10 (`label-U3`, one tspan).
-4. **"Leatherworking Studio" renamed to "Leather Studio"** (`zlabel-D1.2`),
+5. **"Leatherworking Studio" renamed to "Leather Studio"** (`zlabel-D1.2`),
    following the studio's own rename. One tspan changed - `Leatherworking` to
    `Leather` - rather than collapsing the pair onto one line: the name fits on
    one at 78 units wide, but two keeps the anchor, the line count and the

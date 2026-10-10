@@ -24,8 +24,8 @@ import { STUDIOS, SPACES, FLOORS, FLOOR_NAME, UPDATED } from '../../data/space';
  *                       per-build timestamp makes every diff non-empty and
  *                       every cache entry new, which defeats the point.
  *   paths, not patterns Never rebuild an asset path from a slug: `unknown`'s
- *                       badge is a .svg where the other fourteen are .png, and
- *                       `cnc-routing`'s icon is cnc.svg.
+ *                       badge is a .svg where the others are .png, and
+ *                       `printmaking`'s icon is screen-printing.svg.
  *
  * ROOMS AND ZONES ARE ONE LIST. A zone is a space inside another space, which
  * `in` says; it needed no second array and no second fetch.

@@ -18,6 +18,9 @@ import { readPng } from './lib-png.mjs';
 const SLUGS = [
   'electronics', 'laser-cutting', 'ceramics', 'software', 'metalworking',
   'printmaking', 'sewing', 'jewelry', 'leather-studio', '3d-printing',
+  // cnc-routing is a ring on the sheet whose studio folded into the woodshop
+  // on 2026-10-10. It stays: this array is zipped against the rings found on
+  // the sheet, so dropping an entry misaligns every one after it.
   'av-studio', 'arts-crafts', 'woodshop', 'cnc-routing',
 ];
 const SIZE = 184;   // comfortably over the widest ring (173) with a little air

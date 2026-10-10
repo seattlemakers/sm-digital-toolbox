@@ -40,8 +40,9 @@ export { FLOORS, type Floor };
  *
  * `icon` is a PATH, not a convention, and this matters: the mono vectors are
  * hand-extracted from the brand's Illustrator master and are named for what
- * they are on that sheet, not for our slugs. `cnc-routing` points at `cnc.svg`
- * and `jewelry` at `lapidary.svg`, because renaming the artwork would make it
+ * they are on that sheet, not for our slugs. `printmaking` points at
+ * `screen-printing.svg` and `jewelry` at `lapidary.svg`, because renaming the
+ * artwork would make it
  * disagree with the master - and with `public/studios/`, whose photo folders
  * are keyed to the calendar's slugs and would then be a third vocabulary.
  *

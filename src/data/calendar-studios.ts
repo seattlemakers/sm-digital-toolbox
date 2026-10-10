@@ -7,10 +7,15 @@
  * rather than a space: `eventCategories`, `preferEvent`, and an `icon` that
  * /calendar requires to be a non-null string.
  *
- * Its slugs have drifted from data/space's on purpose - `cnc` here is
- * `cnc-routing` there, `lapidary` is `jewelry` - and they are NOT to be
- * reconciled. `public/studios/<slug>/` photo folders are keyed to these slugs,
- * so renaming one here silently drops slides from the reel.
+ * Its slugs still differ from data/space's where only the *word* differs -
+ * `lapidary` here is `jewelry` there, `computer-lab` is `software`. What is NOT
+ * allowed to differ is whether a studio exists at all: cnc collapsed into the
+ * woodshop in the building on 2026-10-10, so it collapsed here too, and screen
+ * printing became printmaking in both.
+ *
+ * `public/studios/<slug>/` photo folders are keyed to THESE slugs, so a rename
+ * here is also a folder rename or the reel silently loses those slides.
+ * scripts/test-space.mjs checks every folder against this list.
  *
  * ADDING A STUDIO
  *   1. drop photos in  public/studios/<slug>/*.jpg   (1920px+ wide, landscape)
@@ -22,7 +27,7 @@
  *
  * `eventCategories` maps the raw category slugs the calendar puts on each event
  * anchor onto this studio. The mapping is deliberately many-to-one: the site
- * emits both `cnc` and `cnc-routing` for one studio, and tags some leatherwork
+ * emits both `cnc` and `cnc-routing` for the woodshop, and tags some leatherwork
  * classes `leatherworking-sewing`, which is not a studio of its own.
  *
  * The slugs `cosplay` and `design` appear on events but are topical tags rather
@@ -55,11 +60,13 @@ export type Studio = {
    * there is for computer lab and leatherworking - the vector set has neither,
    * which is why leatherworking's `icon` is still a spool of thread.
    *
-   * Nothing in here renders it: /map does, off data/space-studios.ts. The
-   * files are named by THAT list's slugs, which parted from this one's on
-   * 2026-10-06 - `lapidary` here is `jewelry` there, `cnc` is `cnc-routing`,
-   * `leatherworking` is `leather-studio` and `computer-lab` is `software`.
-   * Same marks, two names for them, on purpose.
+   * Nothing in here renders it: /map does, off data/space/studios.json. The
+   * files are named by THAT list's slugs, which differ from this one's where
+   * only the word does - `lapidary` here is `jewelry` there, `leatherworking`
+   * is `leather-studio`, `computer-lab` is `software`. Same marks, two names
+   * for them, on purpose. Where a studio stopped existing or was genuinely
+   * renamed, both lists moved together: cnc into the woodshop, screen printing
+   * to printmaking.
    */
   badge: string;
   /**
@@ -83,12 +90,14 @@ export type Studio = {
 export const STUDIOS: Studio[] = [
   { slug: 'laser-cutting',   name: 'laser cutting',   icon: '/brand/icons/laser-cutting.svg', badge: '/brand/studios/laser-cutting.png', colour: '#ef1c26',   eventCategories: ['laser-cutting'] },
   { slug: '3d-printing',     name: '3d printing',     icon: '/brand/icons/3d-printing.svg', badge: '/brand/studios/3d-printing.png', colour: '#ea5300',     eventCategories: ['3d-printing'] },
-  { slug: 'woodshop',        name: 'woodshop',        icon: '/brand/icons/woodshop.svg', badge: '/brand/studios/woodshop.png', colour: '#ffb61b',        eventCategories: ['woodworking'] },
+  // cnc folded into the woodshop on 2026-10-10 - it stopped being a studio in
+  // the building, so it stops being one here. Its two tags come with it, which
+  // is what keeps CNC classes resolving to a studio at all.
+  { slug: 'woodshop',        name: 'woodshop',        icon: '/brand/icons/woodshop.svg', badge: '/brand/studios/woodshop.png', colour: '#ffb61b',        eventCategories: ['woodworking', 'cnc', 'cnc-routing'] },
   { slug: 'sewing',          name: 'sewing',          icon: '/brand/icons/sewing.svg', badge: '/brand/studios/sewing.png', colour: '#92318c',          eventCategories: ['sewing'] },
   { slug: 'electronics',     name: 'electronics',     icon: '/brand/icons/electronics.svg', badge: '/brand/studios/electronics.png', colour: '#29a641',     eventCategories: ['electronics'], preferEvent: 'Programmable LEDs' },
-  { slug: 'cnc',             name: 'cnc',             icon: '/brand/icons/cnc.svg', badge: '/brand/studios/cnc-routing.png', colour: '#945612',             eventCategories: ['cnc', 'cnc-routing'] },
   { slug: 'ceramics',        name: 'ceramics',        icon: '/brand/icons/ceramics.svg', badge: '/brand/studios/ceramics.png', colour: '#e85579',        eventCategories: ['ceramics'] },
-  { slug: 'screen-printing', name: 'screen printing', icon: '/brand/icons/screen-printing.svg', badge: '/brand/studios/printmaking.png', colour: '#43b0a5', eventCategories: ['print-making'] },
+  { slug: 'printmaking',     name: 'printmaking',     icon: '/brand/icons/screen-printing.svg', badge: '/brand/studios/printmaking.png', colour: '#43b0a5', eventCategories: ['print-making'] },
   { slug: 'arts-crafts',     name: 'arts & crafts',   icon: '/brand/icons/arts-crafts.svg', badge: '/brand/studios/arts-crafts.png', colour: '#9cc001',     eventCategories: ['crafts'] },
   // The icon sheet has no leatherworking mark, so it borrows sewing's for now.
   // The two share a calendar tag already (`leatherworking-sewing`), which makes

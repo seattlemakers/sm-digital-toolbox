@@ -246,8 +246,9 @@ come round again. Extra photos in a folder are harmless; `PHOTOS_PER_STUDIO` in
 [`src/lib/reel.ts`](src/lib/reel.ts) sets how many are used.
 
 `studios.ts` is also where calendar categories are mapped onto studios — that
-mapping is many-to-one on purpose (`cnc` and `cnc-routing` are one studio;
-`cosplay`, `design` and `crafts` are topical tags and map to nothing) — and
+mapping is many-to-one on purpose (`woodworking`, `cnc` and `cnc-routing` are
+all the woodshop; `cosplay` and `design` are topical tags and map to nothing) —
+and
 where `preferEvent` lets you name the class a studio should feature.
 
 ## Refreshing events
@@ -378,9 +379,11 @@ It matters because the archive **soft-404s** - an unknown term returns HTTP 200
 with an empty page rather than a 404, so a wrong link would look fine right up
 until someone scanned it.
 
-cnc is the other wrinkle: its events are split across `cnc` (3) and
-`cnc-routing` (5, a superset), and passing both silently resolves to the first.
-It is pinned to `cnc-routing` in `ARCHIVE_SLUG`. Both are
+The woodshop is the other wrinkle. cnc folded into it on 2026-10-10, so its
+classes now sit under three tags — `woodworking`, `cnc` and `cnc-routing` — and
+a QR can only point at one archive. It points at `/types/woodworking/`, so the
+CNC certifications are on the printed sheet but not behind the code. `ARCHIVE_SLUG`
+is the escape hatch for that and is currently empty. Both are
 [WISHLIST.md](WISHLIST.md) item 2 - one reliable tag per studio.
 
 **What the sheet deliberately does not say.** Cancelled classes are left off
