@@ -106,10 +106,11 @@ Space map (`/map`) is built and verified in the browser, added 2026-09-29.
 
 Done:
 - **The building is drawn, named and zoned, not traced.**
-  `src/data/floorplan.svg` is authored by hand and carries everything:
+  `src/data/floorplan.ts` is authored and carries everything:
   **43 rooms, 12 zones**, their names, their shapes, the walls and the label
-  positions. `scripts/read-floorplan.mjs` reads the lot into
-  `src/data/floorplan.ts`. It replaced a raster trace on 2026-10-05.
+  positions, with the floorplate and the frame derived from the walls. The
+  drawing is an export of it. It replaced a raster trace on 2026-10-05, and
+  became the source of truth rather than the output on 2026-10-10.
 - **All 14 studios placed, across rooms and zones.** A studio is wherever its
   work happens: woodshop is two rooms and three zones, ceramics is four rooms,
   metalworking is a zone in the Garage plus a zone in the room now called
@@ -2238,10 +2239,11 @@ that one technique burns its screens. The rule is the same in both directions -
 the drawing names rooms, this list names disciplines, and neither has to
 follow the other.
 
-Changing a *room* name means changing `floorplan.svg`, which is an export from a
-design tool - so it belongs in the original drawing rather than in the file
-here, or the next export silently puts it back. Changing a *studio* name is one
-line and nothing else, as long as the slug stays: `leather-studio` and
+Changing a *room* name was the awkward one until 2026-10-10 - it meant editing
+a drawing that a design tool was upstream of, so it belonged in the original or
+the next export silently put it back. The flip ended that: a room name is one
+line in `floorplan.ts`, exactly like a studio name is one line in its own list.
+Changing a *studio* name still needs the slug to stay put: `leather-studio` and
 `av-studio` still key `STUDIOS_IN` and still name the badge PNGs.
 
 **Both were full renames, slug included**, which is three edits and a file
@@ -2520,84 +2522,68 @@ to do nothing, not the last - every instance has looked like a specificity bug
 and none has been one. The tell is that `document.styleSheets` does not contain
 the selector at all.
 
-**`floorplan.svg` is hand-edited, and that is a hazard worth knowing about.**
-The file is exported from a design tool, so **the next export drops every one
-of these silently**. This list is the record - it carried a running total until
-2026-10-10, which went stale twice in one day, because an entry can cover more
-than one change. If any of them reappears as a fault, this
-is why; the real fix belongs in the original drawing, and this list is what to
-re-apply there.
+**The data is the source of truth, and the drawing is an export. Flipped on
+2026-10-10.** `src/data/floorplan.ts` is authored - by hand, or by whatever
+edits it next - and `src/data/floorplan.svg` is produced from it by
+`npm run floorplan:export`.
 
-1. **A missing wall.** The downstairs east staircase had nothing down its left
-   side - its treads simply stopped - where the upstairs one in the same corner
-   has a wall. `M829 513.8 V562.5` was added to `down-interior`. The y starts at
-   513.8 rather than at the stair box's own 518 because the entrance diagonal
-   runs (854.4,488.4) to (810.8,532) at slope -1 and therefore crosses x=829 at
-   513.8; stopping at 518 would have left the wall hanging four units short of
-   the thing it is supposed to meet.
-2. **D1.1 renamed twice** (`zlabel-D1.1`): "Maker Studios" -> "Builder
-   Studios" on 2026-10-05, then -> **"Member Studios"** on 2026-10-10. One
-   tspan each time; the pair of lines and the anchor never moved.
-3. **"Screen Printing Studio" renamed to "Printmaking Studio"** (`zlabel-U10.2`),
-   following the studio's own rename. Three name tspans became two, so the
-   anchor moved 83.3 -> 87.2 to keep the rendered pair optically where the trio
-   was - our renderer drops the code line, so the block lost a third of its
-   height. Checked after: nothing outside its room, nothing overlapping.
-4. **The subdivision of the Metal Shop.** U3 renamed from "Metalshop 2", split
-   into `zone-U3.1` (jewelry, the left third) and `zone-U3.2` (metalshop, the
-   right two thirds) at x=324.7, with all three labels repositioned to stack
-   inside a room only 108 units tall. The room's own outline is untouched.
-   Renamed to **"Metal Shop"** on 2026-10-10 and to **"TBD"** the same day
-   (`label-U3`, one tspan). The two zones took the building's spelling the same
-   day - `Metalshop` -> `Metal Shop` - and then, when they gained taglines,
-   went from the author's two lines to one: `Metal Shop` / `1` became
-   `Metal Shop 1`. See the note under *A space can carry a tagline*. Both still
-   fit comfortably: 50 units of the widest block in a 69.5-unit zone at U3.2.
-5. **"Utility Closet" renamed to "Utility Room"** (`label-D2`), one tspan. Its
-   label stays off the plan: `UNLABELLED_IDS` is keyed by id, so the rename
-   could not silently put the name back - which under the old `.*\bCloset$`
-   pattern it would have, with nothing failing and nobody looking.
-6. **The two commons** (`label-D1`, `label-U10`): "Big Room" -> **"Lower
-   Commons"** and "Megastudio" -> **"Upper Commons"**, one tspan each. Both are
-   longer than what they replaced and both still fit at the drawn size - the
-   cap touches neither - because they are the two biggest rooms on their
-   floors.
-7. **"Leatherworking Studio" renamed to "Leather Studio"** (`zlabel-D1.2`),
-   following the studio's own rename. One tspan changed - `Leatherworking` to
-   `Leather` - rather than collapsing the pair onto one line: the name fits on
-   one at 78 units wide, but two keeps the anchor, the line count and the
-   vertical centring exactly as the author set them, and matches how every
-   other narrow zone label in that room is broken.
-8. **"Check-in" renamed to "Member Check-In"** (`label-U19`) on 2026-10-10.
-   One tspan became two: at 15 characters the name needs about 97 units of a
-   73.9-unit room, so on one line the cap would have shrunk it well below every
-   other room label on the floor. Two lines is how the author breaks every
-   other narrow room here - "Compressor"/"Room", "Sanding"/"Room" - and the
-   anchor rose half a line, 324.5 -> 319.7, so the taller block stays centred:
-   measured at 0.7 units off the room's middle with 7.7 of clearance below.
-9. **"Darkroom" renamed to "Screen Printing Darkroom"** (`label-U7`) on
-   2026-10-10. One tspan became three: "Screen Printing" alone needs about 97
-   units of a 79.6-unit room, so the two words cannot even share a line. The
-   anchor rose a full line, 60.6 -> 50.9, which centres the taller block in a
-   room only 53.9 units tall - 11.7 units of clearance above and 10.4 below,
-   and no cap.
-10. **Three label anchors moved on 2026-10-10**, and none of them is a rename.
-   `label-U10` (Upper Commons) was 40 units left of its room's centre, where
-   the author had put it to clear the Electronics Studio zone label - which it
-   no longer needs to, since those labels sit well below it. `label-D1` (Lower
-   Commons) went to the room's **area centroid** rather than its bbox centre,
-   because D1 is an L and the Leather Studio tail drags the bbox centre 62
-   units down out of the room's mass. `label-D7` (Lobby) is neither: its area
-   centroid is *below* where it already sat, so it is a hand nudge of 18 units
-   into the entrance throat.
+It ran the other way for five days and the reversal is the most useful thing in
+this section, because of what it deleted. The page always rendered from the
+data, never from the SVG, so the drawing was only ever an input - and keeping it
+upstream cost two things:
 
-**The generated file is `npm run floorplan`**, which is the extractor with its
-stdout pointed at `src/data/floorplan.ts`. It had no npm script until
-2026-10-06, and nothing said it wrote to stdout - so "re-run the script" left
-the one thing you needed to know unwritten, and running it plainly looks like it
-did nothing.
+- **A regeneration step.** Edit the drawing, forget to re-run the extractor, and
+  the site silently shows the old building. Nothing checked.
+- **A list of hazards.** This passage used to hold nine numbered entries - a
+  missing wall added to a staircase, six renames, a room merge, three label
+  anchors - each one a warning that **the next export from the design tool would
+  silently destroy it**, because the SVG was both the source of truth *and* a
+  tool's output. Every entry was a thing to re-apply by hand in somebody else's
+  Figma file.
 
-Finding which staircase it was is worth recording as a method, because there are
+That list is gone, and not because the edits were reverted - they are all still
+in the building. They stopped being *hazards*. A change to the data is a change,
+full stop; there is no upstream left to overwrite it.
+
+**What the flip had to preserve, and how that was checked.** The derived values
+were the risk: `outline` and `viewBox` were numbers in a generated file and are
+now computed at module load from the walls. The whole `FLOORPLAN` object was
+dumped before and after and compared key by key - **identical**, including both
+floorplates and both frames. That is the only reason to trust a change that
+touches every page on the map.
+
+**Two tests hold the ends down**, because the same staleness hazard would
+otherwise just point the other way:
+
+- `test-floorplan-frame.mjs` pins the derived frame and floorplate against the
+  numbers the generator used to write, and exercises the parser away from the
+  building - a curve must throw rather than be mis-traced into a straight line.
+- `test-floorplan-svg.mjs` re-exports the drawing and fails if the committed SVG
+  differs, then imports that export and fails if the rows come back changed.
+
+The round trip earns its place already: it caught the exporter writing
+`fill="none"` on zone paths, which imports back as the string `"none"` where the
+data holds `null`. Nothing else would have noticed, because the page never reads
+a zone's fill.
+
+**Redrawing the building is still possible and is now a deliberate one-off.**
+`npm run floorplan:import` reads an SVG and prints the authored rows; with
+`--write` it replaces them in `floorplan.ts`. It **overwrites authored data**,
+so it is for starting again from a redrawn plan rather than for editing one -
+which is why the npm script says `import` rather than the old bare `floorplan`.
+It splices between two markers rather than printing a whole file, because that
+file is now mostly prose and regenerating the lot would delete it.
+
+**A wall was missing and finding which staircase it belonged to is worth
+recording as a method.** The downstairs east staircase had nothing down its left
+side - its treads simply stopped - where the upstairs one in the same corner has
+a wall, so `M829 513.8 V562.5` was added. The y starts at 513.8 rather than at
+the stair box's own 518 because the entrance diagonal runs (854.4,488.4) to
+(810.8,532) at slope -1 and therefore crosses x=829 at 513.8; stopping at 518
+would have left the wall hanging four units short of the thing it is supposed to
+meet.
+
+Which staircase took some finding, because there are
 four and they look alike at a glance. Each was rendered on its own at high
 magnification and compared against the photograph - and the tell was the tread
 direction, not the walls: only the downstairs east pair has a horizontal-tread
@@ -2724,9 +2710,9 @@ question about the building, so its inputs - `studios`, `studiosWithin`,
 one picture, so `isLabelled()` lives there whole.
 
 **The two name regexes became explicit id lists, and that was the real fix.**
-`CIRCULATION` and `UNDRAWN` matched against `name` - and `name` comes from
-`floorplan.svg`, which is hand-edited, and **several of those edits rename a
-space**. A rename would have silently erased a room's label or handed one back,
+`CIRCULATION` and `UNDRAWN` matched against `name` - and **a name is edited far
+more often than anything else here**: six rooms and zones were renamed on
+2026-10-10 alone. A rename would have silently erased a room's label or handed one back,
 with nothing failing and nobody looking. "Check-in" -> "Member Check-In" on
 2026-10-10 is the case: it is matched as circulation by id now, so the longer
 name could not quietly take the fill with it. The ids are checked against the drawing
@@ -2772,12 +2758,16 @@ spending any time on specificity, because everything about it reads as a
 cascade bug.
 
 **A backtick in a doc comment inside a generator's output template closes the
-template.** `read-floorplan.mjs` writes its output as one big template literal,
-and two words quoted in backticks inside the generated file's own header comment
-turned into a syntax error at the top of the script - reported at the line the
-template *opens*, which is nowhere near the problem. Reword rather than escape;
-escaped backticks inside a template that is itself writing JavaScript are a
-puzzle for the next person.
+template.** `read-floorplan.mjs` used to write a whole file as one template
+literal, and two words quoted in backticks inside the *generated* file's header
+comment turned into a syntax error at the top of the script - reported at the
+line the template *opens*, which is nowhere near the problem. Reword rather than
+escape; escaped backticks inside a template that is itself writing JavaScript
+are a puzzle for the next person.
+
+Mostly defused since the flip: that header is prose in a hand-written file now,
+and the importer emits only the rows. It still writes JavaScript from a template,
+so the trap is one edit away.
 
 **The walls were traced out of a raster once, and that is over.** Deleted on
 2026-10-05: `scripts/trace-floorplan.mjs` (dark-run masking, furniture rejected

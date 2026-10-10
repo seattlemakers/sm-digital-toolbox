@@ -25,9 +25,95 @@
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { FLOORPLAN, FLOORS, STROKE } from '../src/data/floorplan.ts';
+import { FLOORPLAN, FLOORS, STROKE, BUILDING } from '../src/data/floorplan.ts';
 
 const OUT = process.argv[2];
+
+/**
+ * `--svg` writes the whole building back out as one drawing.
+ *
+ *   node --experimental-strip-types scripts/export-floorplan.mjs out --svg
+ *
+ * This is the other half of the flip of 2026-10-10. The data is the source of
+ * truth now, so the SVG is something we produce - to look at, to open in a
+ * design tool, or to hand to somebody who wants the plan rather than the
+ * repository.
+ *
+ * It is a ROUND TRIP, not a picture: the layers, ids and attributes are the
+ * ones scripts/read-floorplan.mjs reads, so an export can be imported back and
+ * must come out the same. test-floorplan-frame.mjs does not check that - the
+ * check is to export, import with --write, and see an empty `git diff`.
+ *
+ * Two things are rebuilt rather than copied, because the data does not keep
+ * them and the importer does not read them:
+ *
+ *   a room's `d`     stored as `points`, so it goes back out as a closed
+ *                    polygon. Same points in, same points out.
+ *   a label's `dy`   the page computes its own line spacing from `size`, so
+ *                    this only decides how the SVG looks in a design tool.
+ *                    1.1x the size is what the drawing already used.
+ *   a label's prefix the importer strips the drawing's own `U5: `
+ *                    cross-reference, so it is put back on the way out - on the
+ *                    first line for a room, on a line of its own for a zone.
+ */
+const AS_SVG = process.argv.includes('--svg');
+
+const LAYER = {
+  rooms: 'stroke="none" fill-rule="evenodd"',
+  zones: 'fill="#1f2a24" fill-opacity="0.08" stroke="#1f2a24" stroke-width="1" stroke-dasharray="3 2" stroke-opacity="0.7"',
+  walls: 'fill="none" stroke="#1f2a24" stroke-linecap="square"',
+  'room-labels':
+    'stroke="none" fill="#1f2a24" font-family="\'Archivo Narrow\', sans-serif" font-weight="600" text-anchor="middle" letter-spacing="0.03em" style="text-transform:uppercase"',
+  'zone-labels':
+    'stroke="none" fill="#1f2a24" font-family="\'Archivo Narrow\', sans-serif" font-weight="600" font-style="italic" text-anchor="middle" letter-spacing="0.03em" style="text-transform:uppercase"',
+};
+
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const poly = (pts) => `M${pts.map((p) => p.join(' ')).join(' L')} Z`;
+
+const label = (s, kind) => {
+  const head = kind === 'room' ? [`${s.id}: ${s.lines[0]}`, ...s.lines.slice(1)] : [s.id, ...s.lines];
+  const dy = (s.size * 1.1).toFixed(2);
+  const tspans = head
+    .map((t, i) => `<tspan x="${s.at[0]}" dy="${i ? dy : 0}">${esc(t)}</tspan>`)
+    .join('');
+  return `<text id="${kind === 'room' ? 'label' : 'zlabel'}-${s.id}" x="${s.at[0]}" y="${s.at[1]}" font-size="${s.size}">${tspans}</text>`;
+};
+
+function drawing() {
+  const pre = { upstairs: 'up', downstairs: 'down' };
+  const body = FLOORS.map((floor) => {
+    const p = pre[floor];
+    const b = BUILDING[floor];
+    const shift = b.offsetY ? ` transform="translate(0 ${b.offsetY})"` : '';
+    const g = (name, inner) => `    <g id="${p}-${name}" ${LAYER[name]}>${inner}</g>`;
+    return [
+      `  <g id="${floor}"${shift}>`,
+      g('rooms', b.rooms.map((r) => `<path id="room-${r.id}" fill="${r.fill}" d="${poly(r.points)}"></path>`).join('')),
+      g('zones', b.zones.map((z) => `<path id="zone-${z.id}" data-room="${z.room}" d="${poly(z.points)}"></path>`).join('')),
+      g('walls', ['exterior', 'interior', 'stairs']
+        .map((l) => `<path id="${p}-${l}" stroke-width="${STROKE[l]}" d="${b.d[l]}"></path>`).join('')),
+      g('room-labels', b.rooms.map((r) => label(r, 'room')).join('')),
+      g('zone-labels', b.zones.map((z) => label(z, 'zone')).join('')),
+      '  </g>',
+    ].join('\n');
+  }).join('\n');
+
+  // One frame round both floors, which is how the drawing has always been set
+  // up: the two are stacked, and downstairs carries its own shift.
+  const [x, y, w] = FLOORPLAN.upstairs.viewBox.split(' ').map(Number);
+  const d = FLOORPLAN.downstairs.viewBox.split(' ').map(Number);
+  const h = d[1] + d[3] - y;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}">\n${body}\n</svg>\n`;
+}
+
+if (AS_SVG) {
+  mkdirSync(OUT, { recursive: true });
+  const file = `${OUT}/floorplan.svg`;
+  writeFileSync(file, drawing());
+  process.stderr.write(`${file}\n`);
+  process.exit(0);
+}
 /**
  * `--spaces` numbers every enclosed space on the way out.
  *

@@ -1,44 +1,37 @@
 /**
- * Read the authored floorplan into data the page can draw.
+ * Import a hand-drawn SVG into src/data/floorplan.ts. A ONE-OFF, not a build step.
  *
- *   node scripts/read-floorplan.mjs > src/data/floorplan.ts
+ *   node scripts/read-floorplan.mjs [svg]            # print the rows it would write
+ *   node scripts/read-floorplan.mjs [svg] --write    # overwrite them in floorplan.ts
  *
- * `src/data/floorplan.svg` is drawn by hand and is the source of truth for the
- * building's geometry. It replaced a trace of the space's old CAD drawing, and
- * replaced the whole pipeline with it - the tracer, the normaliser and their
- * tests - because every problem those solved is one a hand-drawn plan does not
- * have. Walls are already two weights, already on shared lines, already meeting
- * at the corners, and the doorways are already pen-ups rather than something to
- * be inferred from a gap and a threshold.
+ * The SVG defaults to src/data/floorplan.svg, which is itself an EXPORT - see
+ * scripts/export-floorplan.mjs --svg. Pass a path to import a different one.
  *
- * So this is an extractor, not a cleanup. It copies the path data verbatim and
- * works out three things the SVG states only implicitly:
+ * THIS OVERWRITES AUTHORED DATA. Until 2026-10-10 the drawing was the source of
+ * truth and this ran on every change; now floorplan.ts is, and this is for
+ * starting again from a redrawn building rather than for editing one. Every
+ * name, anchor and line break in that file is replaced by whatever the SVG
+ * says. Read the note at the top of floorplan.ts before running it.
  *
- *   1. The floorplate, for the fill under everything. The exterior is drawn as
- *      one outline with the pen lifted at each door, so joining its points in
- *      order and closing the loop gives the building's shape back - the pen-ups
- *      are exactly the doors and nothing else.
- *   2. Each floor's extents, so the two can be framed at one scale.
- *   3. The viewBoxes, with a gutter on the left for the compass.
+ * It is an extractor, not a cleanup: it copies the wall path data verbatim and
+ * reads three things out of the drawing's own layers.
  *
- * It parses only M/L/H/V/Z absolute, and throws on anything else. A future
- * export that introduces a curve should fail loudly here rather than quietly
- * dropping a wall.
+ *   #room-U5 / #zone-U15.2   shape, fill, and which room a zone sits in
+ *   #label-U5                the name, the author's line breaks, the anchor
+ *   the floor groups         each floor's own vertical shift
  *
- * THE DRAWING ALSO NAMES THE ROOMS, as of 2026-10-05, and that changed what
- * data/rooms.ts is for. Rooms and zones arrive as `#room-U5` / `#zone-U15.2`
- * with a label layer beside them, so the drawing is now the source of truth for
- * what a room is called and what shape it is. rooms.ts keeps only what the
- * drawing cannot know: which studios are in a room, and the open questions.
+ * What it no longer does is compute the floorplate or the frame. Those are
+ * derived from the walls at module load - see lib/floorplan-frame.ts - so there
+ * is nothing for an import to get out of step with.
  *
  * A zone is a named area INSIDE a room - "Laser Cutting Studio" within the Fab
- * Lab, "Big CNC" within the Garage. That is the relationship the old tape
- * colours were reaching for and never quite had: the building divides into
- * rooms, and a room divides into zones that have no walls between them.
+ * Lab, "Big CNC" within the Garage. The building divides into rooms, and a room
+ * divides into zones that have no walls between them.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
-const svg = readFileSync('src/data/floorplan.svg', 'utf8');
+const SOURCE = process.argv.slice(2).find((a) => !a.startsWith('--')) ?? 'src/data/floorplan.svg';
+const svg = readFileSync(SOURCE, 'utf8');
 
 const pathOf = (id) => {
   const m = svg.match(new RegExp(`<path[^>]*id="${id}"[^>]*\\sd="([^"]+)"`));
@@ -193,122 +186,27 @@ const FLOORS = [
   { key: 'downstairs', group: 'downstairs', prefix: 'down', side: 'D' },
 ];
 
-const floors = FLOORS.map((f) => {
-  const d = {
+const floors = FLOORS.map((f) => ({
+  ...f,
+  offsetY: offsetOf(f.group),
+  d: {
     exterior: pathOf(`${f.prefix}-exterior`),
     interior: pathOf(`${f.prefix}-interior`),
     stairs: pathOf(`${f.prefix}-stairs`),
-  };
-  const offsetY = offsetOf(f.group);
-  const all = [...points(d.exterior), ...points(d.interior), ...points(d.stairs)];
-  return {
-    ...f,
-    d,
-    offsetY,
-    rooms: ROOMS.filter((r) => r.id.startsWith(f.side)),
-    zones: ZONES.filter((z) => z.id.startsWith(f.side)),
-    outline: outline(d.exterior),
-    box: {
-      x0: Math.min(...all.map((p) => p.x)),
-      x1: Math.max(...all.map((p) => p.x)),
-      y0: Math.min(...all.map((p) => p.y)) + offsetY,
-      y1: Math.max(...all.map((p) => p.y)) + offsetY,
-    },
-  };
-});
-
-/**
- * One frame for both floors, so they render at one scale and the building lines
- * up between them. GUTTER is the room the compass stands in, outside the
- * building; MARGIN is breathing space on the other three sides. Each floor's
- * own content is then centred vertically in the shared height, so a shorter
- * floor is not stretched to fill its box.
- */
-const GUTTER = 46;
-const MARGIN = 12;
-const vbX = Math.min(...floors.map((f) => f.box.x0)) - GUTTER;
-const vbW = Math.max(...floors.map((f) => f.box.x1)) + MARGIN - vbX;
-const vbH = Math.max(...floors.map((f) => f.box.y1 - f.box.y0)) + MARGIN * 2;
-
-const view = (f) => {
-  const slack = (vbH - (f.box.y1 - f.box.y0)) / 2;
-  return `${round(vbX)} ${round(f.box.y0 - slack)} ${round(vbW)} ${round(vbH)}`;
-};
+  },
+  rooms: ROOMS.filter((r) => r.id.startsWith(f.side)),
+  zones: ZONES.filter((z) => z.id.startsWith(f.side)),
+}));
 
 const q = (s) => JSON.stringify(s);
 
 const shape = (s) =>
   `      { id: ${q(s.id)}, name: ${q(s.name)},${s.room ? ` room: ${q(s.room)},` : ''} fill: ${q(s.fill)},\n        lines: ${q(s.lines)}, at: [${s.at.join(', ')}], size: ${s.size},\n        points: [${s.points.map((p) => `[${p.join(', ')}]`).join(', ')}] },`;
 
-process.stdout.write(`/**
- * The building, drawn rather than traced.
- *
- * GENERATED by scripts/read-floorplan.mjs from src/data/floorplan.svg - do not
- * hand-edit. To take a new version of the drawing: replace that SVG and run
- * \`npm run floorplan\`, which is that script with its stdout pointed here.
- *
- * The three layers are the drawing's own, and so are their weights: the outside
- * of the building, the partitions inside it, and the stairs, which are drawn
- * lightest because they are a thing you walk on rather than a thing you cannot
- * walk through. Doorways are pen-ups in the path data - the absence IS the
- * door, which is also how the building works.
- */
-export type Floor = 'upstairs' | 'downstairs';
-export type Layer = 'exterior' | 'interior' | 'stairs';
-export type Pt = readonly [number, number];
-
-/** Stroke weights, in the drawing's own units, exactly as it sets them. */
-export const STROKE: Record<Layer, number> = {
-  exterior: 6,
-  interior: 3,
-  stairs: 1.5,
-};
-
-/**
- * A room, as the drawing names and shapes it. The fill is the author's own
- * colour-coding of what kind of space it is, and "at" is where they put the
- * label - which beats a computed centroid, since on an L-shaped room that lands
- * in a wall.
- */
-export type Room = {
-  id: string;
-  name: string;
-  /** The author's own line breaks, which are fitted to this room's width. */
-  lines: string[];
-  fill: string | null;
-  points: Pt[];
-  at: Pt;
-  size: number;
-};
-
-/**
- * A named area inside a room - "Laser Cutting Studio" within the Fab Lab, "Big
- * CNC" within the Garage. No wall divides a zone from its room or from its
- * siblings, and that is exactly what makes it a zone rather than a room.
- */
-export type Zone = Room & { room: string };
-
-export type FloorPlan = {
-  /** The drawing stacks the floors; this is the second one's own shift. */
-  offsetY: number;
-  /** The floorplate, with the doorways closed up, for the fill underneath. */
-  outline: Pt[];
-  /** Both floors share a width and a height, so they render at one scale. */
-  viewBox: string;
-  d: Record<Layer, string>;
-  rooms: Room[];
-  zones: Zone[];
-};
-
-export const FLOORPLAN: Record<Floor, FloorPlan> = {
-${floors
+const rows = floors
   .map(
     (f) => `  ${f.key}: {
     offsetY: ${f.offsetY},
-    viewBox: ${q(view(f))},
-    outline: [
-${f.outline.map((p) => `      [${p[0]}, ${p[1]}],`).join('\n')}
-    ],
     d: {
       exterior: ${q(f.d.exterior)},
       interior: ${q(f.d.interior)},
@@ -322,14 +220,33 @@ ${f.zones.map(shape).join('\n')}
     ],
   },`,
   )
-  .join('\n')}
-};
+  .join('\n');
 
-export const FLOORS: Floor[] = ['upstairs', 'downstairs'];
-`);
+/**
+ * Splice the rows into floorplan.ts rather than printing a whole file.
+ *
+ * That file is now hand-written and most of it is prose - the note explaining
+ * why the data is the source of truth, and the types. Regenerating the lot
+ * would delete all of it, which is exactly the kind of silent loss the flip was
+ * meant to end. The two markers are the only thing an import is allowed to
+ * touch.
+ */
+const TARGET = 'src/data/floorplan.ts';
+const OPEN = 'export const BUILDING: Record<Floor, FloorRows> = {';
+const CLOSE = '\n};\n\n// --- derived';
+
+if (process.argv.includes('--write')) {
+  const cur = readFileSync(TARGET, 'utf8');
+  const a = cur.indexOf(OPEN);
+  const b = cur.indexOf(CLOSE, a);
+  if (a < 0 || b < 0) throw new Error(`${TARGET}: cannot find the BUILDING block to replace`);
+  writeFileSync(TARGET, `${cur.slice(0, a + OPEN.length)}\n${rows}${cur.slice(b)}`);
+  process.stderr.write(`${TARGET}: BUILDING replaced from the drawing\n`);
+} else {
+  process.stdout.write(`${OPEN}\n${rows}\n};\n`);
+  process.stderr.write('\nNothing written. Re-run with --write to overwrite the rows in src/data/floorplan.ts.\n');
+}
 
 for (const f of floors) {
-  process.stderr.write(
-    `${f.key}: ${f.rooms.length} rooms, ${f.zones.length} zones, outline ${f.outline.length} points, box ${round(f.box.x0)},${round(f.box.y0)} -> ${round(f.box.x1)},${round(f.box.y1)}\n`,
-  );
+  process.stderr.write(`${f.key}: ${f.rooms.length} rooms, ${f.zones.length} zones\n`);
 }
