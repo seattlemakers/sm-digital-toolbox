@@ -147,7 +147,7 @@ export const FLOORPLAN: Record<Floor, FloorPlan> = {
     ],
     zones: [
       { id: "U1.1", name: "Metal Shop 1", room: "U1", fill: null,
-        lines: ["Metal Shop","1"], at: [235.5, 104.8], size: 7,
+        lines: ["Metal Shop 1"], at: [235.5, 104.8], size: 7,
         points: [[181, 29.6], [290, 29.6], [290, 190.3], [181, 190.3]] },
       { id: "U1.2", name: "Big CNC", room: "U1", fill: null,
         lines: ["Big","CNC"], at: [206, 290.8], size: 7,
@@ -171,7 +171,7 @@ export const FLOORPLAN: Record<Floor, FloorPlan> = {
         lines: ["Jewelry","Studio"], at: [307.4, 152], size: 7,
         points: [[290, 96.5], [324.7, 96.5], [324.7, 205], [290, 205]] },
       { id: "U3.2", name: "Metal Shop 2", room: "U3", fill: null,
-        lines: ["Metal Shop","2"], at: [359.5, 152], size: 7,
+        lines: ["Metal Shop 2"], at: [359.5, 152], size: 7,
         points: [[324.7, 96.5], [394.2, 96.5], [394.2, 205], [324.7, 205]] },
     ],
   },

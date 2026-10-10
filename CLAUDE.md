@@ -2299,6 +2299,19 @@ against the room's own width at 0.53 of the size per character - Figtree's
 average advance. It only has to be close, because the cap at load measures the
 real shaped text.
 
+**A tagline can make the author's own line break wrong, and the zones are
+where that first showed.** `Metal Shop` over `1` is a sensible break for a name
+standing alone in a narrow zone. Put a tagline under it and the numeral is
+stranded on a line of its own between the name and the thing qualifying it - it
+reads as belonging to the tagline. Both zones went to one line on 2026-10-10,
+and the anchor did not move: the block is two lines either way, so what the
+author set stays set.
+
+That is not a licence to re-wrap names generally - the rule above still holds,
+and item 7 of the hand-edit list is the case where keeping two lines was right.
+The difference is that a tagline *changes the block*, so the break the author
+chose was made about a different object.
+
 An id with no space throws at module load, the same as a studio pinned to one.
 That check matters more here than it does for studios: a studio in the wrong
 place is visible on the plan, where a tagline on a room that does not exist is
@@ -2525,11 +2538,11 @@ re-apply there.
    right two thirds) at x=324.7, with all three labels repositioned to stack
    inside a room only 108 units tall. The room's own outline is untouched.
    Renamed to **"Metal Shop"** on 2026-10-10 and to **"TBD"** the same day
-   (`label-U3`, one tspan), while the two zones gained a space - `Metalshop` ->
-   `Metal Shop` in `zlabel-U1.1` and `zlabel-U3.2`, one tspan each. Both zone
-   names were already broken over two lines, so the wider word changed neither
-   the line count nor the anchor, and the cap engages on neither: 32.3 units in
-   a 69.5-unit zone at U3.2, against 37.2 of slack.
+   (`label-U3`, one tspan). The two zones took the building's spelling the same
+   day - `Metalshop` -> `Metal Shop` - and then, when they gained taglines,
+   went from the author's two lines to one: `Metal Shop` / `1` became
+   `Metal Shop 1`. See the note under *A space can carry a tagline*. Both still
+   fit comfortably: 50 units of the widest block in a 69.5-unit zone at U3.2.
 5. **"Utility Closet" renamed to "Utility Room"** (`label-D2`), one tspan. Its
    label stays off the plan: `UNLABELLED_IDS` is keyed by id, so the rename
    could not silently put the name back - which under the old `.*\bCloset$`

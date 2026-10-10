@@ -1,10 +1,10 @@
 {
   "updated": "2026-10-10",
   "spaces": {
-    "U1.1": { "studios": ["metalworking"] },
+    "U1.1": { "studios": ["metalworking"], "tagline": "Machine Shop" },
     "U1.2": { "studios": ["woodshop"] },
     "U3.1": { "studios": ["jewelry"] },
-    "U3.2": { "studios": ["metalworking"] },
+    "U3.2": { "studios": ["metalworking"], "tagline": "Welding & Fabrication" },
     "U5": { "studios": ["woodshop"], "tagline": "Machine Room" },
     "U5.1": { "studios": ["woodshop"] },
     "U6": { "studios": ["woodshop"] },
