@@ -2502,6 +2502,13 @@ rather than looked up, and the lightest thing on the page at 70%: out on the
 grey there is nothing to compete with, and full strength pulls the eye off the
 building.
 
+**The restrooms differ by floor on purpose, confirmed 2026-10-10.** Upstairs
+U11 and U12 are both **All-Gender Restroom**; downstairs D11 and D13 are
+**Men's** and **Women's**. That is the building, not an unfinished rename -
+checked rather than assumed, because a plan that reads all-gender on one floor
+and gendered on the other looks exactly like a job somebody left half done, and
+the obvious "fix" would put wrong signs on four doors.
+
 **A zone is a named area inside a room, with no wall between them**, and that is
 the distinction the old tape colours were reaching for and never quite had.
 "Laser Cutting Studio" is a zone within the Fab Lab; "Big CNC" is a zone within
