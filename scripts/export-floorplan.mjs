@@ -52,34 +52,46 @@ const OUT = process.argv[2];
  *   a label's `dy`   the page computes its own line spacing from `size`, so
  *                    this only decides how the SVG looks in a design tool.
  *                    1.1x the size is what the drawing already used.
- *   a label's prefix the importer strips the drawing's own `U5: `
- *                    cross-reference, so it is put back on the way out - on the
- *                    first line for a room, on a line of its own for a zone.
+ *   a label's prefix the importer strips the drawing's own id line from each
+ *                    zone label, so it is put back on the way out. Rooms have
+ *                    no label at all since 2026-10-11.
  */
 const AS_SVG = process.argv.includes('--svg');
 
 const LAYER = {
   rooms: 'stroke="none" fill-rule="evenodd"',
-  zones: 'fill="#1f2a24" fill-opacity="0.08" stroke="#1f2a24" stroke-width="1" stroke-dasharray="3 2" stroke-opacity="0.7"',
+  zones: 'fill="none" stroke="#1f2a24" stroke-width="1" stroke-dasharray="3 2" stroke-opacity="0.7"',
   walls: 'fill="none" stroke="#1f2a24" stroke-linecap="square"',
-  'room-labels':
-    'stroke="none" fill="#1f2a24" font-family="\'Archivo Narrow\', sans-serif" font-weight="600" text-anchor="middle" letter-spacing="0.03em" style="text-transform:uppercase"',
+  // Mixed case and roman since 2026-10-11 - the handoff's two label styles are
+  // both Figtree, normal case, no tracking. Weight is a stand-in: the page sets
+  // 650 or 450 by rule, and a design tool only needs to see where the words are.
   'zone-labels':
-    'stroke="none" fill="#1f2a24" font-family="\'Archivo Narrow\', sans-serif" font-weight="600" font-style="italic" text-anchor="middle" letter-spacing="0.03em" style="text-transform:uppercase"',
+    'stroke="none" fill="#1f2a24" font-family="Figtree, sans-serif" font-weight="600" text-anchor="middle"',
   entrances:
-    'stroke="none" fill="#5c6360" font-family="\'Archivo Narrow\', sans-serif" font-weight="600" text-anchor="middle" letter-spacing="0.06em" style="text-transform:uppercase"',
+    'stroke="none" fill="#5c6360" font-family="Figtree, sans-serif" font-weight="600" text-anchor="middle" letter-spacing="0.08em" style="text-transform:uppercase"',
 };
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const poly = (pts) => `M${pts.map((p) => p.join(' ')).join(' L')} Z`;
 
-const label = (s, kind) => {
-  const head = kind === 'room' ? [`${s.id}: ${s.lines[0]}`, ...s.lines.slice(1)] : [s.id, ...s.lines];
-  const dy = (s.size * 1.1).toFixed(2);
+/**
+ * A zone's label, with the id on a line of its own above the name - the
+ * drawing's own cross-reference, which the importer strips. An UNNAMED zone
+ * still writes a text element carrying only that id line: its anchor and size
+ * are rows in the data, and a round trip that dropped them would not be one.
+ * The importer reads "nothing after the id" as `name: null`.
+ *
+ * `transform` carries a rotated label's turn about its own anchor, which is
+ * the one piece of label geometry the data holds beyond x, y and size.
+ */
+const label = (z) => {
+  const head = [z.id, ...z.lines];
+  const dy = (z.size * 1.1).toFixed(2);
   const tspans = head
-    .map((t, i) => `<tspan x="${s.at[0]}" dy="${i ? dy : 0}">${esc(t)}</tspan>`)
+    .map((t, i) => `<tspan x="${z.at[0]}" dy="${i ? dy : 0}">${esc(t)}</tspan>`)
     .join('');
-  return `<text id="${kind === 'room' ? 'label' : 'zlabel'}-${s.id}" x="${s.at[0]}" y="${s.at[1]}" font-size="${s.size}">${tspans}</text>`;
+  const rot = z.rotate ? ` transform="rotate(${z.rotate} ${z.at[0]} ${z.at[1]})"` : '';
+  return `<text id="zlabel-${z.id}" x="${z.at[0]}" y="${z.at[1]}" font-size="${z.size}"${rot}>${tspans}</text>`;
 };
 
 function drawing() {
@@ -95,20 +107,21 @@ function drawing() {
       g('zones', b.zones.map((z) => `<path id="zone-${z.id}" data-room="${z.room}" d="${poly(z.points)}"></path>`).join('')),
       g('walls', ['exterior', 'interior', 'stairs']
         .map((l) => `<path id="${p}-${l}" stroke-width="${STROKE[l]}" d="${b.d[l]}"></path>`).join('')),
-      g('room-labels', b.rooms.map((r) => label(r, 'room')).join('')),
-      g('zone-labels', b.zones.map((z) => label(z, 'zone')).join('')),
+      g('zone-labels', b.zones.map(label).join('')),
       // An entrance has no shape and no code, so its label carries no prefix
       // to put back - the id is the whole of its cross-reference.
       g('entrances', b.entrances.map((e) => {
         const dy = (e.size * 1.1).toFixed(2);
         const tspans = e.lines.map((t, i) => `<tspan x="${e.at[0]}" dy="${i ? dy : 0}">${esc(t)}</tspan>`).join('');
+        // An anchor other than the layer's `middle` is the label's own.
+        const anchor = e.anchor ? ` text-anchor="${e.anchor}"` : '';
         // The arrow is a plain two-point line. The head is the renderer's -
         // drawing one here would put a second, differently-sized arrowhead in
         // the file for anything that opened it.
         const [t, h] = e.arrow;
         return (
           `<path id="arrow-${e.id}" fill="none" stroke="#5c6360" stroke-width="1.1" d="M${t[0]} ${t[1]} L${h[0]} ${h[1]}"></path>` +
-          `<text id="entrance-${e.id}" x="${e.at[0]}" y="${e.at[1]}" font-size="${e.size}">${tspans}</text>`
+          `<text id="entrance-${e.id}" x="${e.at[0]}" y="${e.at[1]}" font-size="${e.size}"${anchor}>${tspans}</text>`
         );
       }).join('')),
       '  </g>',

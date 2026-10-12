@@ -1,5 +1,5 @@
 /**
- * The building: studios, spaces, and which studios work where.
+ * The building: studios, spaces, who may use them, and which studios work where.
  *
  * This is the one place the rest of the site - and other Seattle Makers web
  * projects, through /data/space.json - asks about the space. It replaced the
@@ -11,25 +11,28 @@
  * ROWS ARE JSON, RULES ARE HERE, and the split is the whole design.
  *
  * The rows - studio names and colours, which studios are in which space, the
- * taglines - live in studios.json and mappings.json so that a form,
- * a script or an agent can write one. The reasoning, the derivation and the
- * validation live in this file, where an editor round-tripping those files
- * cannot touch them. That is the real reason, more than "JSON is easy to
- * write": any editor that rewrites a file destroys its comments, and the thirty
- * lines below explaining why the Landing has no label are worth more than the
- * convenience of having them beside the ids they talk about.
+ * taglines, who may use a space - live in studios.json, mappings.json and
+ * access.json so that a form, a script or an agent can write one. The
+ * reasoning, the derivation and the validation live in this file, where an
+ * editor round-tripping those files cannot touch them. That is the real reason,
+ * more than "JSON is easy to write": any editor that rewrites a file destroys
+ * its comments, and the explanations below are worth more than the convenience
+ * of having them beside the ids they talk about.
  *
  * The cost of JSON rows is that nothing type-checks them as you type, so the
  * validation at the bottom of this file checks SHAPE as well as references -
  * every row has its keys, every colour is a hex triple, no slug appears twice.
  * All of it throws at module load, which fails the build.
  *
- * THE DRAWING OWNS NAMES AND SHAPES. mappings.json holds no room names at all:
- * `floorplan.svg` is the single place a space is named, and a name can only be
- * changed there. An editing UI can add a *tagline*; it cannot rename a room.
+ * THE DRAWING OWNS NAMES AND SHAPES, and as of 2026-10-11 it names ZONES. A
+ * room is an unnamed container; every named space is a zone inside one. The
+ * rows here hold no names at all: `floorplan.ts` is the single place a space
+ * is named, and a name can only be changed there. An editing UI can add a
+ * *tagline* or flag a resource; it cannot rename a zone.
  */
 import studioRows from './studios.json';
 import mappingRows from './mappings.json';
+import accessRows from './access.json';
 import { FLOORPLAN, FLOORS, type Floor, type Room, type Zone } from '../floorplan';
 
 export { FLOORS, type Floor };
@@ -41,11 +44,11 @@ export { FLOORS, type Floor };
  * hand-extracted from the brand's Illustrator master and are named for what
  * they are on that sheet, not for our slugs. `printmaking` points at
  * `screen-printing.svg` and `jewelry` at `lapidary.svg`, because renaming the
- * artwork would make it
- * disagree with the master - and with `public/studios/`, whose photo folders
- * are keyed to the calendar's slugs and would then be a third vocabulary.
+ * artwork would make it disagree with the master - and with `public/studios/`,
+ * whose photo folders are keyed to the calendar's slugs and would then be a
+ * third vocabulary.
  *
- * Three studios have no vector at all and omit the key. Nothing may rebuild
+ * One studio has no vector at all and omits the key. Nothing may rebuild
  * either path from a slug: `unknown`'s badge is an `.svg` where the other
  * fourteen are `.png`.
  */
@@ -63,24 +66,22 @@ export const STUDIO_BY_SLUG = new Map(STUDIOS.map((s) => [s.slug, s]));
 /**
  * A RESOURCE is a space with a studio's descriptors and none of its standing.
  *
- * The sanding room, the fume room, the computer lab, the A/V room, the mini
- * makerspace. The same things are true of one that are true of a studio -
- * somebody maintains it, classes run in it, the calendar tags it - but it is
- * not a discipline you would buy a membership to, and **single-studio
- * membership is the whole reason the distinction has to exist in the data**. A
- * member with one studio should not find that the sanding room counts as their
- * studio, nor that it is barred to them as somebody else's.
+ * The sanding room, the fume room, the computer lab, A/V, the mini makerspace.
+ * The same things are true of one that are true of a studio - somebody
+ * maintains it, classes run in it, the calendar tags it - but it is not a
+ * discipline you would buy a membership to, and **single-studio membership is
+ * the whole reason the distinction has to exist in the data**. A member with
+ * one studio should not find that the sanding room counts as their studio, nor
+ * that it is barred to them as somebody else's.
  *
  * IT IS A FLAG ON THE SPACE, NOT A THING OF ITS OWN, and that was the second
  * answer. The first gave each one a record beside the studios - slug, name,
- * colour, badge - and `software`, `av-studio`, `arts-crafts` and `unknown`
- * moved into it from studios.json. It read wrong immediately: a named,
- * badged row in the Studio column is a studio however the column is
- * labelled, and three of the five names only restated the room's own
- * ("Sanding" in the Sanding Room). Those studios do not exist, so nothing
- * should name them.
+ * colour, badge - and it read wrong immediately: a named, badged row in the
+ * Studio column is a studio however the column is labelled, and three of the
+ * five names only restated the room's own ("Sanding" in the Sanding Room).
+ * Those studios do not exist, so nothing should name them.
  *
- * What a resource has instead is the room. A resource IS the Computer Lab,
+ * What a resource has instead is the zone. A resource IS the Computer Lab,
  * which is already named, already drawn and already in the list. When
  * maintenance staff or calendar tags arrive they hang off the space, which is
  * the thing that actually has them.
@@ -88,8 +89,29 @@ export const STUDIO_BY_SLUG = new Map(STUDIOS.map((s) => [s.slug, s]));
 type Mapping = { studios?: string[]; tagline?: string; resource?: boolean; circulation?: boolean };
 const MAPPINGS = mappingRows.spaces as Record<string, Mapping>;
 
+/**
+ * WHO MAY USE A SPACE, which is what the plan now colours by.
+ *
+ * Three answers and no more: `public` (the kitchen, the lounge, the lobby -
+ * anyone who has walked in), `members` (the default, and so never written
+ * down), and `staff` (the office, the staff desk, the closets). A zone takes
+ * its room's answer unless it states its own: the Staff Desk is a staff zone
+ * in a members room, and the Storage corner of D1 is staff where the Event
+ * Space beside it is not.
+ *
+ * It is its own file rather than a field in mappings.json because it is a
+ * different kind of fact, kept by a different person: "which studio works
+ * here" is the floor manager's, "who may walk in" is policy.
+ */
+export type Access = 'public' | 'members' | 'staff';
+const PUBLIC = new Set<string>(accessRows.public);
+const STAFF = new Set<string>(accessRows.staff);
+
+const ownAccessOf = (id: string): Access | null =>
+  PUBLIC.has(id) ? 'public' : STAFF.has(id) ? 'staff' : null;
+
 /** When the rows last changed, for the published file. Not the build clock. */
-export const UPDATED = mappingRows.updated > studioRows.updated ? mappingRows.updated : studioRows.updated;
+export const UPDATED = [mappingRows.updated, studioRows.updated, accessRows.updated].sort().at(-1)!;
 
 /**
  * What each floor is called. Page-local in map.astro until 2026-10-10, which
@@ -102,9 +124,18 @@ export const FLOOR_NAME: Record<Floor, { name: string; sub: string; level: numbe
 };
 
 /** Every room and zone the drawing carries, joined to what we know about it. */
-export type Space = (Room | Zone) & {
+export type Space = {
+  id: string;
   floor: Floor;
   shape: 'room' | 'zone';
+  /** Null on every room, and on the ten unnamed zones. */
+  name: string | null;
+  /** The label, where there is one - see `Zone` in floorplan.ts. */
+  lines: string[];
+  at?: Zone['at'];
+  size?: number;
+  rotate?: number;
+  points: Room['points'];
   /**
    * A second line for the plan, where a space has one.
    *
@@ -121,10 +152,14 @@ export type Space = (Room | Zone) & {
   studios: string[];
   /** For a room, studios working in its zones. Empty on a zone. */
   studiosWithin: string[];
-  /** Shared rather than a studio - see the note above `Space`. */
+  /** Shared rather than a studio - see the note above `Mapping`. */
   resource: boolean;
-  /** A corridor, a stair, a landing, the check-in desk. */
+  /** A corridor, a stair, a landing. */
   circulation: boolean;
+  /** Who may use it, resolved: the zone's own entry, else its room's. */
+  access: Access;
+  /** True when this space states its own access rather than inheriting it. */
+  ownAccess: boolean;
 };
 
 /**
@@ -133,8 +168,8 @@ export type Space = (Room | Zone) & {
  * The drawing's own order is the order the author drew in - U15 between U9 and
  * U10, D20 between D7 and D8 - which is nothing to do with how the building
  * reads. Sorting as text is no better: U10 lands between U1 and U2. And the
- * single most checkable fact here is "the Jewelry Studio is inside U3", which
- * only reads if the two are adjacent.
+ * single most checkable fact here is "Jewelry is inside U3", which only reads
+ * if the two are adjacent.
  *
  * This is part of the published contract, not a page's preference, which is why
  * it lives here rather than in map.astro where it started.
@@ -148,32 +183,41 @@ export const byCode = (a: { id: string }, b: { id: string }) =>
   codeAt(a.id)[0] - codeAt(b.id)[0] || codeAt(a.id)[1] - codeAt(b.id)[1];
 
 /**
- * A room counts as a studio space when one of its ZONES has one, not only when
- * it does itself. The Fab Lab carries no studio of its own - laser cutting and
- * 3D printing are zones inside it - and anything treating it like a broom
- * cupboard would be wrong about the most useful room on the floor.
- *
- * It is `studiosWithin` rather than folded into `studios`, because the two are
- * different claims: a studio is IN the Laser Cutting Studio, and it is
- * SOMEWHERE IN the Fab Lab.
+ * A room counts as a studio space when one of its ZONES has one - it cannot
+ * have one itself any more, since nothing maps to a room. U15 carries no
+ * studio; laser cutting and 3D printing are zones inside it. `studiosWithin`
+ * is kept apart from `studios` because the two are different claims: a studio
+ * is IN the Laser Cutting zone, and it is SOMEWHERE IN U15.
  */
 export const SPACES: Space[] = FLOORS.flatMap((floor) => {
-  const zoneStudios = (roomId: string) =>
-    FLOORPLAN[floor].zones.filter((z) => z.room === roomId).flatMap((z) => MAPPINGS[z.id]?.studios ?? []);
+  const zonesOf = (roomId: string) => FLOORPLAN[floor].zones.filter((z) => z.room === roomId);
 
-  const join = <T extends Room | Zone>(s: T, shape: 'room' | 'zone', within: string[]) => ({
-    ...s,
-    floor,
-    shape,
-    tagline: MAPPINGS[s.id]?.tagline,
-    studios: MAPPINGS[s.id]?.studios ?? [],
-    studiosWithin: within,
-    resource: MAPPINGS[s.id]?.resource ?? false,
-    circulation: MAPPINGS[s.id]?.circulation ?? false,
-  });
+  const join = (s: Room | Zone, shape: 'room' | 'zone'): Space => {
+    const zone = shape === 'zone' ? (s as Zone) : null;
+    const own = ownAccessOf(s.id);
+    const inherited = zone ? ownAccessOf(zone.room) : null;
+    return {
+      id: s.id,
+      floor,
+      shape,
+      name: zone?.name ?? null,
+      lines: zone?.lines ?? [],
+      ...(zone ? { at: zone.at, size: zone.size } : {}),
+      ...(zone?.rotate ? { rotate: zone.rotate } : {}),
+      points: s.points,
+      tagline: MAPPINGS[s.id]?.tagline,
+      ...(zone ? { room: zone.room } : {}),
+      studios: MAPPINGS[s.id]?.studios ?? [],
+      studiosWithin: zone ? [] : zonesOf(s.id).flatMap((z) => MAPPINGS[z.id]?.studios ?? []),
+      resource: MAPPINGS[s.id]?.resource ?? false,
+      circulation: MAPPINGS[s.id]?.circulation ?? false,
+      access: own ?? inherited ?? 'members',
+      ownAccess: own !== null,
+    };
+  };
 
-  const rooms = FLOORPLAN[floor].rooms.map((r) => join(r, 'room', zoneStudios(r.id)));
-  const zones = FLOORPLAN[floor].zones.map((z) => join(z, 'zone', []));
+  const rooms = FLOORPLAN[floor].rooms.map((r) => join(r, 'room'));
+  const zones = FLOORPLAN[floor].zones.map((z) => join(z, 'zone'));
 
   // Reading order: each room, then its own zones directly under it.
   return rooms
@@ -188,11 +232,13 @@ export function spacesForStudio(slug: string): Space[] {
   return SPACES.filter((s) => s.studios.includes(slug));
 }
 
-/** "Fab Lab, laser cutting studio" - a zone says which room it is in. */
+/**
+ * What to call a space in a sentence. Rooms have no name, so a zone is named
+ * alone - "Laser Cutting" rather than "U15, laser cutting". Kept because it is
+ * what a studio list will be built from when one comes back.
+ */
 export function placeOf(space: Space): string {
-  if (space.shape === 'room') return space.name;
-  const room = SPACE_BY_ID.get(space.room!);
-  return room ? `${room.name}, ${space.name.toLowerCase()}` : space.name;
+  return space.name ?? space.id;
 }
 
 /**
@@ -223,12 +269,20 @@ for (const s of STUDIOS) {
   seen.add(s.slug);
 }
 
-// A mapping for a space the drawing does not have is a mapping for a building
-// that no longer exists - far more likely after a redraw than a typo. It fails
-// silently otherwise: a row nothing looks up simply never appears.
+// A row for a space the drawing does not have is a row for a building that no
+// longer exists - far more likely after a redraw than a typo. It fails silently
+// otherwise: a row nothing looks up simply never appears.
 for (const id of Object.keys(MAPPINGS)) {
   if (!SPACE_BY_ID.has(id)) {
-    throw new Error(`mappings.json: "${id}" is not a room or zone in floorplan.svg`);
+    throw new Error(`mappings.json: "${id}" is not a room or zone in floorplan.ts`);
+  }
+}
+for (const id of [...PUBLIC, ...STAFF]) {
+  if (!SPACE_BY_ID.has(id)) {
+    throw new Error(`access.json: "${id}" is not a room or zone in floorplan.ts`);
+  }
+  if (PUBLIC.has(id) && STAFF.has(id)) {
+    throw new Error(`access.json: "${id}" is both public and staff only; it is one or the other`);
   }
 }
 
@@ -242,5 +296,24 @@ for (const space of SPACES) {
   // with two answers, which is exactly what the distinction exists to prevent.
   if (space.studios.length && space.resource) {
     throw new Error(`mappings.json: "${space.id}" is marked a resource and names a studio; it is one or the other`);
+  }
+  // Nothing maps to a room any more: a room is a container, and a studio, a
+  // tagline or a resource flag on one is a row that was never moved to its zone.
+  if (space.shape === 'room' && MAPPINGS[space.id]) {
+    throw new Error(`mappings.json: "${space.id}" is a room; rows belong to its zones`);
+  }
+  if (space.shape === 'zone') {
+    // A label and a name come together or not at all - a named zone with no
+    // lines would silently print nothing, and lines on an unnamed zone would
+    // print a name the list does not have.
+    if ((space.name === null) !== (space.lines.length === 0)) {
+      throw new Error(`floorplan.ts: zone "${space.id}" has a name without lines, or lines without a name`);
+    }
+    if (space.rotate && space.name === null) {
+      throw new Error(`floorplan.ts: zone "${space.id}" is rotated and has no label to rotate`);
+    }
+    if (space.tagline && space.name === null) {
+      throw new Error(`mappings.json: "${space.id}" has a tagline and no name to put it under`);
+    }
   }
 }

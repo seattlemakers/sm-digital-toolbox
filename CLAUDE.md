@@ -138,6 +138,26 @@ Done:
   & GLAZING" - and the lists print the name alone.
 - The page links **`/data/space.json`** - the same names in a form somebody can
   diff, paste into a message, or build another tool on.
+- **Everything named is a zone, as of 2026-10-11.** A design handoff revised
+  the plan: rooms are unnamed containers (`name: null`), every named space is
+  a zone coded `<room>.<n>`, and ten zones - hallways, stairs, the landing -
+  have no name at all. **43 rooms, 53 zones.** The old container names
+  (Garage, Upper Commons, Fab Lab, Lower Commons, TBD) are gone; studio zones
+  lost "Studio" from their names; CNC is Wood CNC. See *Everything named is a
+  zone* under *The map*.
+- **Fills say who may use a space.** `src/data/space/access.json` lists the
+  public spaces (kitchen, lounge, lobby) and the staff-only ones; members is
+  the default. Public is a light green, staff only is a 45° hatch, and a key
+  sits above the floors. A zone inherits its room's access unless it states
+  its own (the Staff Desk, the Storage corner of D1).
+- **Two label styles and no more.** Bold (9.2 / 650 ink) for every named
+  zone; quiet (7 / 450 grey) for anything staff only, the restrooms and the
+  compressor room. Mixed case, untracked, no outlines. The rule is
+  `labelStyle()` in `lib/map-plan.ts`; the sizes travel with the lines in
+  `floorplan.ts`. `U3.1` Jewelry runs up the wall at -90.
+- The entrances were re-placed by the same handoff, and the member label now
+  hangs off its arrow's tail below the frame - `overflow: visible` on the
+  plan's svg is what lets it.
 
 Label maker (`/labels`) is built and verified against a print-to-PDF. Most of
 the *Implementation notes* below are about it.
@@ -2011,6 +2031,144 @@ it.
 
 ### The map
 
+**Everything named is a zone, and a room is an unnamed container. Flipped
+2026-10-11, from a design handoff.** Until then a room carried a name and a
+zone was the exception - nine of them, inside five rooms. The handoff turned
+that inside out: every named space is a zone, a room that had no zone holds
+one `.1` zone of the same shape, and a room that already held one gained a
+second for what was left of it (U5.2 Woodshop 2 is the room minus the Wood
+CNC corner; U4.1 Staff Desk is new, cut out of the hallway U4.2). Ten zones
+are unnamed - the hallways, the stairs, the landing - and have no label, no
+hover and no tooltip. The container names went with the level that held them:
+a room holding two disciplines was never either of them.
+
+What it cost in the data: `Room` is `{ id, fill, points }` and nothing else;
+`Zone` carries the name, the lines, the anchor, the size and an optional
+`rotate`. `mappings.json` moved to zone ids, and `data/space` now THROWS on a
+row keyed to a room - a studio or a tagline on a room is a row that was never
+moved. The published `/data/space.json` is **version 2**: rooms carry no
+`name`, every space carries `access`.
+
+**The handoff's own data file was wrong in two places, and the README was
+right.** `floorplan-data.js` still carried the previous entrance rows; the
+README's §3 and the prototype's override had the new ones, and those were
+taken. And `U4.2`, the hallway, still covered the whole of U4 including the
+Staff Desk - against the README's own "zones must not overlap" - so it was
+carved to the room minus the desk's corner, the same shape of fix as U5.2.
+Nothing visible changed, because the hallway is unnamed; `npm test` pins the
+desk's centre as outside it.
+
+**The walls did not change.** All six path strings and both `offsetY`s are
+byte-identical to the previous drawing, so the frames are too and
+`test-floorplan-frame.mjs` was untouched. Worth checking first on any future
+handoff: a handoff that redraws a wall is a different job from one that
+renames the rooms, and the diff of `d` is a one-line way to tell.
+
+**`at` is the CENTRE of the label block now, not the first baseline.** The
+page computes the first baseline as `cy - blockH/2 + size * 0.36`, where
+`blockH` is the sum of the lines' `dy`s and 0.36 is about where Figtree's cap
+height puts the visual middle of a line. The cap at load (below) has to move
+`y` as well as shrink the font, or a capped block drifts down; it reads the
+centre and the block height back off `data-cy` / `data-block`.
+
+**The lines were wrapped ONCE and written down, by the handoff's rule.** Greedy
+by character count at `floor(width / (size × adv))` per line, where `width` is
+the zone's bbox width less 8 (or a hand-placed width for six zones) and `adv`
+is 0.602 for bold, 0.43 for quiet - then, if the last line is one or two
+characters, the previous word is pulled down ("Metal / Shop 2", never "Metal
+Shop / 2"). The prototype did this live; here it is data, for the reason the
+file has always given: a line break is a decision somebody made with the plan
+in front of them, and `floorplan.ts` is where those live. Sixteen anchors were
+hand-placed; the rest are the centre of a rectangular zone or the drawing's
+own anchor for an irregular one. If a name changes, re-wrap it by hand.
+
+**Two label styles, set by rule, and the old sixteen-id "unlabelled" list is
+gone.** `labelStyle()` in `lib/map-plan.ts`: `none` when the zone has no
+name, `quiet` when its access is staff or its id is one of five (`QUIET_IDS`:
+the compressor room and the four restrooms - by id, because names are the
+thing most often edited here), else `bold`. `UNLABELLED_IDS` and `isLabelled`
+did the first half of that by listing ids and are replaced by `name === null`,
+which the handoff made a property of the zone. `kindOf` went too: nothing
+paints by kind any more. The list's "not labelled" tag now means exactly
+"this zone has no name", where the prototype had printed it beside quietly
+labelled closets as well - which would have been false.
+
+**Access fills: light green for public, a 45° hatch for staff, white for
+members** - the handoff's own. A zigzag for public over a flat grey for staff
+was tried on 2026-10-11 and undone within the hour. Two reasons worth keeping:
+the grey (`#bcc2be`) put the quiet labels on the staff rooms at **2.1:1** on
+their own fill, which is invisible ink, and a zigzag read as texture rather
+than as a fill. A hatch is a pattern rather than a grey because a grey room
+reads as shut, where a hatch reads as somebody else's. The fill is on the
+room; a zone paints its own only when it states its own access (`ownAccess`
+on `Space`), at full opacity, so the Staff Desk is a hatched corner of a
+white room.
+
+**The hatch is one `<pattern>` defined once, outside both plans.** A fill of
+`url(#id)` resolves document-wide, so a zero-sized `<svg>` above the key holds
+the tile and the two plans and the key's swatch all paint from it - which is
+what keeps them the same tile. The first version defined a pattern inside
+each floor's svg with a per-floor id, for the reason the entrance arrowheads
+are drawn rather than `marker-end`ed; one shared definition is simpler and the
+swatch can use it. Zero-sized rather than `display: none`, because a hidden
+svg's defs are not reliably available to other elements.
+
+**Rooms do not respond to the pointer at all.** No `data-spot`, no `<title>`,
+`pointer-events: none`. Pointing into a room with no named zone under the
+cursor lights nothing, and the list has no hoverable row for it: a room is a
+BAR across the list - its code on a tinted band spanning every column - with
+its zones indented under it. Checked by `elementFromPoint` inside U4's
+hallway: it reports the floorplate.
+
+**Every room is a bar, not only the ones holding several zones.** The handoff
+drew a bar for a multi-zone room and let a single-zone room collapse into its
+zone's row; reversed the same day, so the list reads room by room and every
+room is one object in it, as it is in the data and the published file. 43
+bars and 53 zone rows.
+
+**The ten unnamed zones are not in the list, and every name in it is set the
+same.** Both on 2026-10-11, after the bars. A row for an unnamed hallway read
+"U20.1 · not labelled" and had nothing on it to check, which is the one thing
+a row in this list is for - and the nine rooms that hold only such a zone
+(U13, U18, U20-U23, D18, D22, D23) are not listed either, since a bar with
+nothing under it is the same clutter in another shape. All of it stays in the
+data and the published file. The header count is the zones the list shows
+(21 and 22), while the lede's 53 is the data's. And the quiet
+plan style stopped reaching the list: a greyed row read as one that mattered
+less to check, and the plan has two styles because a drawing has room for a
+hierarchy, where a list does not.
+
+**The RESOURCE chip is gone from the list too (2026-10-11).** The flag is still
+in the data and in the published file - it is what single-studio membership
+rests on - but the list no longer shows it, and the lede no longer explains
+it. The Studio column's dash already says nothing works here that you can hold
+a membership to.
+
+**The `└` under each bar went with it.** It was the indent's marker for "this
+zone, inside that room", and once every zone sat under a bar it was on every
+row - a marker on every row is a marker on none, and the bar already says
+what the rows belong to. The zone rows sit flush, in the same columns as the
+header.
+
+**The entrance anchor has to be an inline style.** `text-anchor="start"` as a
+presentation attribute was silently beaten by the stylesheet's `.mp-entrance
+{ text-anchor: middle }` - a presentation attribute sits below every author
+rule in the cascade - and the Member Entrance came out centred on its own
+arrow. `style="text-anchor: start"` wins. The member label and its arrow's
+tail also sit BELOW the upstairs viewBox (y 357.4 against a frame ending at
+353.9), on purpose - centred in the band between the wall and the plate's edge
+- so `.mp-plan` is `overflow: visible`. Both arrows were re-checked with
+`isPointInStroke`: 21 samples along each shaft, none on wall; tail outside the
+plate, head inside; all four corners of each label outside the plate.
+
+**The SVG export carries an empty label for every unnamed zone.** Its text
+element holds only the id line, so the importer reads "nothing after the id"
+as `name: null` and the round trip stays byte-exact - the alternative was an
+importer that invents an anchor and a size for a zone with no label, which is
+the kind of silent derivation the flip was meant to end. Rotation rides on
+`transform="rotate(…)"` and the entrance anchor on `text-anchor`. Rooms have
+no label layer in the SVG at all.
+
 **The drawing states the building; rooms.ts states what it cannot.** As of
 2026-10-05 `floorplan.svg` carries every room and zone - id, name, outline, fill
 and label position - so `rooms.ts` stopped being a list of rooms and became one
@@ -2202,6 +2360,8 @@ either way.
 
 Five of them: the **Sanding Room**, the **Fume Room**, the **Computer Lab**, the
 **A/V Room** and the **Mini Makerspace**. Studios went 14 -> 10.
+Since 2026-10-11 the flag sits on the zone ids - `U8.1`, `U9.1`, `U16.1`,
+`D3.1`, `D1.5` - because a room carries no rows at all.
 
 **It is a flag on the space, not a thing of its own, and that was the second
 answer.** The first gave each one a record beside the studios - slug, name,

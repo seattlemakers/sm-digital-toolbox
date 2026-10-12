@@ -1,120 +1,73 @@
 /**
  * How /map paints the plan. Not facts about the building.
  *
- * Split out of the data on 2026-10-10. "Which studios work in here" is a fact
- * and belongs in data/space; "we do not print this room's name on our drawing"
- * is a decision about one picture, and leaving it in the data made the shared
- * file describe a drawing rather than a building.
- *
- * The line between them is not where it first looks. `kind` reads like
- * rendering because it only ever becomes a fill colour - but "is this a
- * workshop, a corridor, or neither" is a question about the building, so its
- * inputs (`studios`, `studiosWithin`, `circulation`) are data and only the
- * folding-into-three-buckets is here.
+ * Split out of the data on 2026-10-10. "Which studios work in here" and "who
+ * may use it" are facts and belong in data/space; "this name is set small and
+ * grey" is a decision about one picture, and leaving it in the data made the
+ * shared file describe a drawing rather than a building.
  */
 import { SPACE_BY_ID, type Space } from '../data/space';
 
-export type Kind = 'studio' | 'resource' | 'circulation' | 'room';
-
 /**
- * What a space is FOR, which is the one thing worth colouring it by.
+ * TWO LABEL STYLES, AND NO MORE. The 2026-10-11 handoff settled this after
+ * trying four hierarchies: a label is either BOLD or QUIET, and an unnamed zone
+ * has NONE.
  *
- * The drawing's own fills are a map-colouring rather than a key - adjacent
- * spaces are given different colours so they can be told apart, which is why
- * the two woodshops do not share one and neither do the two ceramics rooms.
- * Useful while drawing, unreadable on a finished map: every room shouts and
- * nothing means anything.
+ *   bold    every named zone by default - the studios, the resources, the
+ *           kitchen, the check-in desk. Ink, 650, at the size the data holds.
+ *   quiet   the spaces you look for only when you need them: anything staff
+ *           only, the restrooms, the compressor room. Grey, 450, smaller.
+ *   none    hallways, stairs, the landing. The walls say what they are.
  *
- * Three kinds is the most a plan can carry before the colours stop being a key
- * again:
+ * "Staff only" comes from the access rows, so a closet that becomes a members
+ * space turns bold by itself. The restrooms and the compressor room are listed
+ * BY ID, not matched by name: a name is edited far more often than anything
+ * else here, and a rename would silently move a label between styles with
+ * nothing failing. The ids are checked against the drawing at module load.
  *
- *   studio       - somebody's discipline works here, in the space itself or in
- *                  one of its zones.
- *   resource     - the sanding room, the computer lab: maintained, taught in
- *                  and tagged like a studio, but not one you hold a membership
- *                  to. Added 2026-10-10 - see `Resource` in data/space.
- *   circulation  - how you get between the others. Takes the floorplate's own
- *                  colour, because a corridor IS the leftover floor.
- *   room         - everything else, from the kitchen to a broom closet.
- *
- * Studio wins over resource where a room has one of each - which cannot happen
- * in a space itself, because data/space throws on it, but can happen to a room
- * whose zones differ. The Lower Commons is the case: leather and arts & crafts
- * sit in it, and it is a studio room that also holds a resource.
+ * The old UNLABELLED_IDS list - sixteen spaces whose names the plan did not
+ * print - went with this. Its job is done by `name === null`, which the
+ * handoff made a property of the zone itself.
  */
-export const kindOf = (space: Space): Kind =>
-  space.studios.length > 0 || space.studiosWithin.length > 0
-    ? 'studio'
-    : space.resource
-      ? 'resource'
-      : space.circulation
-        ? 'circulation'
-        : 'room';
+export type LabelStyle = 'bold' | 'quiet' | 'none';
 
-/**
- * Spaces the plan knows about and does not name.
- *
- * Sixteen of the fifty-seven are a hallway, a staircase, a closet or the Big
- * Room's storage corner. Named, they are most of the ink on the plan and none
- * of the answer: nobody opens a map to find the hallway, and a cupboard
- * labelled CLOSET tells you only that somebody drew a cupboard.
- *
- * It costs nothing because **the walls come from the wall layer, not from these
- * shapes** - a closet is still a walled box exactly where it is and a staircase
- * still has its treads. What goes is the fill and the name, and a staircase
- * drawn with treads and no label is still obviously a staircase, which is the
- * test the label was failing. The name comes back on hover.
- *
- * The Landing joined them on 2026-10-06. The argument for keeping it was that a
- * landing is where you come OUT of the stairs, which is the one thing about a
- * staircase worth naming - true in the abstract, and wrong here: it is a
- * 49-unit slot between a restroom and a stair, in the corner of the floor that
- * already carries the most ink, with the name wedged in. The stairs beside it
- * say what it is.
- *
- * The Check-in desk is circulation too and is deliberately NOT in here: it is
- * somewhere you get sent, so it has to be findable by name.
- *
- * IDS, NOT A NAME PATTERN, as of 2026-10-10. This was
- * `/^(Stairs|Hallway|Landing|Storage|.*\bCloset)$/` matched against the name -
- * and the name comes from `floorplan.svg`, which has been hand-edited four
- * times, twice to rename a space. A rename would silently erase a room's label
- * or hand one back, with nothing failing and nobody looking. Ids are checked
- * against the drawing by the loop at the bottom of this file, so a redraw that
- * drops one of these fails the build instead.
- */
-export const UNLABELLED_IDS: readonly string[] = [
-  // upstairs
-  'U13', // Hallway
-  'U14', // Closet
-  'U18', // Stairs
-  'U20', // Hallway
-  'U21', // Hallway
-  'U22', // Landing
-  'U23', // Stairs
-  // downstairs
-  'D1.3', // Storage, a zone of the Lower Commons - a zone keeps its dashed
-  // boundary either way, so only the name goes
-  'D2', // Utility Room
-  'D8', // Closet
-  'D9', // Closet
-  'D18', // Stairs
-  'D19', // Closet
-  'D20', // Closet
-  'D22', // Hallway
-  'D23', // Stairs
+export const QUIET_IDS: readonly string[] = [
+  'U2.1', // Compressor Room
+  'U11.1', // Restroom
+  'U12.1', // Restroom
+  'D11.1', // Men's Restroom
+  'D13.1', // Women's Restroom
 ];
 
-const UNLABELLED = new Set(UNLABELLED_IDS);
+const QUIET = new Set(QUIET_IDS);
 
-/** Whether the plan prints this space's name. The hover shows it either way. */
-export const isLabelled = (space: Space): boolean => !UNLABELLED.has(space.id);
+export const labelStyle = (space: Space): LabelStyle =>
+  space.name === null ? 'none' : space.access === 'staff' || QUIET.has(space.id) ? 'quiet' : 'bold';
 
-// The check the name pattern could never do: an id here that the drawing has
-// dropped means a redraw renamed or removed a space, and the list above is now
-// quietly wrong about a different one.
-for (const id of UNLABELLED_IDS) {
-  if (!SPACE_BY_ID.has(id)) {
-    throw new Error(`map-plan.ts: UNLABELLED_IDS has "${id}", which is not a room or zone in floorplan.svg`);
-  }
+/**
+ * The type the plan sets, in drawing units where it is a size.
+ *
+ * Sizes for bold and quiet are NOT here: they are on each zone in floorplan.ts,
+ * because the author's line breaks were wrapped at that size and the two have
+ * to travel together. What is here is everything else the handoff fixed.
+ *
+ *   lh     line height, as a multiple of the size
+ *   gap    the space between a name and its tagline: the name's own half-leading
+ *          plus `gap` tagline-sizes
+ *   adv    Figtree's average advance as a fraction of its size, used to wrap a
+ *          tagline against its zone's width. It only has to be close; the cap
+ *          at load measures the real shaped text.
+ */
+export const LABEL = {
+  bold: { weight: 650, lh: 1.08 },
+  quiet: { weight: 450, lh: 1.12 },
+  tag: { size: 7, weight: 450, lh: 1.15, gap: 1.25, adv: 0.62 },
+} as const;
+
+// An id here that the drawing has dropped means a redraw renamed or removed a
+// zone, and the list above is now quietly wrong about a different one.
+for (const id of QUIET_IDS) {
+  const sp = SPACE_BY_ID.get(id);
+  if (!sp) throw new Error(`map-plan.ts: QUIET_IDS has "${id}", which is not a room or zone in floorplan.ts`);
+  if (sp.name === null) throw new Error(`map-plan.ts: QUIET_IDS has "${id}", which has no name to set quietly`);
 }

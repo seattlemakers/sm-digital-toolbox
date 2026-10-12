@@ -17,8 +17,13 @@
  * reads three things out of the drawing's own layers.
  *
  *   #room-U5 / #zone-U15.2   shape, fill, and which room a zone sits in
- *   #label-U5                the name, the author's line breaks, the anchor
+ *   #zlabel-U15.2            the name, the author's line breaks, the anchor,
+ *                            and a rotation where there is one
  *   the floor groups         each floor's own vertical shift
+ *
+ * ROOMS HAVE NO LABEL since 2026-10-11. Everything named is a zone, and a zone
+ * whose label carries only its own id line is an unnamed one - a hallway, a
+ * stair - and comes back as `name: null, lines: []`.
  *
  * What it no longer does is compute the floorplate or the frame. Those are
  * derived from the walls at module load - see lib/floorplan-frame.ts - so there
@@ -136,11 +141,11 @@ function shapes(kind) {
  */
 function labels() {
   const out = {};
-  for (const m of svg.matchAll(/<text id="z?label-([^"]+)"([^>]*)>([\s\S]*?)<\/text>/g)) {
+  for (const m of svg.matchAll(/<text id="zlabel-([^"]+)"([^>]*)>([\s\S]*?)<\/text>/g)) {
     const id = m[1];
     const attrs = m[2];
 
-    // The author broke each name into lines that fit its own room, so the
+    // The author broke each name into lines that fit its own zone, so the
     // tspans are kept as lines rather than joined. Re-wrapping here would be
     // guessing at a decision somebody has already made while looking at the
     // plan - and the first version did join them, which is how "U2: Compressor"
@@ -149,31 +154,33 @@ function labels() {
       .map((t) => t[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim())
       .filter(Boolean);
 
-    // Room labels read "U2: Compressor" on their first line; zone labels put
-    // the id on a line of its own. Both lose it.
-    const head = lines[0].replace(new RegExp(`^${id.replace('.', '\\.')}:?\\s*`), '').trim();
-    if (head) lines[0] = head;
-    else lines.shift();
+    // The id sits on a line of its own above the name and comes off; the id is
+    // already on the element. What is left is the name, or nothing.
+    if (lines[0] === id) lines.shift();
 
+    const rot = attrs.match(/transform="rotate\((-?[\d.]+)/)?.[1];
     out[id] = {
       lines,
-      name: lines.join(' '),
+      name: lines.length ? lines.join(' ') : null,
       at: [Number(attrs.match(/\sx="([-\d.]+)"/)[1]), Number(attrs.match(/\sy="([-\d.]+)"/)[1])],
       size: Number(attrs.match(/font-size="([\d.]+)"/)?.[1] ?? 11),
+      ...(rot ? { rotate: Number(rot) } : {}),
     };
   }
   return out;
 }
 
 const LABEL = labels();
-const named = (s, what) => {
+const named = (s) => {
   const l = LABEL[s.id];
-  if (!l) throw new Error(`floorplan.svg: ${what} "${s.id}" has no label`);
-  return { ...s, name: l.name, lines: l.lines, at: l.at, size: l.size };
+  if (!l) throw new Error(`floorplan.svg: zone "${s.id}" has no label`);
+  return { ...s, name: l.name, lines: l.lines, at: l.at, size: l.size, ...(l.rotate ? { rotate: l.rotate } : {}) };
 };
 
-const ROOMS = shapes('room').map((s) => named(s, 'room'));
-const ZONES = shapes('zone').map((s) => named(s, 'zone'));
+// A room is a shape and a fill, nothing more; the `room` a shape() reads off a
+// room path is always null and is dropped here.
+const ROOMS = shapes('room').map(({ id, fill, points }) => ({ id, fill, points }));
+const ZONES = shapes('zone').map(named);
 
 for (const z of ZONES) {
   if (!ROOMS.some((r) => r.id === z.room)) {
@@ -210,6 +217,7 @@ function entrancesOf(prefix) {
       .filter(Boolean),
     at: [Number(m[2].match(/\sx="([-\d.]+)"/)[1]), Number(m[2].match(/\sy="([-\d.]+)"/)[1])],
     size: Number(m[2].match(/font-size="([\d.]+)"/)?.[1] ?? 7),
+    ...(m[2].includes('text-anchor="start"') ? { anchor: 'start' } : {}),
   }));
 }
 
@@ -228,8 +236,12 @@ const floors = FLOORS.map((f) => ({
 
 const q = (s) => JSON.stringify(s);
 
-const shape = (s) =>
-  `      { id: ${q(s.id)}, name: ${q(s.name)},${s.room ? ` room: ${q(s.room)},` : ''} fill: ${q(s.fill)},\n        lines: ${q(s.lines)}, at: [${s.at.join(', ')}], size: ${s.size},\n        points: [${s.points.map((p) => `[${p.join(', ')}]`).join(', ')}] },`;
+const pts = (p) => `[${p.map((q) => `[${q.join(', ')}]`).join(', ')}]`;
+const room = (r) => `      { id: ${q(r.id)}, fill: ${q(r.fill)},\n        points: ${pts(r.points)} },`;
+const zone = (z) =>
+  `      { id: ${q(z.id)}, name: ${q(z.name)}, room: ${q(z.room)},\n        lines: ${q(z.lines)}, at: [${z.at.join(', ')}], size: ${z.size},${z.rotate ? ` rotate: ${z.rotate},` : ''}\n        points: ${pts(z.points)} },`;
+const entrance = (e) =>
+  `      { id: ${q(e.id)}, lines: ${q(e.lines)}, at: [${e.at.join(', ')}], size: ${e.size},${e.anchor ? ` anchor: ${q(e.anchor)},` : ''} arrow: [[${e.arrow[0].join(', ')}], [${e.arrow[1].join(', ')}]] },`;
 
 const rows = floors
   .map(
@@ -241,13 +253,13 @@ const rows = floors
       stairs: ${q(f.d.stairs)},
     },
     rooms: [
-${f.rooms.map(shape).join('\n')}
+${f.rooms.map(room).join('\n')}
     ],
     zones: [
-${f.zones.map(shape).join('\n')}
+${f.zones.map(zone).join('\n')}
     ],
     entrances: [
-${f.entrances.map((e) => `      { id: ${q(e.id)}, lines: ${q(e.lines)}, at: [${e.at.join(', ')}], size: ${e.size}, arrow: [[${e.arrow[0].join(', ')}], [${e.arrow[1].join(', ')}]] },`).join('\n')}
+${f.entrances.map(entrance).join('\n')}
     ],
   },`,
   )

@@ -28,7 +28,9 @@ import { STUDIOS, SPACES, FLOORS, FLOOR_NAME, UPDATED } from '../../data/space';
  *                       `printmaking`'s icon is screen-printing.svg.
  *
  * ROOMS AND ZONES ARE ONE LIST. A zone is a space inside another space, which
- * `in` says; it needed no second array and no second fetch.
+ * `in` says; it needed no second array and no second fetch. Since 2026-10-11 a
+ * room has no `name` - everything named is a zone - and every space carries
+ * `access`, which is why this is version 2.
  *
  * CORS comes from public/_headers, not from here. `output: 'static'` means this
  * is prerendered to a file and served by the Worker's ASSETS binding, so a
@@ -46,7 +48,9 @@ export const GET: APIRoute = () => {
   const spaces = SPACES.map((s) => ({
     code: s.id,
     floor: s.floor,
-    name: s.name,
+    // Absent on a room, which has no name - see the note below.
+    ...(s.name !== null ? { name: s.name } : {}),
+    access: s.access,
     ...(s.tagline ? { tagline: s.tagline } : {}),
     ...(s.room ? { in: s.room } : {}),
     ...(s.studios.length ? { studios: s.studios } : {}),
@@ -56,7 +60,10 @@ export const GET: APIRoute = () => {
   return new Response(
     JSON.stringify(
       {
-        version: 1,
+        // 2 since 2026-10-11: rooms lost their names (everything named is a
+        // zone), `access` arrived on every space. A consumer written against 1
+        // reading `name` off a room gets undefined, which is the honest answer.
+        version: 2,
         what: 'Studios and spaces at Seattle Makers, Interbay',
         building: 'Seattle Makers, Interbay',
         updated: UPDATED,
@@ -64,10 +71,12 @@ export const GET: APIRoute = () => {
         source: 'https://github.com/seattlemakers/sm-digital-toolbox',
         licence: 'MIT',
         notes: [
-          'A space with `in` is a zone: a named area inside that room, with no wall between them.',
+          'A space with no `name` is a room: an unnamed container for the zones whose `in` points at it. Every named space is a zone.',
+          'A space with `in` is a zone: an area inside that room, with no wall between them. Ten zones - hallways, stairs, the landing - have no `name` either.',
+          '`access` is public, members or staff. A zone inherits its room\'s unless it states its own.',
           'A space with `resource: true` is shared: maintained, taught in and tagged like a studio, but not one you hold a membership to. It names no studio, and a space is one or the other.',
           'Asset paths are root-relative; resolve them against assetBase. Never rebuild one from a slug.',
-          'Names come from the hand-drawn floorplan and can only be changed there; `display` is a second, longer name.',
+          'Names come from the hand-authored floorplan data and can only be changed there.',
           'Drawing data - outlines, walls, label positions - is deliberately not here. It would be a separate /data/plan.json.',
         ],
         floors: FLOORS.map((id) => ({ id, ...FLOOR_NAME[id] })),
