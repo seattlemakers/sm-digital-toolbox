@@ -9,17 +9,17 @@
  * and anything placed on top - zones, studios, a route - sits in the same
  * coordinate system as the building rather than being pinned to pixels.
  *
- * The page is two of those plans, each beside a list of everything it is drawn
- * from, for checking rather than for finding your way - a zone with the wrong
- * name still looks like a zone. Hovering either half lights the other.
+ * ONE FLOOR AT A TIME, as of 2026-10-11 (handoff v2). A panel shows the
+ * current floor with a side rail - compass, floor tabs, zoom - and the list
+ * beside it searches both floors. Both floors are rendered here, on the
+ * server, and the client script shows one: the page stays static and nothing
+ * about the building travels to the browser twice.
  *
  * THREE FILES, and the split is deliberate. data/floorplan.ts draws and names
  * the building; data/space/ says which studios work in which of its spaces and
- * who may use them; lib/map-plan.ts says how this page sets the names.
- *
- * EVERYTHING NAMED IS A ZONE, as of 2026-10-11. A room is an unnamed container
- * and carries the access fill; the zones inside it carry the names, the
- * outlines, the hover and the studios. Rooms never light and have no tooltip.
+ * who may use them; lib/map-plan.ts says how this page sets the names, and
+ * lib/map-geometry.ts gives it one frame for both floors and each floor's
+ * zone edges drawn once.
  */
 import Base from '../layouts/Base.astro';
 import { toolById, pageTitle } from '../data/tools';
@@ -32,8 +32,9 @@ import {
   studiosWithoutSpace,
   type Space,
 } from '../data/space';
-import { FLOORPLAN, FLOORS, STROKE, type Floor, type Layer } from '../data/floorplan';
+import { BUILDING, FLOORPLAN, FLOORS, STROKE, type Floor, type Layer } from '../data/floorplan';
 import { labelStyle, LABEL } from '../lib/map-plan';
+import { alignOf, sharedFrame, zoneEdges } from '../lib/map-geometry';
 
 const TOOL = toolById('map');
 
@@ -47,6 +48,16 @@ const TOOL = toolById('map');
  */
 const LAYERS: Layer[] = ['stairs', 'exterior', 'interior'];
 
+/**
+ * Both floors in ONE frame, registered on the north wall, so the walls line
+ * up when the viewer switches floors. `offsetY` - the drawing's own stacking
+ * - is what the export and the tests use; this view aligns instead.
+ */
+const ALIGN = alignOf<Floor>(BUILDING, 'upstairs');
+const VIEWBOX = sharedFrame(BUILDING, ALIGN);
+const FLOOR_NUM: Record<Floor, string> = { upstairs: '2', downstairs: '1' };
+const FIRST: Floor = 'upstairs';
+
 const spot = (id: string) => SPACE_BY_ID.get(id)!;
 const path = (points: readonly (readonly number[])[]) =>
   `M${points.map((p) => p.join(' ')).join(' L')} Z`;
@@ -56,41 +67,39 @@ const ORPHANS = studiosWithoutSpace();
 const ROOMS = SPACES.filter((s) => s.shape === 'room');
 const ZONES = SPACES.filter((s) => s.shape === 'zone');
 const zonesOn = (floor: Floor) => ZONES.filter((z) => z.floor === floor);
+const namedOn = (floor: Floor) => zonesOn(floor).filter((z) => z.name !== null);
 
 /**
- * The list, in reading order: every room is a BAR across the list, and its
- * zones sit indented under it - whether it holds five of them or one.
- *
- * The handoff drew a bar only for rooms holding several zones and let a
- * single-zone room collapse into its zone's row; that was reversed on
- * 2026-10-11 so that the list reads as the building does, room by room, and
- * so that every room is one object in it - the same object it is in the data
- * and in /data/space.json - rather than some rooms being rows and others
- * being implied. A bar carries the room's code and nothing else, since a
- * room has nothing else; it is not hoverable, because there is nothing on
- * the plan for it to light. The zones under it are not indented: with a bar
- * over every group, the indent was saying the same thing a second time.
- *
- * THE TEN UNNAMED ZONES ARE NOT LISTED, AND NOR ARE THEIR ROOMS. The list is
- * for checking names and studios, and a hallway has neither - a row reading
- * "U20.1 · not labelled" was a row with nothing on it to check, and the bar
- * left over it was a bar with nothing under it. Nine rooms hold only a
- * hallway or a stair and so do not appear. They stay in the data and in
- * /data/space.json; the lede's count is the data's, the header's is the
- * list's.
+ * The list, one group per room: the room's listed zones in code order. A
+ * room holding only unnamed zones - a hallway, a stair - has nothing to list
+ * and is left out. The group is what the zebra alternates over and what a
+ * screen reader hears as a separator; it has no row of its own.
  */
-type Row = { space: Space; bar: boolean };
-function rowsOn(floor: Floor): Row[] {
+type Group = { room: Space; zones: Space[] };
+function groupsOn(floor: Floor): Group[] {
   return ROOMS.filter((r) => r.floor === floor)
     .sort(byCode)
-    .flatMap((room) => {
-      const zones = zonesOn(floor).filter((z) => z.room === room.id && z.name !== null).sort(byCode);
-      return zones.length ? [{ space: room, bar: true }, ...zones.map((z) => ({ space: z, bar: false }))] : [];
-    });
+    .map((room) => ({ room, zones: namedOn(floor).filter((z) => z.room === room.id).sort(byCode) }))
+    .filter((g) => g.zones.length > 0);
 }
 
-/** What the list counts: the zones it shows, not the zones the data holds. */
-const listedOn = (floor: Floor) => zonesOn(floor).filter((z) => z.name !== null).length;
+/**
+ * What a row answers a search with: its code, its name, its tagline and the
+ * names of its studios, lowercased. Built here so the client script matches
+ * against one attribute and needs no data of its own.
+ */
+const searchKey = (sp: Space) =>
+  [sp.id, sp.name, sp.tagline ?? '', ...sp.studios.map((slug) => STUDIO_BY_SLUG.get(slug)!.name)]
+    .join(' ')
+    .toLowerCase();
+
+/**
+ * The fade's base wash: the floorplate with every zone cut out of it,
+ * evenodd. The per-zone washes cover the zones; this covers the floor
+ * between them, so nothing stays bright that is not selected.
+ */
+const washBase = (floor: Floor) =>
+  [path(FLOORPLAN[floor].outline), ...FLOORPLAN[floor].zones.map((z) => path(z.points))].join(' ');
 
 /**
  * An entrance arrow, as two paths: a shaft and a solid head.
@@ -102,10 +111,6 @@ const listedOn = (floor: Floor) => zonesOn(floor).filter((z) => z.name !== null)
  * by default, so the head's size would be tied to the shaft's weight rather
  * than chosen - on a plan this small that is the difference between an arrow
  * and a blob. Three points and a `Z` have neither problem.
- *
- * The shaft stops short of the point by most of the head's length, so the two
- * meet without the stroke's own cap poking out of the tip. 4.6 / 2.8 are the
- * handoff's; they were 3.4 / 1.9 and the arrow read as a hair.
  */
 const HEAD = 4.6;
 const HALF = 2.8;
@@ -176,12 +181,12 @@ function label(sp: Space) {
 }
 
 /**
- * A zone lights in its STUDIO's colour, and a resource has no colour here.
+ * A zone lights and selects in its STUDIO's colour, and a resource has none.
  *
- * Colour on this plan at rest means who may use a space; on hover it means
- * which studio works there. A resource deliberately is not one, so it falls
- * through to the `var(--studio, slate)` default like the kitchen: grey means
- * only "this is what you are pointing at".
+ * Colour on this plan at rest means who may use a space; on hover or when
+ * selected it means which studio works there. A resource deliberately is not
+ * one, so it falls through to the `var(--studio, slate)` default like the
+ * kitchen: grey means only "this is the one you picked".
  */
 const litStyle = (sp: Space) => {
   const studio = sp.studios.length > 0 ? STUDIO_BY_SLUG.get(sp.studios[0])! : null;
@@ -209,31 +214,13 @@ function tooltip(sp: Space): string {
       <p class="sm-lead">{TOOL.blurb}</p>
     </header>
 
-    {/* WHAT TO CHECK, said once at the top rather than over each floor.
-
-        The plan cannot be reviewed by looking at it: a zone with the wrong name
-        still looks like a zone, a zone parented to the wrong room still draws
-        in the right place, and a studio pinned to the wrong space is invisible
-        to anyone who does not already know where it belongs. All three are
-        findable by reading the list beside it. */}
-    <p class="mp-lede">
-      Each floor's plan sits beside everything it is drawn from. Worth checking
-      three things: the <b>name</b> of each space, which <b>room</b> it is in
-      - each room is a bar in the list, with its zones under it - and the{' '}
-      <b>studio</b> against each one. The fill says who may use a space.{' '}
-      <b>{ROOMS.length} rooms and {ZONES.length} zones</b> in all. Hovering
-      either side lights the other.
-    </p>
-
     {/* The one pattern on the page, defined once for every svg that follows.
-        A fill of url(#id) resolves document-wide, so the two plans and the
-        key's swatch all paint from this tile - which is what keeps them the
-        same tile. Zero-sized rather than display:none, because a hidden svg's
-        defs are not reliably available to other elements. */}
+        A fill of url(#id) resolves document-wide, so both plans and the key's
+        swatch all paint from this tile. Zero-sized rather than display:none,
+        because a hidden svg's defs are not reliably available to other
+        elements. */}
     <svg class="mp-defs" width="0" height="0" aria-hidden="true">
       <defs>
-        {/* 45° hatch, 7 units on repeat: white ground, one 0.8 line. In
-            drawing units, so the pitch holds however the plan is scaled. */}
         <pattern id="mp-hatch" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)">
           <rect width="7" height="7" fill="#ffffff" />
           <line x1="0" y1="0" x2="0" y2="7" class="mp-hatch-line" />
@@ -241,210 +228,258 @@ function tooltip(sp: Space): string {
       </defs>
     </svg>
 
-    {/* The key. Three fills and three words; the plan carries no other colour
-        at rest, so this is the whole legend. The staff swatch is an svg so
-        it can paint from the same pattern the plan does. */}
-    <ul class="mp-key" aria-label="Fill key">
-      <li><span class="mp-swatch is-public"></span>Public</li>
-      <li><span class="mp-swatch"></span>Members</li>
-      <li><svg class="mp-swatch is-staff" viewBox="0 0 16 16"><rect width="16" height="16" fill="url(#mp-hatch)" /></svg>Staff only</li>
-    </ul>
-
-    {
-      FLOORS.map((floor) => (
-        <section class="mp-floor" data-floor={floor}>
-          <h2 class="mp-floor-h">
-            {FLOOR_NAME[floor].name}
-            <span>{FLOOR_NAME[floor].sub}</span>
-          </h2>
-
-          <div class="mp-pair">
-            <div class="mp-plan-wrap">
-              <svg
-                class="mp-plan"
-                viewBox={FLOORPLAN[floor].viewBox}
-                role="img"
-                aria-label={`Floorplan of the ${FLOOR_NAME[floor].name.toLowerCase()} floor`}
-              >
-                {/* North is up on the drawing, so it is up here. The one thing on
-                    the plan that is not the building, and it earns the space:
-                    every instruction anyone gives in here is "past the woodshop",
-                    not "north", so the arrow is what ties the two together. */}
-                <g
-                  class="mp-north"
-                  transform={`translate(${+FLOORPLAN[floor].viewBox.split(' ')[0] + 10} ${+FLOORPLAN[floor].viewBox.split(' ')[1] + 14}) scale(0.34)`}
+    <section class="mp-stage" data-floor={FIRST}>
+      {/* THE PANEL clips. A zoomed plan fills the whole rounded rectangle and
+          the rail and key float over it; dragging anywhere that is not a
+          control pans. */}
+      <div class="mp-panel">
+        <div class="mp-panel-row">
+          <div class="mp-view">
+            {
+              FLOORS.map((floor) => (
+                <svg
+                  class:list={['mp-plan', floor !== FIRST && 'is-off']}
+                  data-floor={floor}
+                  viewBox={VIEWBOX}
+                  role="img"
+                  aria-label={`Floorplan of the ${FLOOR_NAME[floor].name.toLowerCase()} floor`}
                 >
-                  <path d="M 18 58 L 30 18 L 42 58 L 30 48 Z" />
-                  <text x="30" y="80">N</text>
-                </g>
-
-                <g transform={`translate(0 ${FLOORPLAN[floor].offsetY})`}>
-                  {/* The floorplate, under everything. */}
-                  <polygon
-                    class="mp-shell"
-                    points={FLOORPLAN[floor].outline.map((q) => q.join(',')).join(' ')}
-                  />
-
-                  {/* ROOMS: a fill and nothing else. No name, no hover, no
-                      title - a room is the container, and the fill it carries
-                      says who may use what is inside it. */}
-                  {FLOORPLAN[floor].rooms.map((r) => (
-                    <path
-                      class="mp-room"
-                      d={path(r.points)}
-                      data-access={spot(r.id).access}
+                  <g transform={`translate(0 ${ALIGN[floor]})`}>
+                    {/* The floorplate, under everything. */}
+                    <polygon
+                      class="mp-shell"
+                      points={FLOORPLAN[floor].outline.map((q) => q.join(',')).join(' ')}
                     />
-                  ))}
 
-                  {/* ZONES, dashed. A zone has no wall between it and its room -
-                      that is what makes it a zone - so it cannot be drawn as one.
-                      A dashed line is the convention for a boundary you can walk
-                      straight through, which is exactly what this is. An unnamed
-                      zone draws nothing and answers to nothing; a zone that
-                      states its own access paints it over the room's. */}
-                  {FLOORPLAN[floor].zones.map((z) =>
-                    spot(z.id).name === null ? (
-                      <path class="mp-zone is-unnamed" d={path(z.points)} />
-                    ) : (
-                      <path
-                        class:list={['mp-zone', spot(z.id).ownAccess && 'has-access']}
-                        d={path(z.points)}
-                        data-spot={z.id}
-                        data-access={spot(z.id).ownAccess ? spot(z.id).access : undefined}
-                        style={litStyle(spot(z.id))}
-                      >
-                        <title>{tooltip(spot(z.id))}</title>
-                      </path>
-                    ),
-                  )}
+                    {/* ROOMS: a fill and nothing else. No name, no hover, no
+                        title - a room is the container, and the fill it
+                        carries says who may use what is inside it. */}
+                    {FLOORPLAN[floor].rooms.map((r) => (
+                      <path class="mp-room" d={path(r.points)} data-access={spot(r.id).access} />
+                    ))}
 
-                  {/* The building. Three weights and no others; the gaps are the
-                      doorways. */}
-                  {LAYERS.map((layer) => (
-                    <path
-                      class={`mp-wall is-${layer}`}
-                      d={FLOORPLAN[floor].d[layer]}
-                      stroke-width={STROKE[layer]}
-                    />
-                  ))}
-
-                  {/* The names, over everything, each centred on the author's
-                      own anchor and broken on their own lines - both are fitted
-                      to the zone they sit in, and recomputing either would be
-                      guessing at a decision somebody made with the plan in front
-                      of them. */}
-                  {FLOORPLAN[floor].zones.map((z) => {
-                    const l = label(spot(z.id));
-                    return (
-                      l && (
-                        <text
-                          class={`mp-name is-${l.style}`}
+                    {/* ZONES: fills and hit targets only. The outlines are
+                        drawn once, below, from every zone's edges at once -
+                        two neighbours stroking the same edge put two dash
+                        patterns on top of each other out of phase. An
+                        unnamed zone draws nothing and answers to nothing. */}
+                    {FLOORPLAN[floor].zones.map((z) =>
+                      spot(z.id).name === null ? (
+                        <path class="mp-zone is-unnamed" d={path(z.points)} />
+                      ) : (
+                        <path
+                          class:list={['mp-zone', spot(z.id).ownAccess && 'has-access']}
+                          d={path(z.points)}
                           data-spot={z.id}
-                          data-cy={l.cy}
-                          data-block={l.blockH}
-                          data-rot={l.transform ? '1' : undefined}
-                          x={l.cx}
-                          y={l.y}
-                          transform={l.transform}
-                          style={`font-size: ${l.size}px; font-weight: ${l.weight}`}
+                          data-access={spot(z.id).ownAccess ? spot(z.id).access : undefined}
+                          style={litStyle(spot(z.id))}
                         >
-                          {l.lines.map((line) => (
-                            <tspan x={l.cx} dy={line.dy} class:list={[line.tag && 'mp-tagline']}>
-                              {line.text}
-                            </tspan>
-                          ))}
-                        </text>
-                      )
-                    );
-                  })}
+                          <title>{tooltip(spot(z.id))}</title>
+                        </path>
+                      ),
+                    )}
 
-                  {/* The ways in, which name a door from outside rather than
-                      naming a space. They carry no id in the review list and
-                      nothing hovers them - there is no room to light up. The
-                      anchor goes in `style`, not as an attribute: the
-                      stylesheet's `text-anchor: middle` outranks a
-                      presentation attribute, and a label set `start` in the
-                      data was coming out centred. */}
-                  {FLOORPLAN[floor].entrances.map((e) => [
-                    <path class="mp-arrow-shaft" d={arrow(e.arrow).shaft} />,
-                    <path class="mp-arrow-head" d={arrow(e.arrow).head} />,
-                    <text
-                      class="mp-entrance"
-                      x={e.at[0]}
-                      y={e.at[1]}
-                      style={`font-size: ${e.size}px${e.anchor ? `; text-anchor: ${e.anchor}` : ''}`}
-                    >
-                      {e.lines.map((line, i) => (
-                        <tspan x={e.at[0]} dy={i ? r2(e.size * 1.12) : 0}>{line}</tspan>
-                      ))}
-                    </text>,
-                  ])}
-                </g>
-              </svg>
+                    <path class="mp-edges" d={zoneEdges(namedOn(floor).map((z) => z.points))} />
+
+                    {/* The building. Three weights and no others; the gaps are
+                        the doorways. */}
+                    {LAYERS.map((layer) => (
+                      <path
+                        class={`mp-wall is-${layer}`}
+                        d={FLOORPLAN[floor].d[layer]}
+                        stroke-width={STROKE[layer]}
+                      />
+                    ))}
+
+                    {/* The names, over everything, each centred on the author's
+                        own anchor and broken on their own lines. */}
+                    {FLOORPLAN[floor].zones.map((z) => {
+                      const l = label(spot(z.id));
+                      return (
+                        l && (
+                          <text
+                            class={`mp-name is-${l.style}`}
+                            data-spot={z.id}
+                            data-cy={l.cy}
+                            data-block={l.blockH}
+                            data-rot={l.transform ? '1' : undefined}
+                            x={l.cx}
+                            y={l.y}
+                            transform={l.transform}
+                            style={`font-size: ${l.size}px; font-weight: ${l.weight}`}
+                          >
+                            {l.lines.map((line) => (
+                              <tspan x={l.cx} dy={line.dy} class:list={[line.tag && 'mp-tagline']}>
+                                {line.text}
+                              </tspan>
+                            ))}
+                          </text>
+                        )
+                      );
+                    })}
+
+                    {/* The ways in. The anchor goes in `style`, not as an
+                        attribute: the stylesheet's `text-anchor: middle`
+                        outranks a presentation attribute. */}
+                    {FLOORPLAN[floor].entrances.map((e) => [
+                      <path class="mp-arrow-shaft" d={arrow(e.arrow).shaft} />,
+                      <path class="mp-arrow-head" d={arrow(e.arrow).head} />,
+                      <text
+                        class="mp-entrance"
+                        x={e.at[0]}
+                        y={e.at[1]}
+                        style={`font-size: ${e.size}px${e.anchor ? `; text-anchor: ${e.anchor}` : ''}`}
+                      >
+                        {e.lines.map((line, i) => (
+                          <tspan x={e.at[0]} dy={i ? r2(e.size * 1.12) : 0}>{line}</tspan>
+                        ))}
+                      </text>,
+                    ])}
+
+                    {/* THE FADE. When something is selected, everything else
+                        goes under a wash: one path per zone, plus the floor
+                        between the zones (the plate with every zone cut out,
+                        evenodd). All at opacity 0 until the script turns the
+                        right ones on. The walls are then drawn again on top,
+                        so they stay black through the wash. */}
+                    <path class="mp-wash mp-wash-base" fill-rule="evenodd" d={washBase(floor)} />
+                    {FLOORPLAN[floor].zones.map((z) => (
+                      <path class="mp-wash" data-wash={z.id} d={path(z.points)} />
+                    ))}
+                    <g class="mp-walls-top">
+                      <path class="mp-wall is-exterior" d={FLOORPLAN[floor].d.exterior} stroke-width={STROKE.exterior} />
+                      <path class="mp-wall is-interior" d={FLOORPLAN[floor].d.interior} stroke-width={STROKE.interior} />
+                    </g>
+                  </g>
+                </svg>
+              ))
+            }
+          </div>
+
+          {/* THE RAIL. Everything in it is `data-ui`, which is how the pan
+              handler knows to leave a pointerdown alone. */}
+          <div class="mp-rail" data-ui>
+            {/* The drawing is upside-down relative to true north, so for now
+                the compass says so - N over a triangle pointing DOWN. A later
+                pass rotates the data and puts the arrow back up. */}
+            <div class="mp-compass" role="img" aria-label="North is down" title="North">
+              <span>N</span>
+              <svg viewBox="0 0 24 40" width="6" height="9" aria-hidden="true"><path d="M 2 2 L 12 38 L 22 2 Z" fill="currentColor" /></svg>
             </div>
 
-            {/* The list beside the plan rather than under it, so one can be read
-                against the other without either leaving the screen. It scrolls
-                inside its own box for the same reason: a floor is 25 to 28 zones
-                and the plan would otherwise be a long way up the page. */}
-            <div class="mp-list-col">
-              <div class="mp-list">
-                <div class="mp-list-head">
-                  <span>Spaces</span>
-                  <span>{listedOn(floor)} zones</span>
-                </div>
+            <div class="mp-rail-group">
+              <span class="mp-rail-label" id="mp-floor-label">Floor</span>
+              <div class="mp-card mp-tabs" role="tablist" aria-labelledby="mp-floor-label">
+                {FLOORS.map((floor) => (
+                  <button
+                    class="mp-tab"
+                    type="button"
+                    role="tab"
+                    data-floor={floor}
+                    aria-selected={floor === FIRST ? 'true' : 'false'}
+                    aria-label={FLOOR_NAME[floor].name}
+                    title={FLOOR_NAME[floor].name}
+                  >
+                    {FLOOR_NUM[floor]}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                <div class="mp-list-scroll">
-                  <table class="mp-table">
-                    <thead>
-                      <tr>
-                        <th class="mp-th-code">Code</th>
-                        <th>Space</th>
-                        <th>Studio</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rowsOn(floor).map(({ space: sp, bar }) =>
-                        bar ? (
-                          <tr class="is-bar">
-                            <td colspan="3">{sp.id}</td>
-                          </tr>
-                        ) : (
-                          <tr
-                            data-spot={sp.id}
-                            style={litStyle(sp)}
-                          >
-                            <td class="mp-code">{sp.id}</td>
-                            <td class="mp-space">
-                              <span class="mp-space-name">{sp.name}</span>
-                            </td>
-                            <td class="mp-who">
-                              {sp.studios.length === 0 ? (
-                                <span class="mp-dash">—</span>
-                              ) : (
-                                sp.studios.map((slug) => {
-                                  const st = STUDIO_BY_SLUG.get(slug)!;
-                                  return (
-                                    <span class="mp-who-one">
-                                      <img src={st.badge} alt="" width="22" height="22" />
-                                      {st.name}
-                                    </span>
-                                  );
-                                })
-                              )}
-                            </td>
-                          </tr>
-                        ),
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+            <div class="mp-rail-group">
+              <span class="mp-rail-label" id="mp-zoom-label">Zoom</span>
+              <div class="mp-card mp-zoom" role="group" aria-labelledby="mp-zoom-label">
+                <button class="mp-zoom-btn" type="button" data-zoom="in" aria-label="Zoom in" title="Zoom in">+</button>
+                <button class="mp-zoom-btn" type="button" data-zoom="out" aria-label="Zoom out" title="Zoom out">−</button>
+                <button class="mp-zoom-btn is-fit" type="button" data-zoom="fit" aria-label="Reset view" title="Reset view">Fit</button>
               </div>
             </div>
           </div>
-        </section>
-      ))
-    }
+        </div>
+
+        {/* The key, pinned to the foot of the panel. Three fills and three
+            words; the plan carries no other colour at rest. */}
+        <div class="mp-key" data-ui>
+          <span class="mp-rail-label" id="mp-key-label">Key</span>
+          <ul class="mp-card mp-key-card" aria-labelledby="mp-key-label">
+            <li><span class="mp-swatch is-public"></span>Public</li>
+            <li><span class="mp-swatch"></span>Members</li>
+            <li><svg class="mp-swatch is-staff" viewBox="0 0 16 16"><rect width="16" height="16" fill="url(#mp-hatch)" /></svg>Staff only</li>
+          </ul>
+        </div>
+      </div>
+
+      {/* THE LIST searches both floors and shows one. */}
+      <div class="mp-list-col">
+        <div class="mp-list">
+          <div class="mp-search">
+            <svg class="mp-search-icon" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+              <circle cx="6.75" cy="6.75" r="4.75" fill="none" stroke="currentColor" stroke-width="1.6" />
+              <path d="M10.4 10.4 L14.25 14.25" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            </svg>
+            <input
+              class="mp-search-input"
+              type="text"
+              placeholder="Search spaces or studios"
+              aria-label="Search spaces or studios"
+              autocomplete="off"
+            />
+            <button class="mp-search-clear" type="button" aria-label="Clear" title="Clear" hidden>
+              <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M3.5 3.5 L12.5 12.5 M12.5 3.5 L3.5 12.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+            </button>
+          </div>
+
+          <div class="mp-list-scroll">
+            <div class="mp-cols">
+              <span>Code</span><span>Space</span><span>Studio</span>
+            </div>
+
+            {FLOORS.map((floor) => (
+              <div class="mp-floor-rows" data-floor={floor} hidden={floor !== FIRST}>
+                {/* Only while searching: where these results are. Clicking
+                    it goes there. */}
+                <div class="mp-floor-head" role="button" tabindex="0" data-floor={floor} title={`Show ${FLOOR_NAME[floor].name}`} hidden>
+                  <span class="mp-floor-badge">{FLOOR_NUM[floor]}</span>
+                  <span class="mp-floor-name">{FLOOR_NAME[floor].name}</span>
+                  <span class="mp-floor-count"></span>
+                </div>
+
+                {groupsOn(floor).map((g) => (
+                  <div class="mp-group" data-room={g.room.id}>
+                    <div role="separator" aria-label={g.room.id}></div>
+                    {g.zones.map((sp) => (
+                      <div class="mp-row" data-spot={sp.id} data-search={searchKey(sp)} style={litStyle(sp)}>
+                        <span class="mp-code">{sp.id}</span>
+                        <span class="mp-space-name">{sp.name}</span>
+                        <span class="mp-who">
+                          {sp.studios.length === 0 ? (
+                            <span class="mp-dash">—</span>
+                          ) : (
+                            sp.studios.map((slug) => {
+                              const st = STUDIO_BY_SLUG.get(slug)!;
+                              return (
+                                <span class="mp-who-one" data-studio={slug} title={`Select all ${st.name} spaces`}>
+                                  <img src={st.badge} alt="" width="22" height="22" />
+                                  {st.name}
+                                </span>
+                              );
+                            })
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ))}
+
+            <div class="mp-nomatch" hidden>
+              No spaces match “<span class="mp-nomatch-q"></span>”.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
     {
       ORPHANS.length > 0 && (
@@ -459,35 +494,20 @@ function tooltip(sp: Space): string {
         </section>
       )
     }
-
-    {/* The same names, in a form somebody can diff, paste into a message or
-        hand to whoever keeps the building's own list. Linked rather than left
-        to be discovered: a reviewer who wants to check fifty-three names
-        against something else should not have to be told these exist. */}
-    <p class="mp-files">
-      <span>Also as data</span>
-      <a href="/data/space.json">space.json</a>
-    </p>
-
-    <p class="mp-note">
-      Every name, shape and label position above comes from{' '}
-      <b>data/floorplan.ts</b>, which is authored by hand rather than traced.{' '}
-      <b>data/space/</b> adds what the drawing cannot know: which studios work
-      where, who may use each space, and the taglines under the names.
-    </p>
   </main>
 </Base>
 
 <style>
-  /* The handoff's tokens that are this page's alone. The site's own tokens
-     cover ink, slate, mist and the hairline; these four are the access fills,
-     the quiet type and the group row, and nothing else on the site uses them. */
+  /* The handoff's tokens that are this page's alone. */
   .sm-sheet {
     --mp-quiet: #7d8480;
     --mp-public: #e2efe5;
     --mp-hatch: #c4cac6;
     --mp-inset: #b7bdb9;
-    --mp-group: #f8f9f8;
+    --mp-plate: #e3e7e4;
+    --mp-zebra: #f5f7f5;
+    --mp-input-line: #d5dad7;
+    --mp-card-shadow: 0 1px 2px rgb(20 25 22 / 0.1), 0 4px 12px rgb(20 25 22 / 0.08);
   }
 
   .mp-defs {
@@ -499,101 +519,65 @@ function tooltip(sp: Space): string {
     stroke-width: 0.8;
   }
 
-  .mp-floor + .mp-floor {
-    margin-top: 3.25rem;
-  }
-
-  .mp-floor-h {
-    display: flex;
-    align-items: baseline;
-    gap: 0.7rem;
-    margin-bottom: 1rem;
-    font-family: var(--font-display);
-    font-size: 1.35rem;
-    font-weight: 700;
-    letter-spacing: -0.015em;
-    color: var(--color-sm-ink);
-  }
-
-  .mp-floor-h span {
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-    color: var(--color-sm-slate);
-  }
-
-  /* ------------------------------------------------------------- the key --- */
-  .mp-key {
+  /* The panel and the list, side by side while there is room and stacked
+     when there is not. The panel takes everything it can; the list keeps
+     20rem so a studio name never wraps. */
+  .mp-stage {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.6rem 1.5rem;
-    margin: 0 0 1.5rem;
-    padding: 0;
-    list-style: none;
-    font-family: var(--font-display);
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--color-sm-ink-2);
-  }
-
-  .mp-key li {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  /* The swatches are the fills exactly, with the same 1px inset the plan's
-     walls give a room, so the key is a sample of the plan and not a diagram
-     of it. */
-  .mp-swatch {
-    width: 1.1rem;
-    height: 1.1rem;
-    border-radius: 3px;
-    background: var(--color-sm-paper);
-    box-shadow: inset 0 0 0 1px var(--mp-inset);
-  }
-
-  .mp-swatch.is-public {
-    background: var(--mp-public);
-  }
-
-  .mp-swatch.is-staff {
-    display: block;
-    overflow: hidden;
-  }
-
-  /* The plan takes the room it needs and the list takes what is left, with a
-     floor under the list: below about 18rem the studio column starts wrapping
-     its own names, and a wrapped name is the one thing in here that has to be
-     read straight.
-
-     The cap is 26rem and was 24, which is a measured pixel rather than a
-     preference. The studio column takes max-content - the widest of it is
-     "Printmaking" with its badge - on every row, so what is left for a name is
-     fixed however wide the window gets. */
-  .mp-pair {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(18rem, 26rem);
     gap: 1.25rem;
-    /* stretch, not start: the list is told to be exactly as tall as the plan,
-       and the way it is told is by filling a column that the plan's own height
-       has already decided. See .mp-list-col. */
     align-items: stretch;
   }
 
-  /* Three tones, darkest outwards: the ground outside the building, the floor
-     inside it, then the rooms. */
-  .mp-plan-wrap {
+  /* ----------------------------------------------------------- the panel ---
+
+     It CLIPS. The plan is transformed inside it, so a zoomed plan runs under
+     the rounded corners rather than past them, and the rail and key float
+     above it (position: relative; z-index: 1). `isolation` keeps that
+     stacking inside the panel. `touch-action: none` hands every touch to the
+     pan handler - which also means a finger on the panel does not scroll the
+     page; the list beside it still does. */
+  .mp-panel {
+    flex: 999 1 36rem;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
     padding: 0.75rem;
-    background: #e3e7e4;
+    background: var(--mp-plate);
     border-radius: 12px;
+    overflow: hidden;
+    isolation: isolate;
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
-  /* `overflow: visible` is load-bearing. The Member Entrance label and the
-     tail of its arrow sit BELOW the upstairs viewBox - centred in the band
-     between the south wall and the plate's edge, which is the padding above -
-     and a clipping svg would cut the words in half. */
+  .mp-panel.is-dragging {
+    cursor: grabbing;
+  }
+
+  .mp-panel-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  /* The view is what pans and zooms: one element, transformed from its own
+     top-left, holding both floors' plans. */
+  .mp-view {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    transform-origin: 0 0;
+  }
+
+  /* `overflow: visible` is load-bearing: the Member Entrance label and the
+     tail of its arrow sit outside the frame by design. The inactive floor
+     stays laid out underneath, invisible - it has to have a size for the
+     label cap to measure it, and `display: none` would give it none. */
   .mp-plan {
     display: block;
     width: 100%;
@@ -601,18 +585,11 @@ function tooltip(sp: Space): string {
     overflow: visible;
   }
 
-  .mp-north path {
-    fill: var(--color-sm-slate);
-    opacity: 0.55;
-  }
-
-  .mp-north text {
-    font-family: var(--font-display);
-    font-size: 22px;
-    font-weight: 700;
-    text-anchor: middle;
-    fill: var(--color-sm-slate);
-    opacity: 0.55;
+  .mp-plan.is-off {
+    position: absolute;
+    inset: 0;
+    visibility: hidden;
+    pointer-events: none;
   }
 
   .mp-shell {
@@ -627,17 +604,10 @@ function tooltip(sp: Space): string {
      shut, where a hatch reads as a room that is somebody else's. A zigzag for
      public over a flat grey for staff was tried on 2026-10-11 and undone the
      same hour: the grey put the quiet labels at 2.1:1 on their own rooms, and
-     the zigzag read as texture rather than as a fill. The plan is otherwise
-     the walls and the names.
+     the zigzag read as texture rather than as a fill.
 
-     Until 2026-10-11 there was no colour at rest at all; before that, the
-     studios were a green wash. Both histories are in CLAUDE.md. What stayed
-     true through all three: a hover is the only time a studio's colour appears.
-
-     Rooms do not respond to the pointer. The fill is theirs, the name and the
-     hover belong to the zones inside them, and a room with no named zone under
-     the cursor lights nothing - which is right, because there is nothing in
-     the list to light. */
+     Rooms do not respond to the pointer. The fill is theirs; the name, the
+     hover and the selection belong to the zones inside them. */
   .mp-room {
     fill: var(--color-sm-paper);
     pointer-events: none;
@@ -651,28 +621,16 @@ function tooltip(sp: Space): string {
     fill: url(#mp-hatch);
   }
 
-  /* A zone has no wall between it and its room - that is what makes it a zone -
-     so it cannot be drawn as one. Dashes are the convention for a boundary you
-     walk straight through. In drawing units, so the dash keeps its size on the
-     plan however the page is scaled.
-
-     `pointer-events: all` rather than the default, which only hits painted
-     pixels: a zone with no fill would otherwise be hoverable along its dashes
-     and nowhere else. */
+  /* A zone is a hit target with a fill, and no stroke of its own - see
+     .mp-edges. `pointer-events: all` rather than the default, which only hits
+     painted pixels: an unfilled zone would otherwise be unhoverable. */
   .mp-zone {
     fill: none;
-    stroke: var(--color-sm-slate);
-    stroke-width: 1.1;
-    stroke-dasharray: 4 3;
-    opacity: 0.55;
     pointer-events: all;
-    transition: fill 140ms ease;
+    transition: fill 130ms ease, fill-opacity 130ms ease, opacity 130ms ease;
   }
 
-  /* A hallway, a stair, the landing: drawn so the data is complete and
-     invisible so the plan is not. No outline, no hit target. */
   .mp-zone.is-unnamed {
-    stroke: none;
     pointer-events: none;
   }
 
@@ -680,7 +638,6 @@ function tooltip(sp: Space): string {
      the Staff Desk is a hatched corner of a white room. */
   .mp-zone.has-access {
     fill: var(--color-sm-paper);
-    opacity: 1;
   }
 
   .mp-zone.has-access[data-access='public'] {
@@ -691,16 +648,23 @@ function tooltip(sp: Space): string {
     fill: url(#mp-hatch);
   }
 
+  /* Every zone boundary on the floor, drawn once. Dashes are the convention
+     for a boundary you walk straight through. In drawing units, so the dash
+     keeps its size however the plan is scaled. */
+  .mp-edges {
+    fill: none;
+    stroke: var(--color-sm-slate);
+    stroke-width: 1.1;
+    stroke-dasharray: 4 3;
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
   /* ------------------------------------------------------------ labels ---
 
      TWO STYLES, as lib/map-plan.ts decides them. Bold is ink at 650; quiet is
-     grey at 450 and smaller. Both are Figtree, mixed case, untracked, and
-     neither carries an outline. Everything that used to tell a room from a
-     zone - caps against lower, roman against italic, three weights - went
-     with the room labels: there is one kind of named thing on this plan now.
-
-     The weight is set inline from the data beside the size, so the two rules
-     here carry only the colour. */
+     grey at 450 and smaller. The weight is set inline from the data beside
+     the size, so the rules here carry only the colour. */
   .mp-name {
     font-family: var(--font-display);
     text-anchor: middle;
@@ -713,9 +677,6 @@ function tooltip(sp: Space): string {
     fill: var(--mp-quiet);
   }
 
-  /* A tagline is the second thing on a label, so it is set as the second
-     thing: the quiet size and weight, in the quiet grey, whatever the name
-     above it is doing. */
   .mp-tagline {
     font-size: 7px;
     font-weight: 450;
@@ -723,11 +684,6 @@ function tooltip(sp: Space): string {
     transition: fill 140ms ease;
   }
 
-  /* A way in, and the only type on this plan that is not naming a space.
-
-     Uppercase and tracked, because it is read once to get your bearings rather
-     than looked up, and set in slate so that out on the grey it does not pull
-     the eye off the building. */
   .mp-arrow-shaft {
     fill: none;
     stroke: var(--color-sm-slate);
@@ -754,105 +710,271 @@ function tooltip(sp: Space): string {
     pointer-events: none;
   }
 
-  /* The building, and the only thing on the plan drawn in ink. If it is dark
-     you cannot walk through it - except the stairs, which are drawn lightest of
-     the three for exactly that reason: a staircase is a thing you walk on.
-
-     The weights are the drawing's own (6 / 3 / 1.5) and are set per path from
-     the data, so a redrawn floorplan changes them by being redrawn.
-
-     `square` caps are the drawing's too, and overriding them to `butt` was a
-     mistake worth recording. The argument was that a square cap overshoots by
-     half a stroke at every subpath end, and every subpath end here is either a
-     door jamb or a corner - so butt caps keep the doorways exactly as the path
-     data states them. True, and it misses two things.
-
-     Ten corners on this plan are formed by two SEPARATE subpaths meeting at a
-     point, including the downstairs building's own top-left. A mitre join only
-     closes a corner inside one subpath; between two, butt caps leave a notch of
-     half a stroke square, and the plan looks like it was drawn with a shaky
-     hand. Square caps fill exactly that notch - that is what the cap is for.
-
-     And the doorways were never narrowed: the author drew the gaps with square
-     caps switched on, so the opening they designed is the gap MINUS the caps.
-     Butt caps made every interior door 3 units wider than intended, not
-     correct. The gap is 18.4, the cap takes 1.5 from each side, the door is
-     15.4, and that is the drawing's door. */
+  /* The building, and the only thing on the plan drawn in ink. The weights
+     are the drawing's own (6 / 3 / 1.5), set per path from the data. `square`
+     caps are the drawing's too: ten corners here are two separate subpaths
+     meeting at a point, and only a square cap closes them; and the author
+     drew the doorways with those caps on, so the opening they designed is the
+     gap minus the caps. See CLAUDE.md, *The map*. */
   .mp-wall {
     fill: none;
     stroke: var(--color-sm-ink);
     stroke-linecap: square;
     stroke-linejoin: miter;
+    pointer-events: none;
   }
 
-  /* The stairs recede. Same ink family, so they still read as built rather than
-     as annotation, but they are never the thing you are trying to find. */
   .mp-wall.is-stairs {
     stroke: var(--color-sm-slate);
     opacity: 0.6;
   }
 
-  /* ------------------------------------------------- one lit at a time ---
+  /* ------------------------------------------------------------ the fade ---
 
-     Hovering either half lights the same zone in the other, which is the whole
-     reason the list sits beside the plan rather than under it. Every one of
-     these rules has to sit BELOW the fills it overrides: .mp-zone.is-lit and
-     .mp-zone.has-access both weigh (0,2,0), so source order alone decides
-     which fill wins.
-
-     It is a fill and never a stroke. A stroke that thickens moves the wall it
-     is drawn on, and the zone appears to twitch under the cursor.
-
-     A zone that IS a studio lights in that studio's own colour, which is what
-     makes the badge in the list and the shape on the plan one object. Anything
-     else - a kitchen, a resource, the check-in desk - falls back to slate
-     through the var()'s own default: grey means only "this is what you are
-     pointing at".
-
-     0.5 rather than the 0.2 a resting tint would use, and it has to be: these
-     are ten brand colours of wildly different lightness, and woodshop's gold
-     at 0.2 is barely a change against white. At 0.5 the palest still registers
-     and the darkest - the leather brown - is still something ink reads over. */
-  .mp-zone.is-lit {
-    fill: var(--studio, var(--color-sm-slate));
-    fill-opacity: 0.5;
-    opacity: 1;
+     A selection does not so much light what is chosen as dim what is not:
+     every other zone, and the floor between zones, goes under the plate's
+     own grey at 0.72, and the walls are drawn again on top so they stay
+     black. The selected zones take their studio's colour at 0.35. The
+     130ms is the handoff's, on fill, opacity and the row background alike. */
+  .mp-wash {
+    fill: var(--mp-plate);
+    stroke: var(--mp-plate);
+    stroke-width: 0.6;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 130ms ease;
   }
 
-  /* The name lights with the zone, and takes ink whatever its style was. On a
-     small zone the fill alone is easy to miss, and the name is what you are
-     looking for anyway. Ink rather than the studio's colour, and that was
-     measured rather than chosen: eight of the brand colours fail 4.5:1 as type
-     on white, and here they would be type on a wash of themselves. */
+  .mp-wash-base {
+    stroke: none;
+  }
+
+  .mp-wash.is-on {
+    opacity: 0.72;
+  }
+
+  /* `hidden` is not an SVG attribute, so the walls-on-top group is shown by
+     class. */
+  .mp-walls-top {
+    display: none;
+  }
+
+  .mp-walls-top.is-on {
+    display: inline;
+  }
+
+  /* Reused svg nodes would animate between floors - the Kitchen's wash
+     sliding into the Compressor Room's - so the floor switch turns every
+     transition off for two frames. The one !important on the page, because
+     it has to beat every transition at once. */
+  .mp-stage.no-anim * {
+    transition: none !important;
+  }
+
+  /* ------------------------------------------------- lit and selected ---
+
+     Every one of these rules has to sit BELOW the fills it overrides, and the
+     second selector in each is for the two zones that paint their own access:
+     `.mp-zone.has-access[data-access='staff']` weighs (0,3,0), one more than
+     `.mp-zone.is-sel`, and without it Storage and the Staff Desk kept their
+     hatch under the pointer. Same weight, later in the source, so these win.
+
+     Selected is 0.35; lit is 0.5 and comes last, so hovering a selected zone
+     still answers. */
+  .mp-zone.is-sel,
+  .mp-zone.has-access.is-sel {
+    fill: var(--studio, var(--color-sm-slate));
+    fill-opacity: 0.35;
+  }
+
+  .mp-zone.is-lit,
+  .mp-zone.has-access.is-lit {
+    fill: var(--studio, var(--color-sm-slate));
+    fill-opacity: 0.5;
+  }
+
   .mp-name.is-lit,
   .mp-name.is-lit .mp-tagline {
     fill: var(--color-sm-ink);
   }
 
-  /* ---------------------------------------------------------- the data --- */
-
-  /* The list is exactly as tall as the plan beside it, and this is the whole
-     trick: a grid row is as tall as its tallest item, so the column holding
-     the list must contribute NO height of its own. Its only child is taken out
-     of flow, so it measures zero, the row is left to the plan, and the card
-     then fills that row with inset: 0.
-
-     A max-height cannot do this. The plan's height is its column's width over
-     the drawing's aspect, which changes with every window width, so any fixed
-     cap is the right number at one size and wrong at all the others.
-
-     It needs no ResizeObserver either, which the rest of this repo would
-     otherwise reach for: the plan is sized by the grid and the list follows it
-     in the same layout pass. */
-  .mp-list-col {
+  /* ------------------------------------------------------------- the rail --- */
+  .mp-rail {
+    order: 2;
+    flex: 0 0 auto;
     position: relative;
-    min-width: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.65rem;
+    width: 2.5rem;
+    cursor: default;
   }
 
-  /* A card rather than a bare table, because beside a plan on a tinted ground
-     a column of hairlines with no edge reads as something that fell off the
-     page. The radius clips the scroller, which is why the overflow is here as
-     well as on the child. */
+  .mp-rail-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .mp-rail-label {
+    font-family: var(--font-display);
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-sm-slate);
+  }
+
+  .mp-card {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 2px;
+    background: #fff;
+    border-radius: 7px;
+    box-shadow: var(--mp-card-shadow);
+  }
+
+  .mp-compass {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: var(--mp-card-shadow);
+    color: var(--color-sm-slate);
+  }
+
+  .mp-compass span {
+    font-family: var(--font-display);
+    font-size: 0.5rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .mp-compass svg {
+    display: block;
+  }
+
+  .mp-tab,
+  .mp-zoom-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--color-sm-ink-2);
+  }
+
+  .mp-tab {
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+    transition: background 140ms ease, color 140ms ease;
+  }
+
+  .mp-tab[aria-selected='true'] {
+    background: var(--color-sm-green);
+    color: #fff;
+  }
+
+  .mp-zoom-btn {
+    font-size: 1.05rem;
+  }
+
+  .mp-zoom-btn.is-fit {
+    font-size: 0.56rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-sm-slate);
+  }
+
+  .mp-zoom-btn:hover,
+  .mp-tab:not([aria-selected='true']):hover {
+    background: var(--color-sm-mist);
+  }
+
+  .mp-tab:focus-visible,
+  .mp-zoom-btn:focus-visible,
+  .mp-search-clear:focus-visible {
+    outline: 2px solid var(--color-sm-green);
+    outline-offset: 1px;
+  }
+
+  /* -------------------------------------------------------------- the key --- */
+  .mp-key {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.6rem;
+    align-self: flex-start;
+    position: relative;
+    z-index: 1;
+    margin-top: auto;
+    padding-top: 0.75rem;
+    cursor: default;
+  }
+
+  .mp-key-card {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    padding: 0.5rem 0.75rem;
+    margin: 0;
+    list-style: none;
+    font-family: var(--font-display);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-sm-ink-2);
+  }
+
+  .mp-key-card li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .mp-swatch {
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 3px;
+    background: var(--color-sm-paper);
+    box-shadow: inset 0 0 0 1px var(--mp-inset);
+  }
+
+  .mp-swatch.is-public {
+    background: var(--mp-public);
+  }
+
+  .mp-swatch.is-staff {
+    display: block;
+    overflow: hidden;
+  }
+
+  /* -------------------------------------------------------------- the list ---
+
+     As tall as the panel beside it: the column contributes no height of its
+     own (its only child is out of flow) so the row's height is the panel's,
+     and the card fills it. Stacked, it goes back into the flow. */
+  .mp-list-col {
+    flex: 1 1 20rem;
+    position: relative;
+    min-width: 0;
+    min-height: 24rem;
+  }
+
   .mp-list {
     position: absolute;
     inset: 0;
@@ -865,21 +987,59 @@ function tooltip(sp: Space): string {
     background: #fff;
   }
 
-  .mp-list-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.6rem;
+  .mp-search {
     flex: 0 0 auto;
-    padding: 0.6rem 0.75rem;
+    position: relative;
+    padding: 0.5rem;
     border-bottom: 1px solid var(--color-sm-line);
-    background: var(--color-sm-mist);
-    font-family: var(--font-display);
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
+  }
+
+  .mp-search-icon {
+    position: absolute;
+    left: 1.25rem;
+    top: 1.28rem;
+    pointer-events: none;
+    color: var(--mp-quiet);
+  }
+
+  .mp-search-input {
+    display: block;
+    width: 100%;
+    min-height: 2.5rem;
+    padding: 0.5rem 2.6rem 0.5rem 2.2rem;
+    border: 1px solid var(--mp-input-line);
+    border-radius: 7px;
+    background: #fff;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    color: var(--color-sm-ink);
+    outline: none;
+  }
+
+  .mp-search-input:focus {
+    border-color: var(--color-sm-green);
+    box-shadow: 0 0 0 3px rgb(19 114 60 / 0.15);
+  }
+
+  .mp-search-clear {
+    position: absolute;
+    right: 0.85rem;
+    top: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
     color: var(--color-sm-slate);
+  }
+
+  .mp-search-clear:hover {
+    background: var(--color-sm-mist);
+    color: var(--color-sm-ink);
   }
 
   .mp-list-scroll {
@@ -887,133 +1047,144 @@ function tooltip(sp: Space): string {
     min-height: 0;
     overflow-y: auto;
     /* A list that scrolls inside a page that also scrolls hands the page its
-       overscroll at either end, so reaching the bottom of a floor's list jumps
-       the whole page away from the plan it is being read against. */
+       overscroll at either end, so reaching the bottom jumps the page away
+       from the plan it is being read against. */
     overscroll-behavior: contain;
   }
 
-  .mp-lede {
-    margin: 0 0 1.5rem;
-    font-size: 0.9375rem;
-    line-height: 1.65;
-    color: var(--color-sm-slate);
-  }
-
-  .mp-lede b {
-    font-weight: 600;
-    color: var(--color-sm-ink-2);
-  }
-
-  .mp-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-  }
-
-  /* Hairline rows rather than a bordered grid: this is a list to read down,
-     and the one vertical relationship that matters - a zone under its room -
-     is said by the indent instead. */
-  /* The header has to survive the scroll, and a sticky cell cannot hold a
-     border - the row it is pinned over slides under it and the border goes
-     with the paint. An inset shadow draws inside the cell instead. */
-  .mp-table th {
+  /* The column header and the floor headings share one sticky slot; only one
+     kind is ever shown at a time. */
+  .mp-cols,
+  .mp-floor-head {
     position: sticky;
     top: 0;
     z-index: 1;
-    padding: 0.45rem 0.6rem;
-    background: #fff;
-    box-shadow: inset 0 -1px 0 var(--color-sm-line);
+    background: var(--color-sm-mist);
     font-family: var(--font-display);
+  }
+
+  .mp-cols {
+    display: grid;
+    grid-template-columns: 3.2rem minmax(0, 1fr) auto;
+    box-shadow: inset 0 -1px 0 var(--color-sm-line);
     font-size: 0.62rem;
     font-weight: 700;
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
-    text-align: left;
     color: var(--color-sm-slate);
   }
 
-  .mp-table td {
-    padding: 0.4rem 0.6rem;
+  .mp-cols span {
+    padding: 0.6rem;
+  }
+
+  .mp-cols span:last-child {
+    padding-right: 0.95rem;
+  }
+
+  .mp-floor-head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem;
     border-bottom: 1px solid var(--color-sm-line);
-    vertical-align: middle;
+    cursor: pointer;
+    color: var(--color-sm-ink);
   }
 
-  .mp-table tr:last-child td {
-    border-bottom: 0;
+  .mp-floor-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 5px;
+    background: #fff;
+    box-shadow: inset 0 0 0 1px #c9cfcb;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--color-sm-ink-2);
   }
 
-  .mp-th-code,
+  /* The current floor's heading wears the tab's green, so the list and the
+     rail agree about where you are. */
+  .mp-floor-rows.is-current .mp-floor-badge {
+    background: var(--color-sm-green);
+    box-shadow: none;
+    color: #fff;
+  }
+
+  .mp-floor-name {
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
+  .mp-floor-count {
+    margin-left: auto;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-sm-slate);
+  }
+
+  /* Rooms are told apart by ZEBRA: every other room group's rows take a
+     tint. The separator before each group is there for a screen reader and
+     has no height. */
+  .mp-group [role='separator'] {
+    height: 0;
+  }
+
+  .mp-group.is-odd .mp-row {
+    background: var(--mp-zebra);
+  }
+
+  .mp-row {
+    display: grid;
+    grid-template-columns: 3.2rem minmax(0, 1fr) auto;
+    align-items: center;
+    border-bottom: 1px solid var(--color-sm-line);
+    cursor: pointer;
+    transition: opacity 130ms ease, background 130ms ease, box-shadow 130ms ease;
+  }
+
+  .mp-row > span {
+    padding: 0.4rem 0.6rem;
+  }
+
   .mp-code {
-    width: 1%;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
     font-size: 0.8125rem;
     color: var(--color-sm-slate);
   }
 
-  /* A room is a bar across the list: its code on a tinted band spanning every
-     column, with the zones it holds under it. The band is what separates one
-     room from the next, so the list reads room by room rather than as
-     fifty-three rows of equal weight. The zones under a bar carry no indent
-     and no `└` - the bar already says what they belong to, and a marker on
-     every row of the list is a marker on none.
-
-     Every name is set the same here, whatever the plan does with it. The plan
-     has two label styles because it is a drawing with room for a hierarchy;
-     the list is a list, and a quiet row in it read as a row that mattered
-     less to check, which is the opposite of what the list is for. */
-  .mp-table tr.is-bar td {
-    padding: 0.3rem 0.6rem;
-    background: var(--mp-group);
-    border-top: 1px solid var(--color-sm-line);
-    font-family: var(--font-display);
-    font-size: 0.72rem;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: var(--tracking-label);
-    color: var(--color-sm-slate);
-  }
-
-  .mp-table tr.is-bar:first-child td {
-    border-top: 0;
-  }
-
   .mp-space-name {
+    min-width: 0;
     font-family: var(--font-display);
-    /* `pretty` rather than `balance`: balance evens the line lengths, which
-       reads as ragged against the hard left edge these sit on. */
     text-wrap: pretty;
     font-size: 0.9375rem;
     font-weight: 600;
     color: var(--color-sm-ink);
   }
 
-  /* A little more room on the right than the other cells, because an overlay
-     scrollbar appears over the content rather than beside it and this is the
-     column it would land on. */
   .mp-who {
-    width: 1%;
+    display: flex;
+    gap: 0.7rem;
     padding-right: 0.95rem;
     white-space: nowrap;
   }
 
-  /* Ink rather than the brand green. Green on this page means one thing - the
-     thing you are pointing at - and a studio name is not that. The badge beside
-     it already says "studio", and says it in that studio's own colour. */
+  /* A studio's name is a shortcut to all its spaces. */
   .mp-who-one {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    /* An inline-flex takes its baseline from its FIRST flex item, and the first
-       one here is an image, whose baseline is its bottom edge. Aligning the box
-       itself rather than its invented baseline puts it within half a pixel. */
-    vertical-align: middle;
     font-size: 0.875rem;
     color: var(--color-sm-ink-2);
+    cursor: pointer;
   }
 
-  .mp-who-one + .mp-who-one {
-    margin-left: 0.7rem;
+  .mp-who-one:hover {
+    text-decoration: underline;
   }
 
   .mp-who-one img {
@@ -1024,11 +1195,26 @@ function tooltip(sp: Space): string {
     color: var(--color-sm-line);
   }
 
-  /* Same rule as the plan: the studio's own colour, grey for everything else.
-     Lighter than the plan's wash, because a table row is a long thin band of
-     it next to type rather than a shape on a drawing. */
-  .mp-table tr.is-lit td {
+  /* The row's three states, in the order they win: zebra, then lit, then
+     selected - and a dimmed row is any that is neither, while a manual
+     selection is on. While searching the others are simply not shown. */
+  .mp-row.is-lit {
     background: color-mix(in srgb, var(--studio, var(--color-sm-slate)) 26%, transparent);
+  }
+
+  .mp-row.is-sel {
+    background: color-mix(in srgb, var(--studio, var(--color-sm-slate)) 14%, #fff);
+    box-shadow: inset 3px 0 0 var(--studio, var(--color-sm-slate));
+  }
+
+  .mp-stage.has-sel:not(.is-searching) .mp-row:not(.is-sel):not(.is-lit) {
+    opacity: 0.45;
+  }
+
+  .mp-nomatch {
+    padding: 1.25rem 0.75rem;
+    font-size: 0.9375rem;
+    color: var(--color-sm-slate);
   }
 
   .mp-todo {
@@ -1049,66 +1235,18 @@ function tooltip(sp: Space): string {
     color: var(--color-sm-slate);
   }
 
-  .mp-todo ul {
-    display: grid;
-    gap: 0.45rem;
-  }
-
   .mp-todo li {
     font-size: 0.9rem;
     line-height: 1.6;
     color: var(--color-sm-ink-2);
   }
 
-  .mp-files {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.5rem 1rem;
-    margin-top: 2.5rem;
-    font-family: var(--font-display);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-  }
-
-  .mp-files span {
-    color: var(--color-sm-slate);
-  }
-
-  .mp-files a {
-    color: var(--color-sm-green);
-    text-decoration: none;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-sm-green) 35%, transparent);
-  }
-
-  .mp-files a:hover,
-  .mp-files a:focus-visible {
-    color: var(--color-sm-green-dark);
-    border-bottom-color: currentColor;
-  }
-
-  .mp-note {
-    max-width: 62ch;
-    margin-top: 1.1rem;
-    font-size: 0.9375rem;
-    line-height: 1.65;
-    color: var(--color-sm-slate);
-  }
-
-  /* Side by side needs about 44rem for the plan and 18 for the list. Under
-     that they stack, and the list comes down off the plan's height to
-     something that still leaves the plan on screen above it. */
+  /* Stacked, the list has no panel beside it to match, so the card goes back
+     into the flow and takes a height of its own. */
   @media (max-width: 62rem) {
-    .mp-pair {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    /* Stacked there is no plan beside it to match, so the card goes back into
-       the flow and takes a height of its own. */
     .mp-list-col {
       position: static;
+      min-height: 0;
     }
 
     .mp-list {
@@ -1118,66 +1256,62 @@ function tooltip(sp: Space): string {
   }
 
   @media (max-width: 40rem) {
-    /* The plan is the one thing here that cannot usefully shrink any further,
-       so at phone width it gets the sheet's own gutters back. */
-    .mp-plan-wrap {
-      margin: 0 calc(var(--pad-x) * -1);
-      padding: 0.6rem;
-      border-radius: 0;
-    }
-
     /* The badge is the first thing to go: at this width the name is what is
        being checked and the picture is 22px of decoration beside it. */
     .mp-who-one img {
       display: none;
     }
-
-    .mp-table th,
-    .mp-table td {
-      padding-left: 0.35rem;
-      padding-right: 0.35rem;
-    }
   }
 </style>
 
 <script>
+  type Floor = 'upstairs' | 'downstairs';
+  const FLOORS: Floor[] = ['upstairs', 'downstairs'];
+  const other = (f: Floor): Floor => (f === 'upstairs' ? 'downstairs' : 'upstairs');
+  const floorOf = (id: string): Floor => (id[0] === 'U' ? 'upstairs' : 'downstairs');
+
+  const stage = document.querySelector<HTMLElement>('.mp-stage')!;
+  const panel = stage.querySelector<HTMLElement>('.mp-panel')!;
+  const view = stage.querySelector<HTMLElement>('.mp-view')!;
+  const plans = Object.fromEntries(
+    FLOORS.map((f) => [f, stage.querySelector<SVGSVGElement>(`svg.mp-plan[data-floor="${f}"]`)!]),
+  ) as Record<Floor, SVGSVGElement>;
+  const blocks = Object.fromEntries(
+    FLOORS.map((f) => [f, stage.querySelector<HTMLElement>(`.mp-floor-rows[data-floor="${f}"]`)!]),
+  ) as Record<Floor, HTMLElement>;
+  const input = stage.querySelector<HTMLInputElement>('.mp-search-input')!;
+  const clearBtn = stage.querySelector<HTMLButtonElement>('.mp-search-clear')!;
+  const cols = stage.querySelector<HTMLElement>('.mp-cols')!;
+  const nomatch = stage.querySelector<HTMLElement>('.mp-nomatch')!;
+  const rows = [...stage.querySelectorAll<HTMLElement>('.mp-row')];
+  const zones = [...stage.querySelectorAll<SVGPathElement>('path.mp-zone[data-spot]')];
+  const washes = [...stage.querySelectorAll<SVGPathElement>('path.mp-wash[data-wash]')];
+  const washBases = [...stage.querySelectorAll<SVGPathElement>('path.mp-wash-base')];
+  const wallsTop = [...stage.querySelectorAll<SVGGElement>('g.mp-walls-top')];
+
   /* A name may not be wider than the zone it names.
 
-     The sizes and line breaks are the data's own and are left alone - they
-     were set with the plan in front of somebody, and in drawing units, so
-     they hold at every page size. What the author cannot check is how a name
-     sets in the browser's shaping of Figtree, so this only ever SHRINKS, and
-     only the labels that need it. It measures rather than estimates - getBBox
-     is the real shaped text, in user units, so one pass at load holds at every
-     size the plan is drawn at.
-
-     Two things it leaves alone: a ROTATED label, which runs along the zone's
-     long axis and would be measured against the wrong side, and the entrance
-     labels, which have no zone. And when it does shrink one, it moves the
-     baseline too - the block is centred on its anchor by arithmetic on its
-     line advances, so a smaller block has to climb back up to stay centred. */
-  for (const svg of document.querySelectorAll<SVGSVGElement>('svg.mp-plan')) {
+     The sizes and line breaks are the data's own and are left alone; what the
+     author cannot check is how a name sets in the browser's shaping of
+     Figtree. So this only ever SHRINKS, and only the labels that need it,
+     measuring the real shaped text with getBBox. It runs over BOTH floors
+     while both are still laid out - the inactive plan is visibility: hidden
+     rather than display: none for exactly this - and leaves a rotated label
+     alone, since that runs along the zone's other axis. When it shrinks one it
+     moves the baseline too, so the block stays centred on its anchor. */
+  for (const svg of Object.values(plans)) {
     for (const label of svg.querySelectorAll<SVGTextElement>('text.mp-name[data-spot]')) {
       if (label.dataset.rot) continue;
       const zone = svg.querySelector<SVGGraphicsElement>(`path[data-spot="${label.dataset.spot}"]`);
       if (!zone) continue;
       const ink = label.getBBox();
       const walls = zone.getBBox();
-
-      // The zone's width is not the room the LABEL has. These are centred on
-      // their anchor and shrinking the type pulls both ends in towards it, so
-      // what a name can use is twice its smaller side - which is the whole
-      // width only when the anchor happens to sit in the middle.
       const centre = ink.x + ink.width / 2;
-      // Two units of air at each end, so a capped name does not simply touch
-      // the wall instead of crossing it.
       const room = 2 * Math.min(centre - walls.x, walls.x + walls.width - centre) - 4;
       if (ink.width > room && room > 0) {
         const size = parseFloat(getComputedStyle(label).fontSize);
         const k = room / ink.width;
         label.style.fontSize = `${size * k}px`;
-        // Everything in the block scales with the font, so the block is k as
-        // tall and the first baseline climbs to keep its centre where it was.
         const cy = Number(label.dataset.cy);
         const block = Number(label.dataset.block);
         label.setAttribute('y', String(cy - (block * k) / 2 + size * k * 0.36));
@@ -1188,25 +1322,281 @@ function tooltip(sp: Space): string {
     }
   }
 
-  /* Hover one, light the other.
+  /* ------------------------------------------------------------ state --- */
+  let floor: Floor = (stage.dataset.floor as Floor) || 'upstairs';
+  let q = '';
+  const sel = new Set<string>();
 
-     Delegated per floor rather than per element: a pair is one plan and about
-     thirty rows, and the plan's own zones come and go with the drawing. Scoped
-     to the pair as well, so the upstairs list cannot light a downstairs zone.
+  const query = () => q.trim().toLowerCase();
+  const matching = (): Set<string> => {
+    const qs = query();
+    if (qs) return new Set(rows.filter((r) => r.dataset.search!.includes(qs)).map((r) => r.dataset.spot!));
+    return sel;
+  };
 
-     The names on the plan are pointer-events: none, so a label hands the hover
-     to the zone underneath it rather than being a dead patch in the middle of
-     the space it names. They still carry data-spot, because they light too.
-     Rooms and unnamed zones carry none, so pointing at them lights nothing. */
-  for (const pair of document.querySelectorAll<HTMLElement>('.mp-pair')) {
-    const paint = (id: string | null) => {
-      for (const el of pair.querySelectorAll('.is-lit')) el.classList.remove('is-lit');
-      if (id) for (const el of pair.querySelectorAll(`[data-spot="${id}"]`)) el.classList.add('is-lit');
-    };
+  /* Hover one, light the other. Delegated at the stage; ids are unique across
+     both floors, so one handler serves the plan and the list together. */
+  const paint = (id: string | null) => {
+    for (const el of stage.querySelectorAll('.is-lit')) el.classList.remove('is-lit');
+    if (id) for (const el of stage.querySelectorAll(`[data-spot="${id}"]`)) el.classList.add('is-lit');
+  };
+  stage.addEventListener('pointerover', (e) => {
+    paint((e.target as Element).closest('[data-spot]')?.getAttribute('data-spot') ?? null);
+  });
+  stage.addEventListener('pointerleave', () => paint(null));
 
-    pair.addEventListener('pointerover', (e) => {
-      paint((e.target as Element).closest('[data-spot]')?.getAttribute('data-spot') ?? null);
-    });
-    pair.addEventListener('pointerleave', () => paint(null));
+  /* Everything a selection or a search changes, as classes and `hidden`.
+     Nothing is re-rendered: the rows and the washes exist already. */
+  function render() {
+    const qs = query();
+    const searching = qs.length > 0;
+    const ids = matching();
+    const active = ids.size > 0;
+    stage.classList.toggle('is-searching', searching);
+    stage.classList.toggle('has-sel', active);
+
+    for (const z of zones) z.classList.toggle('is-sel', ids.has(z.dataset.spot!));
+    for (const w of washes) w.classList.toggle('is-on', active && !ids.has(w.dataset.wash!));
+    for (const b of washBases) b.classList.toggle('is-on', active);
+    for (const g of wallsTop) g.classList.toggle('is-on', active);
+
+    for (const r of rows) {
+      const on = ids.has(r.dataset.spot!);
+      r.classList.toggle('is-sel', on);
+      r.hidden = searching && !on;
+    }
+    for (const g of stage.querySelectorAll<HTMLElement>('.mp-group')) {
+      g.hidden = searching && ![...g.querySelectorAll<HTMLElement>('.mp-row')].some((r) => !r.hidden);
+    }
+    for (const f of FLOORS) {
+      const b = blocks[f];
+      const n = [...b.querySelectorAll<HTMLElement>('.mp-row')].filter((r) => !r.hidden).length;
+      const head = b.querySelector<HTMLElement>('.mp-floor-head')!;
+      head.hidden = !searching;
+      head.querySelector('.mp-floor-count')!.textContent = `${n} match${n === 1 ? '' : 'es'}`;
+      b.classList.toggle('is-current', f === floor);
+      b.hidden = searching ? n === 0 : f !== floor;
+    }
+    cols.hidden = searching;
+    nomatch.hidden = !(searching && !active);
+    nomatch.querySelector('.mp-nomatch-q')!.textContent = q.trim();
+    clearBtn.hidden = !(active || q.length > 0);
+
+    // Zebra over whatever is visible, so a narrowed list still alternates.
+    let i = 0;
+    for (const g of stage.querySelectorAll<HTMLElement>('.mp-group')) {
+      if (g.hidden || g.closest<HTMLElement>('.mp-floor-rows')!.hidden) continue;
+      g.classList.toggle('is-odd', i % 2 === 1);
+      i++;
+    }
   }
+
+  /* Switching floors keeps the zoom and the pan, and turns transitions off
+     for two frames: the svg nodes are not reused (each floor has its own),
+     but the rows and washes that change visibility would otherwise fade
+     between states that belong to different floors. */
+  function setFloor(f: Floor) {
+    if (f === floor) return;
+    floor = f;
+    stage.dataset.floor = f;
+    stage.classList.add('no-anim');
+    for (const g of FLOORS) {
+      plans[g].classList.toggle('is-off', g !== f);
+      stage.querySelector(`.mp-tab[data-floor="${g}"]`)!.setAttribute('aria-selected', g === f ? 'true' : 'false');
+    }
+    paint(null);
+    render();
+    requestAnimationFrame(() => requestAnimationFrame(() => stage.classList.remove('no-anim')));
+  }
+
+  /* A query that matches nothing here and something on the other floor goes
+     there by itself; typing "ceramics" upstairs should not read as "no
+     ceramics". */
+  function setQuery(value: string) {
+    q = value;
+    if (input.value !== value) input.value = value;
+    const qs = query();
+    if (qs) {
+      const ids = [...matching()];
+      const here = ids.filter((id) => floorOf(id) === floor).length;
+      if (!here && ids.some((id) => floorOf(id) !== floor)) setFloor(other(floor));
+    }
+    render();
+  }
+
+  input.addEventListener('input', () => {
+    sel.clear();
+    setQuery(input.value);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      sel.clear();
+      setQuery('');
+    }
+  });
+  clearBtn.addEventListener('click', () => {
+    sel.clear();
+    setQuery('');
+    input.focus();
+  });
+
+  for (const tab of stage.querySelectorAll<HTMLButtonElement>('.mp-tab')) {
+    tab.addEventListener('click', () => setFloor(tab.dataset.floor as Floor));
+  }
+
+  /* Clicks, delegated: a studio's name searches for it (again to clear); a
+     floor heading goes there; a zone or a row toggles it - or, while
+     searching, goes to its floor if it is on the other one. A click that
+     ends a drag is not a click. */
+  stage.addEventListener('click', (e) => {
+    if (moved) {
+      moved = false;
+      return;
+    }
+    const t = e.target as Element;
+    const st = t.closest<HTMLElement>('[data-studio]');
+    if (st) {
+      const name = st.textContent!.trim();
+      sel.clear();
+      setQuery(q.trim() === name ? '' : name);
+      return;
+    }
+    const head = t.closest<HTMLElement>('.mp-floor-head');
+    if (head) {
+      setFloor(head.dataset.floor as Floor);
+      return;
+    }
+    const spotEl = t.closest<HTMLElement>('[data-spot]');
+    if (!spotEl) return;
+    const id = spotEl.dataset.spot!;
+    if (query()) {
+      if (floorOf(id) !== floor) {
+        setFloor(floorOf(id));
+        paint(id);
+      }
+      return;
+    }
+    if (sel.has(id)) sel.delete(id);
+    else sel.add(id);
+    render();
+  });
+  for (const head of stage.querySelectorAll<HTMLElement>('.mp-floor-head')) {
+    head.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        setFloor(head.dataset.floor as Floor);
+      }
+    });
+  }
+
+  /* ---------------------------------------------------------- pan & zoom ---
+
+     The view is translated and scaled from its own top-left, inside a panel
+     that clips. Scale 1 to 5; the translate is clamped so the plan never
+     shows its own edge - at scale 1 it cannot move at all. Gestures do not
+     animate; the buttons do, 200ms. */
+  const v = { s: 1, x: 0, y: 0 };
+  const pointers = new Map<number, [number, number]>();
+  let last = { mx: 0, my: 0, d: 0 };
+  let moved = false;
+
+  function applyView(animate: boolean) {
+    const w = view.clientWidth;
+    const h = view.clientHeight;
+    v.s = Math.min(5, Math.max(1, v.s));
+    v.x = Math.min(0, Math.max(w - w * v.s, v.x));
+    v.y = Math.min(0, Math.max(h - h * v.s, v.y));
+    view.style.transition = animate ? 'transform 200ms ease' : 'none';
+    view.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.s})`;
+  }
+  function zoomAt(f: number, cx: number, cy: number, animate: boolean) {
+    const ns = Math.min(5, Math.max(1, v.s * f));
+    const k = ns / v.s;
+    v.x = cx - (cx - v.x) * k;
+    v.y = cy - (cy - v.y) * k;
+    v.s = ns;
+    applyView(animate);
+  }
+  const zoomCentre = (f: number) => zoomAt(f, view.clientWidth / 2, view.clientHeight / 2, true);
+  const local = (e: PointerEvent | WheelEvent): [number, number] => {
+    const r = view.getBoundingClientRect();
+    return [e.clientX - r.left, e.clientY - r.top];
+  };
+  const gesture = () => {
+    const p = [...pointers.values()];
+    if (p.length === 1) return { mx: p[0][0], my: p[0][1], d: 0 };
+    return {
+      mx: (p[0][0] + p[1][0]) / 2,
+      my: (p[0][1] + p[1][1]) / 2,
+      d: Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]),
+    };
+  };
+
+  for (const btn of stage.querySelectorAll<HTMLButtonElement>('.mp-zoom-btn')) {
+    btn.addEventListener('click', () => {
+      const z = btn.dataset.zoom;
+      if (z === 'in') zoomCentre(1.5);
+      else if (z === 'out') zoomCentre(1 / 1.5);
+      else {
+        v.s = 1;
+        v.x = 0;
+        v.y = 0;
+        applyView(true);
+      }
+    });
+  }
+
+  // Ctrl/⌘ + wheel - which is also what a trackpad pinch arrives as - zooms
+  // around the cursor. A plain wheel is left to scroll the page. Non-passive,
+  // or the browser zooms the page as well.
+  panel.addEventListener(
+    'wheel',
+    (e) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const [x, y] = local(e);
+      zoomAt(Math.exp(-e.deltaY * 0.01), x, y, false);
+    },
+    { passive: false },
+  );
+
+  panel.addEventListener('pointerdown', (e) => {
+    if ((e.button && e.button !== 0) || (e.target as Element).closest('[data-ui]')) return;
+    pointers.set(e.pointerId, local(e));
+    last = gesture();
+    if (pointers.size === 1) moved = false;
+  });
+  panel.addEventListener('pointermove', (e) => {
+    if (!pointers.has(e.pointerId)) return;
+    const pt = local(e);
+    const prev = pointers.get(e.pointerId)!;
+    // Three pixels before a press becomes a drag, so a click still clicks.
+    if (!moved && Math.hypot(pt[0] - prev[0], pt[1] - prev[1]) < 3) return;
+    if (!moved) {
+      moved = true;
+      try {
+        panel.setPointerCapture(e.pointerId);
+      } catch {
+        /* not every pointer can be captured */
+      }
+      panel.classList.add('is-dragging');
+    }
+    pointers.set(e.pointerId, pt);
+    const g = gesture();
+    if (g.d && last.d) zoomAt(g.d / last.d, g.mx, g.my, false);
+    v.x += g.mx - last.mx;
+    v.y += g.my - last.my;
+    applyView(false);
+    last = g;
+  });
+  const panUp = (e: PointerEvent) => {
+    pointers.delete(e.pointerId);
+    if (pointers.size) last = gesture();
+    else panel.classList.remove('is-dragging');
+  };
+  panel.addEventListener('pointerup', panUp);
+  panel.addEventListener('pointercancel', panUp);
+  window.addEventListener('resize', () => applyView(false));
+
+  render();
 </script>

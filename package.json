@@ -14,7 +14,7 @@
     "serve": "npm run build && npx --yes wrangler dev",
     "events": "node scripts/fetch-events.mjs",
     "check": "astro check",
-    "test": "node --experimental-strip-types --no-warnings scripts/test-day-status.mjs && node --experimental-strip-types --no-warnings scripts/test-summarise.mjs && node --experimental-strip-types --no-warnings scripts/test-month.mjs && node --experimental-strip-types --no-warnings scripts/test-hours.mjs && node scripts/test-event-image.mjs && node --experimental-strip-types --no-warnings scripts/test-parse-calendar.mjs && node --experimental-strip-types --no-warnings scripts/test-space.mjs && node --experimental-strip-types --no-warnings scripts/test-floorplan-frame.mjs && node --experimental-strip-types --no-warnings scripts/test-floorplan-svg.mjs",
+    "test": "node --experimental-strip-types --no-warnings scripts/test-day-status.mjs && node --experimental-strip-types --no-warnings scripts/test-summarise.mjs && node --experimental-strip-types --no-warnings scripts/test-month.mjs && node --experimental-strip-types --no-warnings scripts/test-hours.mjs && node scripts/test-event-image.mjs && node --experimental-strip-types --no-warnings scripts/test-parse-calendar.mjs && node --experimental-strip-types --no-warnings scripts/test-space.mjs && node --experimental-strip-types --no-warnings scripts/test-floorplan-frame.mjs && node --experimental-strip-types --no-warnings scripts/test-floorplan-svg.mjs && node --experimental-strip-types --no-warnings scripts/test-map-geometry.mjs",
     "qr": "node scripts/make-qr.mjs",
     "floorplan:import": "node scripts/read-floorplan.mjs",
     "floorplan:export": "node --experimental-strip-types --no-warnings scripts/export-floorplan.mjs src/data --svg"

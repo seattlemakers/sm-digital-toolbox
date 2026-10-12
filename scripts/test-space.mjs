@@ -153,6 +153,21 @@ ok(!inPoly(byId.get('U5.2').points, [417, 52]), 'the Wood CNC corner must not be
 ok(inPoly(byId.get('U5.1').points, [417, 52]), 'the Wood CNC corner should be inside U5.1');
 ok(inPoly(byId.get('U4.1').points, [370, 276]) && !inPoly(byId.get('U4.2').points, [370, 276]), 'the Staff Desk is cut out of the U4 hallway');
 
+// --- the stairs were standardised on 2026-10-11 (handoff v2 §5) ----------------
+//
+// A deliberate deviation from the original plan of up to 3.5 units: the
+// upstairs west stair and its hallway are 26.8 wide, the downstairs main
+// flight 25.2, and the check-in door stays 18.4 wide, centred in the hall.
+const xs = (id) => byId.get(id).points.map((p) => p[0]);
+const ys = (id) => byId.get(id).points.map((p) => p[1]);
+ok(Math.abs(Math.max(...xs('U18.1')) - Math.min(...xs('U18.1')) - 26.8) < 0.01, 'the upstairs west stair should be 26.8 wide');
+ok(Math.min(...xs('U19.1')) === 316.8 && Math.min(...xs('U4.1')) === 343.6, 'the check-in hall should run 316.8 to 343.6');
+ok(FLOORPLAN.upstairs.d.interior.includes('M316.8 301 H321 M339.4 301 H394.2'), 'the check-in door should be 18.4 wide and centred at 330.2');
+ok(Math.abs((321 + 339.4) / 2 - (316.8 + 343.6) / 2) < 0.01, 'the door centre should equal the hall centre');
+ok(Math.min(...xs('D23.1')) === 791.6 && byId.get('D23.1').points.some(([x, y]) => x === 829.2 && y === 561), 'the main stair flight should start at 829.2 with the landing top at 561');
+ok(Math.max(...ys('D8.1')) === 561, 'the closet under the stair should end at 561');
+
+
 // The one rotated label.
 ok(byId.get('U3.1')?.rotate === -90, 'Jewelry should run up the wall at -90');
 ok(zones.filter((z) => z.rotate).length === 1, 'exactly one label should be rotated');

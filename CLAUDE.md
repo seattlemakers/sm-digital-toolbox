@@ -158,6 +158,23 @@ Done:
 - The entrances were re-placed by the same handoff, and the member label now
   hangs off its arrow's tail below the frame - `overflow: visible` on the
   plan's svg is what lets it.
+- **One floor at a time, as of 2026-10-11 (handoff v2).** The page is a
+  panel showing the current floor with a side rail - compass, floor tabs,
+  zoom - beside a list that searches both floors. Drag or pinch to pan,
+  ctrl/⌘-wheel or the buttons to zoom (1-5x), FIT to reset. Both floors are
+  server-rendered and share one frame registered on the north wall; the
+  script shows one. See *One floor at a time* under *The map*.
+- **Search and select.** Typing filters both floors' rows by code, name,
+  tagline and studio name, with a sticky heading per floor and an automatic
+  switch to the floor that has matches. Clicking a zone or a row toggles it;
+  clicking a studio's name searches for it. Either way the rest of the floor
+  fades under a wash and the chosen zones take their studio's colour.
+- **Zone outlines are drawn once**, from every named zone's edges merged on
+  shared lines (`lib/map-geometry.ts`), so neighbours' dashes no longer
+  overlap out of phase. The list is zebra-grouped by room, with no bars.
+- **Stairs standardised:** the upstairs west stair and its hall are 26.8
+  wide, the downstairs main flight 25.2, the check-in door still 18.4 and
+  centred - a deliberate ≤3.5-unit deviation from the original plan.
 
 Label maker (`/labels`) is built and verified against a print-to-PDF. Most of
 the *Implementation notes* below are about it.
@@ -2031,7 +2048,94 @@ it.
 
 ### The map
 
-**Everything named is a zone, and a room is an unnamed container. Flipped
+**One floor at a time, and both floors are in the page.** Handoff v2
+(2026-10-11) turned the two stacked plans into a viewer: a clipping panel
+with a side rail, pan and zoom, search across both floors, and a fade that
+dims everything but what you picked. It is still a static page with no
+framework. Both floors' svgs and both floors' list rows are rendered by
+Astro; the client script shows one of each, pans and zooms the visible one,
+filters rows by a `data-search` attribute built at render, and toggles
+classes for selection. Nothing about the building travels to the browser
+twice, and the script carries no data of its own.
+
+**The inactive floor is `visibility: hidden`, not `display: none`, and that
+is load-bearing.** The label cap measures every label with `getBBox`, which
+is zero on an element with no layout - so it runs over both floors first,
+while both are laid out, and only then is one made invisible. Switching
+floors is a class on each svg; the labels stay capped.
+
+**Both floors share one frame, registered on the north wall.** `offsetY` is
+the drawing's own stacking and is what the export and the frame tests use;
+for the viewer `lib/map-geometry.ts` aligns each floor so its exterior top
+edge matches upstairs (`ALIGN.downstairs = -349.4`) and frames the union of
+the aligned wall boxes, padded 12 / 3 / 12. Switching floors keeps the zoom
+and the pan, so the walls have to line up - and the two buildings share a
+north wall and an east wall, which is why that is the registration.
+
+**Zone outlines are drawn once.** Each zone used to stroke its own polygon,
+and where two zones share an edge the two dashed strokes sat on top of each
+other out of phase: a solid-ish line with a stutter in it. `zoneEdges()`
+collects every named zone's edges, keys them by the line they lie on (unit
+direction with canonical sign, perpendicular offset rounded to 0.1), merges
+overlapping intervals (tolerance 0.5) and emits one path. Collinear
+neighbours merge too - two rooms' top edges become one run, which is the same
+ink with one fewer dash restart; a 1-unit gap stays two segments. Upstairs
+that is 42 segments where per-zone edges would be about 90. The zone paths
+keep `pointer-events: all` and no stroke.
+
+**The fade is a wash, not a highlight.** When something is selected, every
+other zone goes under the plate's own grey at 0.72 - one path per zone, plus
+a base wash that is the floorplate with every zone cut out (evenodd), so the
+floor between zones fades too - and the walls are drawn a second time on top
+so they stay black through it. The selected zones take their studio's colour
+at 0.35, hover at 0.5 on top. All of it is pre-rendered at opacity 0 and the
+script toggles `.is-on`. `hidden` is not an SVG attribute (and `npm run check`
+says so), so the walls-on-top group is shown by class.
+
+**Transitions are switched off for two frames on a floor switch.** The
+130ms fades on fills, washes and rows would otherwise animate between states
+that belong to different floors - the rows and washes that change visibility
+in the same render. `.mp-stage.no-anim *` is the one `!important` on the
+page, because it has to beat every transition at once; two
+`requestAnimationFrame`s later it comes off.
+
+**`.is-sel` has the same specificity problem `.is-lit` had**, and the same
+fix: `.mp-zone.has-access[data-access='staff']` weighs (0,3,0), so the
+selected and lit rules each carry a second `.mp-zone.has-access.is-…`
+selector and sit below the access fills, lit below selected. Storage and the
+Staff Desk are the two zones that test it.
+
+**Pan and zoom are a transform on the view, clamped.** `translate(x, y)
+scale(s)` from the view's own top-left, scale 1-5, x in [w − w·s, 0] and y
+likewise, so the plan never shows its own edge and at scale 1 cannot move.
+Three pixels of movement turn a press into a drag (then `setPointerCapture`);
+the click that ends a drag is swallowed. Two pointers pinch around their
+midpoint. Ctrl/⌘-wheel - which is also what a trackpad pinch arrives as -
+zooms around the cursor by `exp(−deltaY × 0.01)` on a non-passive listener;
+a plain wheel scrolls the page. Buttons animate 200ms, gestures do not.
+`touch-action: none` on the panel means a finger on it pans the plan and
+does not scroll the page; the list beside it still does. Verified with
+synthetic events: two `+` presses give scale 2.25 inside the clamp, FIT
+gives the identity, a wheel at (100, 80) leaves that point fixed to within
+half a pixel, a 15-unit drag pans by 15 and selects nothing.
+
+**The compass points DOWN.** The drawing is upside-down relative to true
+north (handoff v2, Notes). For now only the compass admits it, with
+`aria-label="North is down"`; a later pass should rotate the data 180° and
+put the arrow back up. The rail's 2.1rem targets are under the 44px touch
+guideline, knowingly, for now.
+
+**Search lists Upstairs first, then Downstairs, whatever floor is showing,
+and a floor with no matches is not listed at all.** The column header hides
+while searching and a sticky heading per floor takes its slot; clicking a
+heading, or a result on the other floor, goes there. When a query matches
+nothing on the current floor and something on the other, the floor switches
+by itself - typing "ceramics" upstairs must not read as "no ceramics". The
+"not labelled" rows, the bars, the resource chip and the `└` were all gone
+before this pass; the zebra is what tells one room's zones from the next
+now, recomputed over whatever is visible so a narrowed list still alternates.
+
+ Flipped
 2026-10-11, from a design handoff.** Until then a room carried a name and a
 zone was the exception - nine of them, inside five rooms. The handoff turned
 that inside out: every named space is a zone, a room that had no zone holds
@@ -2115,16 +2219,14 @@ svg's defs are not reliably available to other elements.
 
 **Rooms do not respond to the pointer at all.** No `data-spot`, no `<title>`,
 `pointer-events: none`. Pointing into a room with no named zone under the
-cursor lights nothing, and the list has no hoverable row for it: a room is a
-BAR across the list - its code on a tinted band spanning every column - with
-its zones indented under it. Checked by `elementFromPoint` inside U4's
-hallway: it reports the floorplate.
+cursor lights nothing, and the list has no row for it. Checked by
+`elementFromPoint` inside U4's hallway: it reports the floorplate.
 
-**Every room is a bar, not only the ones holding several zones.** The handoff
-drew a bar for a multi-zone room and let a single-zone room collapse into its
-zone's row; reversed the same day, so the list reads room by room and every
-room is one object in it, as it is in the data and the published file. 43
-bars and 53 zone rows.
+**The list went bars -> zebra in one day.** The first handoff drew a bar for
+a multi-zone room; that became a bar for every room, so the list read room by
+room; then handoff v2 replaced bars with zebra - every other room group's
+rows tinted - with a zero-height `role="separator"` per room for a screen
+reader. Rooms holding only unnamed zones are still not listed.
 
 **The ten unnamed zones are not in the list, and every name in it is set the
 same.** Both on 2026-10-11, after the bars. A row for an unnamed hallway read
@@ -2149,6 +2251,14 @@ zone, inside that room", and once every zone sat under a bar it was on every
 row - a marker on every row is a marker on none, and the bar already says
 what the rows belong to. The zone rows sit flush, in the same columns as the
 header.
+
+**A zone with its own access fill did not light, and it was specificity
+again.** `.mp-zone.has-access[data-access='staff']` weighs (0,3,0) against
+`.mp-zone.is-lit`'s (0,2,0), so Storage and the Staff Desk kept their hatch
+under the pointer while every other zone lit slate. The lit rule now also
+matches `.mp-zone.has-access.is-lit` - same weight, later in the source. The
+same trap as `.t-row.is-bare` on the board and `.mp-room.is-lit` before it:
+every `.is-lit` rule has to outweigh, or out-order, every fill it overrides.
 
 **The entrance anchor has to be an inline style.** `text-anchor="start"` as a
 presentation attribute was silently beaten by the stylesheet's `.mp-entrance
