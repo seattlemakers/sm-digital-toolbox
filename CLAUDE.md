@@ -180,6 +180,10 @@ Label maker (`/labels`) is built and verified against a print-to-PDF. Most of
 the *Implementation notes* below are about it.
 
 Done:
+- **Per-label text, added 2026-10-22.** A Same / Per label switch. In Per label,
+  clicking a position on the sheet picks it for editing, and each position
+  carries its own title, subtitle and QR link, fitted on its own. The whole
+  sheet now lives in the URL. See *Per-label text is a mode*.
 - `npm run check` now actually runs; `@astrojs/check` and `typescript` were
   never installed, so the script had only ever prompted to install them. It
   reports 8 pre-existing errors in the slideshow (a `status` global collision,
@@ -3435,6 +3439,45 @@ tool tag or one bench label; filling the sheet is the exception and is one click
 away. The default selection is a single position, and `?on=` names positions to
 print (it replaced `?off=`, which only made sense when the default was a full
 sheet).
+
+**Per-label text is a mode, and a position with nothing of its own shows the
+shared design.** Added 2026-10-22. "Same" is still the default and is exactly
+the old tool; "Per label" gives each position its own title, subtitle and QR
+link. Switching changes nothing on the sheet until something is typed, so the
+usual job - type it once, change the one word that differs on label 3 - needs
+no copying, and switching back to Same keeps the per-label text in memory, so
+a mis-click on the mode loses nothing. A stock change wipes it, for the same
+reason it resets `?on=`: index 14 means nothing on a 2-up sheet. Align stays
+one setting for the whole sheet.
+
+- **A click picks before it toggles.** In Per label a click on another
+  position makes it the one being edited and switches it on (you are about to
+  put words on it); only a second click on the same position skips it. The
+  edited position is framed in ink, not heavier green, because green already
+  means "printing" and the two are usually the same cell.
+- **Positions are grouped by what they say, and each group is fitted once.**
+  `layout()` is the old fit, unchanged, run per design; Same is just the case
+  with one group. Fitted designs and QR encodes are cached by content, because
+  a 30-up sheet would otherwise re-fit thirty labels on every keystroke. The
+  cache clears on any geometry change and on `document.fonts` `loadingdone` -
+  a fit measured in the fallback face is wrong in Figtree.
+- **The URL is now written, not only read.** Before this the fields were
+  prefilled from `?title=` etc. but nothing wrote them back, so a reload lost
+  what was typed. `writeUrl()` writes only what differs from a fresh page, so
+  the default is still a bare /labels and old links keep their meaning:
+  `title` / `sub` / `url` are the shared design, and per-label content is
+  `mode=each` plus `t3` / `s3` / `u3`, 1-based like `?on=`. `t` is always
+  written for a position with its own content, because an empty title is a
+  choice and not an absence. Per-label fields are only written in Per label.
+- **Warnings name labels.** With more than one design each problem line says
+  which positions it is about, counting the printing ones and the one being
+  edited. `.lb-warn` is `pre-line` for that.
+
+Verified with `?mode=each` on a 4x2.5 sheet over CDP: one letter page, every
+switched-on cell at its die-cut origin to the thousandth, zero ink outside the
+cells or in a skipped one, and each cell's own QR decoded with jsQR
+(`BarcodeDetector` is not in headless Chrome on Windows). An 8x5 upright sheet
+in Same mode still prints as before.
 
 **The three position states have to be tellable apart at a glance** - getting it
 wrong wastes a sheet of stock. Printing is white with a solid green edge and a

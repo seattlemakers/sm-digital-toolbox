@@ -1,7 +1,8 @@
 /**
  * Label sheet runtime.
  *
- * One design, repeated onto whichever die-cut positions are still on the sheet.
+ * One design, repeated onto whichever die-cut positions are still on the sheet -
+ * or, in per-label mode, a design per position, each fitted on its own.
  * Everything is placed in absolute inches from the page corner - see
  * labelSheets.ts for why the numbers are not rounded.
  */
@@ -77,6 +78,10 @@ const quill = new Quill('#f-sub', {
 const fUrl = $<HTMLInputElement>('f-url');
 const fUrlNote = $('f-url-note');
 const fAlign = $('f-align');
+const fMode = $('f-mode');
+const fEditing = $('f-editing');
+const fEditingNum = $('f-editing-num');
+const fPickNote = $('f-pick-note');
 const fAll = $('f-all');
 const fNone = $('f-none');
 const fCount = $('f-count');
@@ -345,8 +350,13 @@ function selectSheet(): void {
   if (horiz !== gridSheet) {
     gridSheet = horiz;
     // Positions do not carry across stock - a 20-up sheet's index 14 means
-    // nothing on a 2-up sheet. Start over at one label.
+    // nothing on a 2-up sheet. Start over at one label, and the per-label
+    // content goes for the same reason. In 'each' mode the editor is still
+    // showing the old position, so it is put back on what position 1 now says.
     on = FIRST_ONLY();
+    per = [];
+    cur = 0;
+    if (mode === 'each') loadEditor(shared);
   }
   for (const b of fDir.querySelectorAll('button')) {
     const d = b.dataset.dir as 'horizontal' | 'vertical';
@@ -359,57 +369,124 @@ function selectSheet(): void {
   fDirWrap.classList.toggle('is-limited', !vert);
 }
 
+/* --------------------------------------------------------- per-label text */
+
+/** What one label says. `sub` has been through clean(); `url` is as typed. */
+interface Content {
+  title: string;
+  sub: string;
+  url: string;
+}
+
 /**
- * render() awaits the encoder, so two renders can be in flight at once and the
- * slower one can land last - typing into three fields in quick succession was
- * enough to leave a stale QR on a label whose link had been cleared. Each run
- * takes a ticket and stands down if a newer one has started.
+ * 'same' is the old behaviour and the default: one design on every position.
+ * 'each' lets a position carry its own words and link - a row of drawer labels,
+ * a bench label per machine.
+ *
+ * A position with nothing of its own shows `shared`, so switching modes changes
+ * nothing on the sheet until something is typed, and the usual move - type it
+ * once, then change the one word that differs - needs no copying. `per` is kept
+ * when switching back to 'same', so a mis-click on the mode costs nothing.
  */
-let generation = 0;
+let mode: 'same' | 'each' = 'same';
+let shared: Content = { title: '', sub: '', url: '' };
+let per: (Content | undefined)[] = [];
+/** The position the editor is showing, in 'each' mode. */
+let cur = 0;
 
-async function render(): Promise<void> {
-  const mine = ++generation;
-  selectSheet();
+const contentAt = (i: number): Content => (mode === 'each' ? (per[i] ?? shared) : shared);
 
-  const titleText = fTitle.value.trim();
-  // getSemanticHTML, not root.innerHTML: Quill marks bullet lists as
-  // <ol data-list="bullet"> internally and leans on CSS to draw them, which
-  // would print every bullet as a number. The semantic form gives real ul/ol.
-  const subHtml = clean(htmlToNode(quill.getSemanticHTML()));
+function readEditor(): Content {
+  return {
+    title: fTitle.value,
+    // getSemanticHTML, not root.innerHTML: Quill marks bullet lists as
+    // <ol data-list="bullet"> internally and leans on CSS to draw them, which
+    // would print every bullet as a number. The semantic form gives real ul/ol.
+    sub: clean(htmlToNode(quill.getSemanticHTML())),
+    url: fUrl.value,
+  };
+}
+
+/** Silent, so loading a label into the editor is not mistaken for editing it. */
+function loadEditor(c: Content): void {
+  fTitle.value = c.title;
+  quill.setContents(quill.clipboard.convert({ html: c.sub }), 'silent');
+  fUrl.value = c.url;
+}
+
+function edited(): void {
+  if (mode === 'each') per[cur] = readEditor();
+  else shared = readEditor();
+  void render();
+}
+
+function syncModeUi(): void {
+  for (const b of fMode.querySelectorAll<HTMLButtonElement>('button')) {
+    b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+  }
+  fEditing.hidden = mode !== 'each';
+  fEditingNum.textContent = String(cur + 1);
+  fPickNote.textContent =
+    mode === 'each'
+      ? 'Click a position to edit it, and click it again to skip it. Skip any already peeled off.'
+      : 'Click a position on the sheet to print it. Skip any already peeled off.';
+}
+
+/* -------------------------------------------------------------- layout */
+
+type Problem = { msg: string; level: 'warn' | 'error' };
+
+/** One design, laid out and fitted, ready to be cloned onto positions. */
+interface Built {
+  proto: HTMLElement;
+  problem: Problem | null;
+  /** Has anything on it at all - a blank design is not worth a sheet. */
+  printable: boolean;
+}
+
+/**
+ * Fitted designs, keyed by what they say. The fit is about sixty reflows per
+ * design, so per-label mode on a 30-up sheet would otherwise re-fit thirty
+ * labels on every keystroke to change one. Cleared whenever the geometry they
+ * were fitted to changes, and when a font finishes loading, because a fit
+ * measured in the fallback face is wrong in the real one.
+ */
+const built = new Map<string, Built>();
+let builtFor = '';
+document.fonts.addEventListener('loadingdone', () => {
+  built.clear();
+  void render();
+});
+
+/** Encodes are cached too - typing a title should not re-encode thirty links. */
+const qrs = new Map<string, Promise<string>>();
+function qrFor(url: string): Promise<string> {
+  let p = qrs.get(url);
+  if (!p) {
+    p = encode(url);
+    qrs.set(url, p);
+  }
+  return p;
+}
+
+const keyOf = (c: Content) => JSON.stringify([c.title.trim(), c.sub, normalizeUrl(c.url)]);
+
+/**
+ * Builds one label in the grid, fits its type, and hands it back detached.
+ * Each design is fitted on its own, so a long title on one position cannot
+ * shrink the type on its neighbours.
+ */
+function layout(c: Content, svg: string, encodeProblem: Problem | null): Built {
+  const titleText = c.title.trim();
+  const subHtml = c.sub;
   const titleBlank = titleText === '';
   const subBlank = isBlank(subHtml);
-  const url = normalizeUrl(fUrl.value);
   const hasText = !titleBlank || !subBlank;
-
-  if (url && url !== fUrl.value.trim()) {
-    fUrlNote.hidden = false;
-    fUrlNote.textContent = `Encodes as ${url}`;
-  } else {
-    fUrlNote.hidden = true;
-  }
-
-  // Always portrait: the paper is.
-  pageRule.textContent = `@page { size: letter portrait; margin: 0; }`;
-  page.dataset.orient = gridSheet.orient;
-  page.style.setProperty('--page-w', `${gridSheet.page.w}in`);
-  page.style.setProperty('--page-h', `${gridSheet.page.h}in`);
 
   // Type and composition follow the *reading* orientation, not the die-cut.
   const { pad, title: baseTitle, gap } = scaleFor(contentSheet);
   const qrIn = qrInchesFor(contentSheet, hasText);
   const flow = flowFor(contentSheet);
-
-  let svg = '';
-  let problem: { msg: string; level: 'warn' | 'error' } | null = null;
-  if (url) {
-    try {
-      svg = await encode(url);
-    } catch (err) {
-      problem = { msg: encodeError(err), level: 'error' };
-    }
-  }
-
-  if (mine !== generation) return;
 
   const hasQr = Boolean(svg);
   // The readability floor still wins. Applying the reduction after the clamp
@@ -418,7 +495,6 @@ async function render(): Promise<void> {
   const tpt = hasQr ? Math.max(TITLE_MIN, baseTitle * QR_TYPE_SCALE) : baseTitle;
   const spt = tpt / TITLE_TO_SUB;
 
-  // Build one label, then clone it into every switched-on position.
   const proto = tpl.content.firstElementChild!.cloneNode(true) as HTMLElement;
   proto.dataset.flow = flow;
   proto.dataset.align = alignMode === 'auto' ? autoAlign(flow, hasQr) : alignMode;
@@ -618,23 +694,11 @@ async function render(): Promise<void> {
   // The warning is about *clipping*, so it asks the real question - does this
   // fit at all - not the roomier one the fit aims for.
   const overflowing = !titleWidthFits() || !subWidthFits() || heightClips();
-
-  grid.replaceChildren();
-  const total = perSheet(gridSheet);
-  for (let i = 0; i < total; i++) {
-    const c = i % gridSheet.cols;
-    const r = Math.floor(i / gridSheet.cols);
-    const cell = proto.cloneNode(true) as HTMLElement;
-    cell.style.left = `${gridSheet.origin.x + c * (gridSheet.size.w + gridSheet.gutter.x)}in`;
-    cell.style.top = `${gridSheet.origin.y + r * (gridSheet.size.h + gridSheet.gutter.y)}in`;
-    cell.dataset.on = on.has(i) ? '1' : '0';
-    cell.dataset.i = String(i);
-    cell.querySelector<HTMLElement>('.lb-num')!.textContent = String(i + 1);
-    grid.append(cell);
-  }
+  proto.remove();
 
   /* ------------------------------------------------------------ warnings */
 
+  let problem = encodeProblem;
   if (!problem && svg) {
     const modules = modulesFrom(svg);
     if (modules) {
@@ -663,13 +727,184 @@ async function render(): Promise<void> {
     };
   }
 
-  setWarning(problem?.msg ?? '', problem?.level ?? null);
+  return { proto, problem, printable: hasText || hasQr };
+}
 
+/* --------------------------------------------------------------- render */
+
+/**
+ * render() awaits the encoder, so two renders can be in flight at once and the
+ * slower one can land last - typing into three fields in quick succession was
+ * enough to leave a stale QR on a label whose link had been cleared. Each run
+ * takes a ticket and stands down if a newer one has started.
+ */
+let generation = 0;
+
+/** Per position, from the last render: is there anything on it to print. */
+let printableAt: boolean[] = [];
+
+async function render(): Promise<void> {
+  const mine = ++generation;
+  selectSheet();
+  const total = perSheet(gridSheet);
+  if (cur >= total) cur = 0;
+
+  const editorUrl = normalizeUrl(fUrl.value);
+  if (editorUrl && editorUrl !== fUrl.value.trim()) {
+    fUrlNote.hidden = false;
+    fUrlNote.textContent = `Encodes as ${editorUrl}`;
+  } else {
+    fUrlNote.hidden = true;
+  }
+
+  // Always portrait: the paper is.
+  pageRule.textContent = `@page { size: letter portrait; margin: 0; }`;
+  page.dataset.orient = gridSheet.orient;
+  page.style.setProperty('--page-w', `${gridSheet.page.w}in`);
+  page.style.setProperty('--page-h', `${gridSheet.page.h}in`);
+
+  // Positions grouped by what they say, so a sheet of thirty identical labels
+  // is still one design, fitted once - which is all 'same' mode ever is.
+  const groups = new Map<string, { c: Content; at: number[] }>();
+  for (let i = 0; i < total; i++) {
+    const c = contentAt(i);
+    const k = keyOf(c);
+    const g = groups.get(k);
+    if (g) g.at.push(i);
+    else groups.set(k, { c, at: [i] });
+  }
+
+  const svgs = new Map<string, string | Problem>();
+  const urls = new Set([...groups.values()].map((g) => normalizeUrl(g.c.url)).filter(Boolean));
+  await Promise.all(
+    [...urls].map(async (u) => {
+      try {
+        svgs.set(u, await qrFor(u));
+      } catch (err) {
+        svgs.set(u, { msg: encodeError(err), level: 'error' });
+      }
+    }),
+  );
+
+  if (mine !== generation) return;
+
+  const geometry = `${gridSheet.id}|${contentSheet.id}|${alignMode}`;
+  if (geometry !== builtFor) {
+    built.clear();
+    builtFor = geometry;
+  }
+
+  const designs: { b: Built; at: number[] }[] = [];
+  for (const [k, g] of groups) {
+    let b = built.get(k);
+    if (!b) {
+      const s = svgs.get(normalizeUrl(g.c.url));
+      b = typeof s === 'string' ? layout(g.c, s, null) : layout(g.c, '', s ?? null);
+      built.set(k, b);
+    }
+    designs.push({ b, at: g.at });
+  }
+
+  grid.replaceChildren();
+  printableAt = [];
+  for (const { b, at } of designs) {
+    for (const i of at) {
+      const c = i % gridSheet.cols;
+      const r = Math.floor(i / gridSheet.cols);
+      const cell = b.proto.cloneNode(true) as HTMLElement;
+      cell.style.left = `${gridSheet.origin.x + c * (gridSheet.size.w + gridSheet.gutter.x)}in`;
+      cell.style.top = `${gridSheet.origin.y + r * (gridSheet.size.h + gridSheet.gutter.y)}in`;
+      cell.dataset.on = on.has(i) ? '1' : '0';
+      cell.dataset.i = String(i);
+      cell.dataset.cur = mode === 'each' && i === cur ? '1' : '0';
+      cell.querySelector<HTMLElement>('.lb-num')!.textContent = String(i + 1);
+      grid.append(cell);
+      printableAt[i] = b.printable;
+    }
+  }
+  // Source order is not sheet order once positions are grouped. Nothing is
+  // laid out by flow, but a screen reader and the print spooler both walk the
+  // DOM, so keep it in position order.
+  grid.append(
+    ...[...grid.children].sort(
+      (a, b) => Number((a as HTMLElement).dataset.i) - Number((b as HTMLElement).dataset.i),
+    ),
+  );
+
+  /* A problem is reported for the labels that will actually print, and in
+     'each' mode for the one being edited, which is the one being looked at.
+     With one design there is nothing to name; with several, each line says
+     which positions it is about. */
+  const lines: string[] = [];
+  let level: Problem['level'] | null = null;
+  for (const { b, at } of designs) {
+    if (!b.problem) continue;
+    if (mode === 'same') {
+      lines.push(b.problem.msg);
+    } else {
+      const which = at.filter((i) => on.has(i) || i === cur);
+      if (!which.length) continue;
+      const nums = which.map((i) => i + 1).join(', ');
+      lines.push(`${which.length === 1 ? 'Label' : 'Labels'} ${nums}: ${b.problem.msg}`);
+    }
+    if (level !== 'error') level = b.problem.level;
+  }
+  setWarning(lines.join('\n'), level);
+
+  syncModeUi();
+  syncCounts();
+  writeUrl();
+  fit();
+}
+
+function syncCounts(): void {
+  const total = perSheet(gridSheet);
   pvSheet.textContent = `${gridSheet.page.w} × ${gridSheet.page.h}in portrait`;
   pvLabel.textContent = `${contentSheet.label} · ${on.size} of ${total}`;
   fCount.textContent = on.size === 1 ? '1 label' : `${on.size} of ${total}`;
-  fPrint.disabled = on.size === 0 || (!hasText && !svg);
-  fit();
+  fPrint.disabled = ![...on].some((i) => printableAt[i]);
+}
+
+/* ------------------------------------------------------------------- url */
+
+/**
+ * The URL is the label: reload it, bookmark it or send it and the same sheet
+ * comes back. Only what differs from a fresh page is written, so the default
+ * stays a bare /labels and every link written before this keeps meaning what
+ * it meant - title, sub and url are still the shared design, and the per-label
+ * fields are new names (t3, s3, u3, 1-based like ?on=) that an old link simply
+ * does not carry.
+ */
+function writeUrl(): void {
+  const p = new URLSearchParams();
+  if (stock !== '4x2.5') p.set('stock', stock);
+  if (direction !== 'horizontal') p.set('dir', direction);
+  if (alignMode !== 'auto') p.set('align', alignMode);
+  if (shared.title !== fTitle.defaultValue) p.set('title', shared.title);
+  if (!isBlank(shared.sub)) p.set('sub', shared.sub);
+  if (shared.url.trim()) p.set('url', shared.url.trim());
+  const ons = [...on].sort((a, b) => a - b);
+  if (ons.length && !(ons.length === 1 && ons[0] === 0)) {
+    p.set('on', ons.map((i) => i + 1).join(','));
+  }
+  if (mode === 'each') {
+    p.set('mode', 'each');
+    per.forEach((c, i) => {
+      if (!c) return;
+      // t is always written, so its presence is what says "this position has
+      // its own content" - an empty title is a real choice, not an absence.
+      p.set(`t${i + 1}`, c.title);
+      if (!isBlank(c.sub)) p.set(`s${i + 1}`, c.sub);
+      if (c.url.trim()) p.set(`u${i + 1}`, c.url.trim());
+    });
+  }
+  const qs = p.toString();
+  try {
+    // Safari throttles replaceState; losing one write while typing is harmless.
+    history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
+  } catch {
+    /* ignored */
+  }
 }
 
 /* -------------------------------------------------------------- controls */
@@ -691,18 +926,35 @@ fDir.addEventListener('click', (e) => {
   void render();
 });
 
-// The preview is the sheet map: click a position to take it out of the run.
+fMode.addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-mode]');
+  if (!b) return;
+  mode = b.dataset.mode as typeof mode;
+  // Start on a position that is actually printing, so the first thing the
+  // editor shows is a label on the sheet rather than a ghosted one.
+  if (mode === 'each' && !on.has(cur) && on.size) cur = Math.min(...on);
+  loadEditor(mode === 'each' ? contentAt(cur) : shared);
+  void render();
+});
+
+/* The preview is the sheet map. With one design, a click takes a position in
+   or out of the run. With a design per label it first picks the position to
+   edit - switching it on, since you are about to put words on it - and only a
+   second click on the same position skips it. */
 grid.addEventListener('click', (e) => {
   const cell = (e.target as HTMLElement).closest<HTMLElement>('.lb-cell');
   if (!cell) return;
   const i = Number(cell.dataset.i);
-  if (on.has(i)) on.delete(i);
-  else on.add(i);
-  cell.dataset.on = on.has(i) ? '1' : '0';
-  const total = perSheet(gridSheet);
-  pvLabel.textContent = `${contentSheet.label} · ${on.size} of ${total}`;
-  fCount.textContent = on.size === 1 ? '1 label' : `${on.size} of ${total}`;
-  fPrint.disabled = on.size === 0;
+  if (mode === 'each' && i !== cur) {
+    cur = i;
+    on.add(i);
+    loadEditor(contentAt(i));
+  } else if (on.has(i)) {
+    on.delete(i);
+  } else {
+    on.add(i);
+  }
+  void render();
 });
 
 fAll.addEventListener('click', () => {
@@ -715,9 +967,9 @@ fNone.addEventListener('click', () => {
 });
 
 for (const el of [fTitle, fUrl]) {
-  el.addEventListener('input', () => void render());
+  el.addEventListener('input', edited);
 }
-quill.on('text-change', () => void render());
+quill.on('text-change', edited);
 
 fAlign.addEventListener('click', (e) => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-align]');
@@ -771,19 +1023,34 @@ if (qSub !== null) {
 }
 const qUrl = q.get('url');
 if (qUrl !== null) fUrl.value = qUrl;
+shared = readEditor();
+if (q.get('mode') === 'each') mode = 'each';
 
 /* ?on=3,4,7 names the positions to print, 1-based to match the sheet map. It
    replaces the old ?off=, which only made sense back when the default was a
    full sheet. Applied after the first render, because the sheet - and so how
-   many positions exist - is resolved there. */
+   many positions exist - is resolved there. The per-label fields wait for the
+   same reason: a stock change resets them. */
 const initialOn = (q.get('on') ?? '')
   .split(',')
   .map((v) => Number(v.trim()))
   .filter((v) => Number.isInteger(v) && v >= 1);
 
 void render().then(() => {
-  if (!initialOn.length) return;
   const total = perSheet(gridSheet);
-  on = new Set(initialOn.filter((v) => v <= total).map((v) => v - 1));
-  return render();
+  if (initialOn.length) on = new Set(initialOn.filter((v) => v <= total).map((v) => v - 1));
+  if (mode === 'each') {
+    for (let n = 1; n <= total; n++) {
+      const t = q.get(`t${n}`);
+      if (t === null) continue;
+      per[n - 1] = {
+        title: t,
+        sub: clean(htmlToNode(q.get(`s${n}`) ?? '')),
+        url: q.get(`u${n}`) ?? '',
+      };
+    }
+    if (on.size) cur = Math.min(...on);
+    loadEditor(contentAt(cur));
+  }
+  if (initialOn.length || mode === 'each') return render();
 });
