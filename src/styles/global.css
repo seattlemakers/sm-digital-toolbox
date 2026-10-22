@@ -2,24 +2,15 @@
 
 /* ============================================================== typefaces ===
 
-   Roboto is seattlemakers.org's face - every heading, every paragraph, every
-   nav item on that site is Roboto - so it is this site's face too. One
-   variable file covers 100-900, which is why the four weights the UI uses
-   (400 body, 500 labels, 700 headings, 900 numerals) cost one 37K download
-   rather than four.
+   Figtree is the one face across the UI - prose as well as headings, and the
+   printed labels, the calendar poster and the reel with them. Roboto,
+   seattlemakers.org's own face, carried the body copy and Lato carried the
+   reel until 2026-10-22.
 
-   Self-hosted rather than linked from Google, matching how Lato is handled
-   below: the market PC and the screen by the door should render identically
-   with no network. */
-@font-face {
-  font-family: 'Roboto';
-  src: url('/fonts/roboto.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
+   Self-hosted rather than linked from Google: the market PC and the screen by
+   the door should render identically with no network.
 
-/* Figtree carries the headings. Picked by setting the same line in Figtree,
+   Figtree was picked by setting the same line in Figtree,
    Archivo and Roboto directly under the lockup and looking: the wordmark's
    'makers' is a heavy geometric with big round bowls and a straight-legged k,
    which Figtree echoes, Archivo squares off, and Roboto flattens into
@@ -35,31 +26,6 @@
   font-display: swap;
 }
 
-/* Lato belongs to the reel alone now, which is why /slideshow names it
-   explicitly rather than inheriting it. The reel's 25 slides were laid out and
-   verified against Lato's metrics; the tool pages were not, and they have a
-   better reason to match the website. */
-@font-face {
-  font-family: 'Lato';
-  src: url('/fonts/lato-400.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: block;
-}
-@font-face {
-  font-family: 'Lato';
-  src: url('/fonts/lato-700.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: block;
-}
-@font-face {
-  font-family: 'Lato';
-  src: url('/fonts/lato-900.woff2') format('woff2');
-  font-weight: 900;
-  font-style: normal;
-  font-display: block;
-}
 
 @theme {
   /* ------------------------------------------------------------ palette ---
@@ -110,9 +76,8 @@
   --color-sm-ink-2: #3a403d;
   --color-sm-alert: #a6272b;
 
-  --font-sans: 'Roboto', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Figtree', 'Roboto', ui-sans-serif, system-ui, sans-serif;
-  --font-reel: 'Lato', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Figtree', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: var(--font-sans);
 
   /* The site's one typographic tic: small labels and nav items are tracked
      wide open (2px at 15px, 1px at 16px). Pulled in from 0.14em, which is the

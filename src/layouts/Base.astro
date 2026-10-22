@@ -66,22 +66,9 @@ const body = bare
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#1a1a1a" />
-    {/* The reel is the one page still set in Lato, so it is the one page that
-        preloads it. Everywhere else the single variable Roboto covers every
-        weight the UI asks for. */}
-    {
-      bare ? (
-        <>
-          <link rel="preload" href="/fonts/lato-900.woff2" as="font" type="font/woff2" crossorigin />
-          <link rel="preload" href="/fonts/lato-700.woff2" as="font" type="font/woff2" crossorigin />
-        </>
-      ) : (
-        <>
-          <link rel="preload" href="/fonts/figtree.woff2" as="font" type="font/woff2" crossorigin />
-          <link rel="preload" href="/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin />
-        </>
-      )
-    }
+    {/* One variable Figtree covers every weight on every page, the reel's
+        included. */}
+    <link rel="preload" href="/fonts/figtree.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body class={body} style={`--sm-shell-w: ${shellWidth}`}>
     <slot />

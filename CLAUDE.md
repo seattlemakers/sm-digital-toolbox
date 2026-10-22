@@ -268,6 +268,21 @@ time. Three ways out, roughly in order of how much they cost:
 
 ### Branding
 
+**Figtree is the only face on the site, as of 2026-10-22.** `--font-sans`
+is Figtree and `--font-display` is an alias of it, so prose, the printed labels,
+the calendar poster and the reel all moved in one token. The notes below about
+Roboto as the body face, labels "set in Roboto", and the reel staying on Lato
+describe the state before that. The Roboto and Lato `@font-face` rules, their
+preloads and `--font-reel` are gone; the font files are still in
+`public/fonts/`. Code spans on labels stay monospace.
+
+The reel was checked rather than assumed, by switching the face in place and
+diffing every text element on all 19 slides: no line count changed, nothing
+moved more than 2px, and nothing overruns its box or the 1920x1080 stage.
+Figtree runs 2-6% wider than Lato at the same size. **The event slides were not
+covered** - none render while the reel is broken (see *Next*) - so check
+`EventSlide` for overrun the day they come back.
+
 **The palette was read off seattlemakers.org with `getComputedStyle`, not
 sampled from a screenshot or taken from the brand deck.** A screenshot has
 already been through a colour profile, and the deck predates the current site.
