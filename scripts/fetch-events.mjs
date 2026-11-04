@@ -24,6 +24,7 @@ import { writeFileSync, readFileSync, existsSync, mkdirSync, readdirSync, unlink
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse, SOURCE } from '../src/lib/parse-calendar.mjs';
+import { pageImage } from '../src/lib/event-image.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(ROOT, 'src/data/events.json');
@@ -108,9 +109,11 @@ function bestImage(html) {
     }
   }
 
-  const og = /<meta\s+property="og:image"\s+content="([^"]+)"/i.exec(html);
-  const ogw = /<meta\s+property="og:image:width"\s+content="(\d+)"/i.exec(html);
-  if (og) offer(og[1], ogw ? Number(ogw[1]) : 0);
+  // Since the 2026-11-04 migration the page states its picture in its own
+  // site-data JSON (falling back to og:image) - see lib/event-image.mjs. No
+  // width is stated, so saveImage() measures the file. Most surviving files
+  // are 300px thumbnails, which that rightly refuses for a 1920px stage.
+  offer(pageImage(html), 0);
 
   for (const m of html.matchAll(/https:\/\/seattlemakers\.org\/wp-content\/uploads\/[^"'\s)]+/g)) {
     offer(m[0], 0);

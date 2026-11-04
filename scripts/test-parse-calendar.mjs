@@ -1,18 +1,19 @@
 /**
  * The calendar parser, and mostly one question: which day is an event on.
  *
- * The anchors and their tooltips below are copied byte for byte off
- * seattlemakers.org/events, so this file doubles as the record of the markup
- * the parser is written against. Only the surrounding grid is trimmed - the
- * real page is five month grids of thirty-odd day cells each.
+ * The entries below are copied off seattlemakers.org/events on 2026-11-04,
+ * out of the `<script id="site-data">` JSON the new site renders its calendar
+ * from - so this file doubles as the record of the payload the parser is
+ * written against. Only the surrounding grid is trimmed: the real page is
+ * three month grids of thirty-odd day cells each.
  *
- * The case that matters is the series. One post, one tooltip stating the whole
- * span, and one anchor per session sitting in the cell of the day that session
- * runs. Reading the date off the tooltip instead of the cell collapsed all
- * three CNC sessions onto 23 September and lost the other two.
+ * The case that matters is still the series. One post, `starts`/`ends` stating
+ * the whole span, and one entry per session sitting in the cell of the day
+ * that session runs. Reading the date off the span instead of the cell would
+ * collapse all three CNC sessions onto 4 November.
  */
 import assert from 'node:assert/strict';
-import { parse } from '../src/lib/parse-calendar.mjs';
+import { parse, siteData } from '../src/lib/parse-calendar.mjs';
 
 let passed = 0;
 const ok = (name, fn) => {
@@ -21,118 +22,143 @@ const ok = (name, fn) => {
 };
 
 /** A series: three sessions, Wednesday / Monday / Wednesday. Not weekly. */
-const CNC =
-  '<a title="<div class=pe-hover-title>CNC Certification Series (3 part series) (2 avail)</div>' +
-  '<div class=pe-hover-date>September 23, 2026 6:00 pm</div>' +
-  '<div class=pe-hover-date>September 30, 2026 8:00 pm*1790798400*</div>" ' +
-  'href="https://seattlemakers.org/events/cnc-certification-series-3-part-series-19/" ' +
-  'rel="164625" class="pp-tip certification cnc cnc-routing pp-tip">' +
-  '<span class="dashicons dashicons-calendar"></span> CNC Certification Series (3 part series) 6:00 pm (2 avail)</a>';
+const CNC = {
+  id: 4874, title: 'CNC Certification Series (3 part series)',
+  href: '/events/cnc-certification-series-3-part-series-21/',
+  time: '6:00 pm', end_time: '8:00 pm',
+  starts: 'November 4, 2026 6:00 pm', ends: 'November 11, 2026 8:00 pm',
+  avail: 0, sold_out: true, classes: ['certification', 'cnc', 'cnc-routing'],
+  timing: 'wpost', minute: 0, duration: 120, hour: 18,
+};
 
-/** A one-off, whose cell and tooltip agree. 177 of the calendar's rows are these. */
-const SINGLE =
-  '<a title="<div class=pe-hover-title>Jointer, Planer &#8211; Certification (0 avail)</div>' +
-  '<div class=pe-hover-date>September 27, 2026 2:00 pm</div>' +
-  '<div class=pe-hover-date>September 27, 2026 5:00 pm*1790528400*</div>" ' +
-  'href="https://seattlemakers.org/events/jointer-planer-certification-10/" ' +
-  'rel="167809" class="pp-tip certification woodworking pe-inv-out pp-tip">' +
-  '<span class="dashicons dashicons-calendar"></span> Jointer, Planer &#8211; Certification 2:00 pm (0 avail)</a>';
+/** A one-off with seats left, an en dash in its title and the old noise class. */
+const GAME = {
+  id: 4869, title: 'Free – Game Night!', href: '/events/free-game-night-17/',
+  time: '6:00 pm', end_time: '11:55 pm',
+  starts: 'November 14, 2026 6:00 pm', ends: 'November 14, 2026 11:55 pm',
+  avail: 15, sold_out: false, classes: ['meetup'], timing: 'wposted',
+  minute: 0, duration: 355, hour: 18,
+};
 
-const cell = (weekday, day, ...anchors) =>
-  `<li class="event-day ${weekday}"><div class="head"><span class="inline-day">${weekday}</span>${day}</div>` +
-  `<div class="day"><ul>${anchors.map((a) => `<li class="wposting">${a}</li>`).join('')}</ul></div></li>`;
+/** Whole-building closure: no seats, no tags. Its span is four days. */
+const CLOSED = {
+  id: 4923, title: 'CLOSED', href: '/events/closed-189/',
+  time: '2:00 pm', end_time: '10:00 pm',
+  starts: 'November 26, 2026 2:00 pm', ends: 'November 29, 2026 10:00 pm',
+  avail: null, sold_out: false, classes: [], timing: 'wpost',
+  minute: 0, duration: 4800, hour: 14,
+};
 
-const month = (label, ...cells) =>
-  `<h3 class="pe-month-header">Showing: ${label}</h3><ol class="month">${cells.join('')}</ol>`;
+const day = (n, ...entries) => ({ day: n, dow: '', today: false, in_range: true, entries });
+const month = (title, year, m, ...days) => ({ title, year, month: m, lead: 0, days });
+const page = (...months) =>
+  `<!doctype html><html><head><title>Events Archive · Seattle Makers</title></head><body>` +
+  `<main id="site-content"></main>` +
+  `<script id="site-data" type="application/json">${JSON.stringify({
+    page: 'events',
+    data: { range: { type: 'upcoming' }, months, type: 'calendar' },
+  })}</script>` +
+  `<script type="module" src="/ui-assets/admin-ui/assets/site.js"></script></body></html>`;
 
-const PAGE = month(
-  'September 2026',
-  cell('wed', 23, CNC),
-  cell('sun', 27, SINGLE),
-  cell('mon', 28, CNC),
-  cell('wed', 30, CNC),
+const PAGE = page(
+  month('November 2026', 2026, 11,
+    day(4, CNC), day(9, CNC), day(11, CNC), day(14, GAME), day(26, CLOSED), day(27, CLOSED)),
 );
 
 const events = parse(PAGE);
 
-ok('every anchor becomes an event', () => {
-  assert.equal(events.length, 4);
+ok('the payload is found', () => {
+  assert.equal(siteData(PAGE).page, 'events');
+});
+
+ok('every entry becomes an event', () => {
+  assert.equal(events.length, 6);
 });
 
 ok('the series is three events, one per session', () => {
-  const cnc = events.filter((e) => e.id === 164625);
-  assert.equal(cnc.length, 3);
+  const cnc = events.filter((e) => e.id === 4874);
   assert.deepEqual(
     cnc.map((e) => e.start),
-    ['2026-09-23T18:00', '2026-09-28T18:00', '2026-09-30T18:00'],
+    ['2026-11-04T18:00', '2026-11-09T18:00', '2026-11-11T18:00'],
   );
 });
 
 ok('the session count matches the part count the title states', () => {
-  const cnc = events.filter((e) => e.id === 164625);
+  const cnc = events.filter((e) => e.id === 4874);
   const parts = /\((\d+)\s*part/i.exec(cnc[0].title);
   assert.equal(Number(parts[1]), cnc.length);
 });
 
 ok('the middle session is a Monday, which weekly arithmetic would have missed', () => {
-  // 7 days from 23 September is the 30th, so "expand the span weekly" gives
-  // two sessions and skips the 28th. The grid says otherwise and the grid is
-  // the source. This assertion is the whole reason the parser reads cells.
-  const starts = events.filter((e) => e.id === 164625).map((e) => e.start.slice(0, 10));
-  assert.ok(starts.includes('2026-09-28'));
-  assert.equal(new Date('2026-09-28T00:00:00').getDay(), 1);
+  const starts = events.filter((e) => e.id === 4874).map((e) => e.start.slice(0, 10));
+  assert.ok(starts.includes('2026-11-09'));
+  assert.equal(new Date('2026-11-09T00:00:00').getDay(), 1);
 });
 
 ok("each session carries the session's own clock times, not the span's", () => {
-  for (const e of events.filter((x) => x.id === 164625)) {
-    assert.equal(e.start.slice(11), '18:00');
+  for (const e of events.filter((x) => x.id === 4874)) {
     assert.equal(e.end, `${e.start.slice(0, 10)}T20:00`);
   }
 });
 
-ok('endTs belongs to the last session only', () => {
-  const cnc = events.filter((e) => e.id === 164625);
-  assert.deepEqual(
-    cnc.map((e) => e.endTs),
-    [null, null, 1790798400],
-  );
+ok('a multi-day closure is one row per day, each with that day\'s hours', () => {
+  const closed = events.filter((e) => e.id === 4923);
+  assert.deepEqual(closed.map((e) => [e.start, e.end]), [
+    ['2026-11-26T14:00', '2026-11-26T22:00'],
+    ['2026-11-27T14:00', '2026-11-27T22:00'],
+  ]);
+  assert.equal(closed[0].available, null);
+  assert.deepEqual(closed[0].kinds, []);
 });
 
-ok('a one-off is dated from its cell, which agrees with its tooltip', () => {
-  const j = events.find((e) => e.id === 167809);
-  assert.equal(j.start, '2026-09-27T14:00');
-  assert.equal(j.end, '2026-09-27T17:00');
-  assert.equal(j.title, 'Jointer, Planer - Certification');
-  assert.equal(j.soldOut, true);
-  assert.equal(j.available, 0);
+ok('a one-off keeps the shape the board reads', () => {
+  const g = events.find((e) => e.id === 4869);
+  assert.equal(g.title, 'Free - Game Night!');
+  assert.equal(g.url, 'https://seattlemakers.org/events/free-game-night-17/');
+  assert.equal(g.start, '2026-11-14T18:00');
+  assert.equal(g.end, '2026-11-14T23:55');
+  assert.equal(g.available, 15);
+  assert.equal(g.soldOut, false);
+  assert.equal(g.endTs, null);
 });
 
-ok('kinds and categories still split', () => {
-  const cnc = events.find((e) => e.id === 164625);
+ok('sold out comes from the flag and from zero seats', () => {
+  assert.equal(events.find((e) => e.id === 4874).soldOut, true);
+  const zero = parse(page(month('November 2026', 2026, 11, day(4, { ...GAME, avail: 0, sold_out: false }))));
+  assert.equal(zero[0].soldOut, true);
+});
+
+ok('kinds and categories still split, and noise classes are dropped', () => {
+  const cnc = events.find((e) => e.id === 4874);
   assert.deepEqual(cnc.kinds, ['certification']);
   assert.deepEqual(cnc.categories, ['cnc', 'cnc-routing']);
+  const noisy = parse(page(month('November 2026', 2026, 11, day(4, { ...GAME, classes: ['meetup', 'wposted'] }))));
+  assert.deepEqual(noisy[0].categories, []);
 });
 
 ok('a repeat inside one cell is still one event', () => {
-  const doubled = parse(month('September 2026', cell('wed', 23, CNC, CNC)));
+  // The live page lists the Ceramics Wheel series twice on 9 November.
+  const doubled = parse(page(month('November 2026', 2026, 11, day(9, CNC, CNC))));
   assert.equal(doubled.length, 1);
 });
 
-ok('the month header moves the year on', () => {
-  const across = parse(
-    month('December 2026', cell('thu', 31, CNC)) + month('January 2027', cell('fri', 1, CNC)),
-  );
-  assert.deepEqual(
-    across.map((e) => e.start.slice(0, 10)),
-    ['2026-12-31', '2027-01-01'],
-  );
+ok('each month grid carries its own year', () => {
+  const across = parse(page(
+    month('December 2026', 2026, 12, day(31, CLOSED)),
+    month('January 2027', 2027, 1, day(1, CLOSED)),
+  ));
+  assert.deepEqual(across.map((e) => e.start.slice(0, 10)), ['2026-12-31', '2027-01-01']);
 });
 
-ok('an anchor with no grid around it falls back to its tooltip', () => {
-  // A markup change should cost the session dates, not the whole calendar.
-  const loose = parse(SINGLE);
-  assert.equal(loose.length, 1);
-  assert.equal(loose[0].start, '2026-09-27T14:00');
+ok('cells outside the month are skipped', () => {
+  const pad = parse(page(month('November 2026', 2026, 11, { ...day(30, GAME), in_range: false })));
+  assert.equal(pad.length, 0);
+});
+
+ok('the old WordPress markup, or no payload at all, parses to nothing', () => {
+  // Zero is what calendar-api.mjs turns into an honest failure.
+  assert.deepEqual(parse('<h3 class="pe-month-header">Showing: September 2026</h3>'), []);
+  assert.deepEqual(parse('<script id="site-data" type="application/json">{not json</script>'), []);
 });
 
 ok('events come back in date order', () => {

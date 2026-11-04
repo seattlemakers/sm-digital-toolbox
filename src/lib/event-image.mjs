@@ -3,169 +3,220 @@
  *
  * Like summarise.mjs, this reads one event page - and it is called from the
  * same fetch, so a thumbnail costs nothing beyond what the description already
- * cost. Pure string-handling plus one HEAD request; no fs, no Node built-ins,
- * because the Workers runtime has none.
+ * cost, plus a request or two against the image itself. Pure string-handling
+ * and `fetch`; no fs, no Node built-ins, because the Workers runtime has none.
  *
- * **`og:image` is the only picture these pages state about themselves**, and
- * roughly half of them have none at all - measured across 34 distinct events,
- * 20 carried one. A row without a picture is therefore the normal case, not a
- * fault, and the board has to look right with a mix of both.
+ * **Where the picture is stated changed on 2026-11-04**, when seattlemakers.org
+ * moved off WordPress. There is no `og:image` any more. The page's own data -
+ * `<script id="site-data">`, the same payload the calendar is parsed from -
+ * carries `data.event.image`, a site-relative path. `og:image` is still read
+ * as a fallback in case it comes back.
  *
- * What it hands back is not always a photograph. Three kinds of thing turn up:
+ * **And what that path points at is usually a 300px thumbnail**, named the
+ * WordPress way: `silkscreen-printing-300x199.jpg`. The migration carried
+ * only some of the files across. Measured on 2026-11-04 over every picture on
+ * the calendar: four originals still exist, the rest 404, and *no* 768 or 1024
+ * variant survived at all. So the 300px file is often the only copy, and the
+ * old rule - at least 600px wide - would have rejected almost every photograph.
  *
- *   1. Real class photos and promotional artwork, at 564-1220px.
- *   2. Small studio badges: `laser_logo.jpg`, `woodshop_saw_logo.jpg`, both
- *      300x300.
- *   3. Full-size flat artwork: `tour_icon.jpg` at 768x768,
- *      `Website-black-icons-20.png` at 1219x1220, and Yoast's emoji fallback
- *      `1f600.svg`.
+ * What it hands back is still not always a photograph:
  *
- * (2) is caught by width, (3) by compression density, and the svg by the
- * extension test. That density rule is the scraper's - see fetch-events.mjs -
- * and it is the only one that separates a 1220px icon sheet from a 1220px
- * photograph, because size cannot.
+ *   1. Real class photos, now mostly as 300px thumbnails.
+ *   2. Studio badges, `laser_logo.jpg` and `woodshop_saw_logo.jpg` - 300x300
+ *      *originals*, with no size suffix.
+ *   3. Flat artwork: `Website-black-icons-20` (its 1219px original survives,
+ *      at 0.018 bytes/px) and `tour_icon` (only its 300px thumbnail survives,
+ *      at 0.047).
+ *
+ * Density cannot separate these at 300px on its own - the badges land at
+ * 0.108-0.129 and one real photo at 0.119 - so the rule is structural:
+ *
+ *   - **The original still exists:** the old, calibrated test. At least
+ *     MIN_IMAGE_WIDTH wide and MIN_BYTES_PER_PIXEL dense. This is what
+ *     rejects the badges (they *are* originals, at 300px) and the icon sheet.
+ *     Rejected here means rejected - the thumbnail of a rejected original is
+ *     the same artwork, smaller.
+ *   - **Only the `-WxH` thumbnail is left:** its size is in its name, and the
+ *     density floor still holds - every photograph measured 0.119 or more,
+ *     `tour_icon` 0.047.
+ *
+ * A badge cannot reach the second branch, because a badge is an original.
  */
 
 /** Where this site keeps its uploads. Anything else is chrome or off-site. */
 const UPLOADS = /^https:\/\/seattlemakers\.org\/wp-content\/uploads\//;
 
-/** Site chrome and Yoast's fallbacks, never the event's own picture. */
+const ORIGIN = 'https://seattlemakers.org';
+
+/** Site chrome and Yoast's old fallbacks, never the event's own picture. */
 const JUNK = /Logo-final|cropped-|s\.w\.org|\/emoji\/|favicon/i;
 
 /**
- * Below this the picture is a studio badge rather than a photograph. The two
- * on the calendar today are both 300x300, and the board's thumbnail is ~380px
- * on a 1080p screen, so this is also simply the size that renders.
+ * Below this an *original* is a studio badge rather than a photograph. The two
+ * on the calendar are both 300x300.
  */
 export const MIN_IMAGE_WIDTH = 600;
 
 /**
+ * Below this a surviving thumbnail is too small to put on a plate. WordPress's
+ * thumbnails are 300 on the long side, so this lets those through - the board
+ * shows them at about 380px on a 1080p screen, slightly upscaled, which beats
+ * the icon - and keeps out anything smaller.
+ */
+export const MIN_THUMB_WIDTH = 250;
+
+/**
  * Minimum compressed bytes per pixel for an image to count as a photograph.
  *
- * The scraper's constant and the scraper's reasoning: flat artwork with big
- * even areas squeezes to a fraction of what a photo needs, and that is the
- * only signal that separates the site's full-size icon sheets from real class
- * photos. Measured on the live calendar: `Website-black-icons-20.png` 0.018,
- * `tour_icon.jpg` 0.028, against 0.080-0.492 for every photograph.
- *
- * It costs one false negative that is visible today - `screenprinting.jpg` at
- * 0.054 is a real photo of a flat, evenly-lit print - which is the trade the
- * reel already accepted.
+ * Flat artwork with big even areas squeezes to a fraction of what a photo
+ * needs. Measured on the WordPress calendar: `Website-black-icons-20.png`
+ * 0.018, `tour_icon.jpg` 0.028, against 0.080-0.492 for every photograph; and
+ * on the new site's 300px thumbnails, 0.119-0.564 for photographs against
+ * `tour_icon-300x300.jpg` at 0.047.
  */
 export const MIN_BYTES_PER_PIXEL = 0.06;
 
-/**
- * Smallest srcset variant worth serving to a thumbnail.
- *
- * WordPress generates 300/768/1024 variants beside every original. The board
- * shows the picture at about 20% of a screen's short side - 380px on 1080p,
- * 760px on a 4K panel - so 768 is the honest size and the 1220px original is
- * three times the bytes for nothing. Rows are cheap but a wall board fetches
- * every one of them; on today's calendar this is 250K rather than 700K.
- */
-const THUMB_WIDTH = 640;
+/** Enough of a file to reach its dimensions, past any EXIF block. */
+const HEAD_BYTES = 131072;
 
-/** `<meta property="og:image">` and its stated dimensions, in either order. */
-export function ogImage(html) {
-  const url = meta(html, 'og:image');
-  if (!url) return null;
-  return {
-    url,
-    width: Number(meta(html, 'og:image:width')) || 0,
-    height: Number(meta(html, 'og:image:height')) || 0,
-  };
-}
-
-function meta(html, property) {
-  const m =
-    new RegExp(`<meta[^>]*property=["']${property}["'][^>]*content=["']([^"']*)["']`, 'i').exec(html) ||
-    new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*property=["']${property}["']`, 'i').exec(html);
-  return m ? m[1].trim() : null;
-}
-
-/**
- * Whether this is worth weighing at all: our own uploads, a raster format, not
- * chrome, and big enough to be a photograph rather than a badge.
- *
- * A stated width is *required*. Without one there is no way to tell a badge
- * from a photo before downloading it, and every page that carries an og:image
- * carries the width beside it - so a missing one means the markup moved, which
- * is a reason to show nothing rather than to guess.
- */
-function usable(img) {
-  return Boolean(
-    img &&
-      UPLOADS.test(img.url) &&
-      !JUNK.test(img.url) &&
-      /\.(jpe?g|png|webp)$/i.test(img.url.split('?')[0]) &&
-      img.width >= MIN_IMAGE_WIDTH &&
-      img.height > 0,
-  );
-}
+const UA = 'sm-digital-toolbox/0.1';
 
 /** WordPress writes "name-800x600.jpg" beside "name.jpg". */
-const stripSize = (url) => url.replace(/-\d+x\d+(\.[a-z]+)$/i, '$1');
+const SIZED = /-(\d+)x(\d+)(\.[a-z]+)$/i;
+export const stripSize = (url) => url.replace(SIZED, '$3');
 
-/**
- * The smallest generated variant of this same image at or above THUMB_WIDTH,
- * or the original when there is none.
- *
- * Only variants of the *same* original count - the page's srcsets also carry
- * every other picture on it, and picking one of those would put another
- * event's photo on this row.
- */
-export function thumbVariant(html, url) {
-  const original = stripSize(url);
-  let best = null;
-  for (const s of html.matchAll(/srcset="([^"]+)"/g)) {
-    for (const part of s[1].split(',')) {
-      const m = /\s*(https?:\/\/\S+?)\s+(\d+)w/.exec(part);
-      if (!m) continue;
-      const [, candidate, w] = m;
-      if (stripSize(candidate) !== original) continue;
-      const width = Number(w);
-      if (width < THUMB_WIDTH) continue;
-      if (!best || width < best.width) best = { url: candidate, width };
+/** The picture the page states, as an absolute URL, or null. */
+export function pageImage(html) {
+  const data = /<script[^>]*\bid=["']site-data["'][^>]*>([\s\S]*?)<\/script>/i.exec(html);
+  if (data) {
+    try {
+      const img = JSON.parse(data[1])?.data?.event?.image;
+      if (typeof img === 'string' && img) return new URL(img, ORIGIN).href;
+    } catch {
+      /* fall through to og:image */
     }
   }
-  return best ? best.url : url;
+  const og =
+    /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']*)["']/i.exec(html) ||
+    /<meta[^>]*content=["']([^"']*)["'][^>]*property=["']og:image["']/i.exec(html);
+  if (og && og[1].trim()) {
+    try {
+      return new URL(og[1].trim(), ORIGIN).href;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
-/** Compressed size of the original, from a HEAD. Null when it cannot be had. */
-async function weigh(url, fetchImpl) {
-  try {
-    const res = await fetchImpl(url, {
-      method: 'HEAD',
-      headers: { 'user-agent': 'sm-digital-toolbox/0.1' },
-    });
-    if (!res.ok) return null;
-    const len = Number(res.headers.get('content-length'));
-    return Number.isFinite(len) && len > 0 ? len : null;
-  } catch {
+/** Our own uploads, a raster format, and not site chrome. */
+function acceptable(url) {
+  return UPLOADS.test(url) && !JUNK.test(url) && /\.(jpe?g|png|webp)$/i.test(url.split('?')[0]);
+}
+
+const u32 = (b, i) => ((b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]) >>> 0;
+const u16 = (b, i) => (b[i] << 8) | b[i + 1];
+const u24le = (b, i) => b[i] | (b[i + 1] << 8) | (b[i + 2] << 16);
+
+/** Width and height from a file's first bytes - PNG, JPEG or WebP. */
+export function imageSize(b) {
+  if (b.length > 24 && u32(b, 0) === 0x89504e47) {
+    return { width: u32(b, 16), height: u32(b, 20) };
+  }
+  if (b.length > 4 && b[0] === 0xff && b[1] === 0xd8) {
+    let i = 2;
+    while (i < b.length - 9) {
+      if (b[i] !== 0xff) { i++; continue; }
+      const marker = b[i + 1];
+      // SOF0..SOF15, excluding DHT (c4), JPG (c8) and DAC (cc)
+      if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+        return { height: u16(b, i + 5), width: u16(b, i + 7) };
+      }
+      i += 2 + u16(b, i + 2);
+    }
     return null;
   }
+  if (b.length > 30 && u32(b, 0) === 0x52494646 && u32(b, 8) === 0x57454250) {
+    const chunk = String.fromCharCode(b[12], b[13], b[14], b[15]);
+    if (chunk === 'VP8X') return { width: u24le(b, 24) + 1, height: u24le(b, 27) + 1 };
+    if (chunk === 'VP8 ') return { width: (b[26] | (b[27] << 8)) & 0x3fff, height: (b[28] | (b[29] << 8)) & 0x3fff };
+    if (chunk === 'VP8L') {
+      const bits = b[21] | (b[22] << 8) | (b[23] << 16) | (b[24] << 24);
+      return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 };
+    }
+  }
+  return null;
 }
 
 /**
- * The thumbnail for one event page's HTML, or null.
+ * What the server says about one file.
  *
- * The density test weighs the **original**, whose dimensions the page states
- * exactly, and then serves the smaller variant. Weighing the variant instead
- * would compare a downscale against a threshold calibrated on originals, and a
- * downscaled photograph carries more detail per pixel than the full-size one
- * it came from.
+ *   { state: 'missing' }                      - a definite 404 (or other 4xx)
+ *   { state: 'unknown' }                      - network failure, 5xx
+ *   { state: 'ok', bytes, width?, height? }   - bytes may be null
  *
- * An image that cannot be weighed is kept. Losing every thumbnail on the board
- * because a CDN stopped sending `content-length` is a worse failure than the
- * occasional icon sheet getting through, and the width test has already
- * removed the badges by this point.
+ * `dims` asks for the first HEAD_BYTES with a Range GET, which the new host
+ * honours (206); otherwise a HEAD, which is all a thumbnail needs, since its
+ * size is in its name.
+ */
+async function probe(url, fetchImpl, dims) {
+  try {
+    const res = await fetchImpl(url, dims
+      ? { headers: { 'user-agent': UA, range: `bytes=0-${HEAD_BYTES - 1}` } }
+      : { method: 'HEAD', headers: { 'user-agent': UA } });
+    if (!res.ok) return { state: res.status >= 400 && res.status < 500 ? 'missing' : 'unknown' };
+
+    const range = /\/(\d+)\s*$/.exec(res.headers.get('content-range') ?? '');
+    const len = Number(res.headers.get('content-length'));
+    let bytes = range ? Number(range[1]) : null;
+
+    let size = null;
+    if (dims && typeof res.arrayBuffer === 'function') {
+      const buf = new Uint8Array(await res.arrayBuffer());
+      size = imageSize(buf);
+      // A server ignoring Range sends the whole file with a 200.
+      if (bytes === null && res.status === 200) bytes = buf.length;
+    }
+    if (bytes === null && Number.isFinite(len) && len > 0 && !(dims && res.status === 206)) bytes = len;
+
+    return { state: 'ok', bytes, ...(size ?? {}) };
+  } catch {
+    return { state: 'unknown' };
+  }
+}
+
+const dense = (bytes, w, h) => bytes === null || bytes / (w * h) >= MIN_BYTES_PER_PIXEL;
+
+/**
+ * The thumbnail for one event page's HTML, as an absolute URL, or null.
+ *
+ * An image that cannot be weighed is kept, as before: losing every thumbnail
+ * because a host stopped sending sizes is a worse failure than the occasional
+ * icon getting through. A file that is definitely gone is not.
  */
 export async function eventImage(html, fetchImpl = fetch) {
-  const img = ogImage(html);
-  if (!usable(img)) return null;
+  const given = pageImage(html);
+  if (!given || !acceptable(given)) return null;
 
-  const bytes = await weigh(img.url, fetchImpl);
-  if (bytes !== null && bytes / (img.width * img.height) < MIN_BYTES_PER_PIXEL) return null;
+  const original = stripSize(given);
+  const o = await probe(original, fetchImpl, true);
 
-  return thumbVariant(html, img.url);
+  if (o.state === 'ok' && o.width && o.height) {
+    if (o.width < MIN_IMAGE_WIDTH) return null;
+    return dense(o.bytes, o.width, o.height) ? original : null;
+  }
+
+  // From here the original is gone, or could not be read. If the page named
+  // the original itself there is nothing smaller to fall back on.
+  const sized = SIZED.exec(given);
+  if (!sized) return o.state === 'unknown' ? given : null;
+
+  const w = Number(sized[1]);
+  const h = Number(sized[2]);
+  if (Math.max(w, h) < MIN_THUMB_WIDTH || !h) return null;
+
+  const v = await probe(given, fetchImpl, false);
+  if (v.state === 'missing') return null;
+  if (v.state === 'unknown') return given;
+  return dense(v.bytes, w, h) ? given : null;
 }

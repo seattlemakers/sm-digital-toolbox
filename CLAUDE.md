@@ -270,6 +270,47 @@ time. Three ways out, roughly in order of how much they cost:
 
 ## Implementation notes
 
+### The 2026-11-04 migration
+
+**seattlemakers.org moved off WordPress on 2026-11-04, and every board went
+to "Cannot reach the calendar".** The new site renders its calendar in the
+browser: the HTML has an empty `<main>`, so the regex over `pe-month-header`
+and `pp-tip` anchors parsed zero events and `/api/events` answered 502 - which
+is the zero-parse guard doing exactly its job. `npm test` stayed green
+throughout, because its fixtures were copies of the old markup. A test pinned
+to a saved page proves the parser, not the source.
+
+**What the page carries instead is better: `<script id="site-data">`**, the
+JSON the browser renders from - `data.months[].days[].entries[]`, each with
+id, title, href, `time` / `end_time`, `avail`, `sold_out` and `classes`.
+`parse()` reads that and emits the same shape as before. The cell still gives
+the date and `time` / `end_time` the session's clock, because `starts` /
+`ends` are still the *span* on a series. `endTs` is null now; nothing read it.
+
+- **Range.** The default "upcoming" view is three month grids (this month and
+  the next two), where WordPress gave five. `?type=year&date=` gives a
+  calendar year if `/calendar` ever needs further ahead.
+- **`og:image` is gone.** The picture is `data.event.image` in the event
+  page's own site-data, site-relative, with no width stated - and it is
+  usually the **300px** WordPress thumbnail (`name-300x199.jpg`), because the
+  migration kept some originals, dropped the rest, and kept **no** 768/1024
+  variants at all. See the header of `lib/event-image.mjs` for the rule that
+  replaced "at least 600px": test the original when it survives, else the
+  thumbnail by density. The `og:image`, srcset and "stated width" notes under
+  *Pictures* below describe the old site.
+- **Cancelled titles read "CANCELLED - Title"** rather than "(CANCELLED)";
+  the board's strip regex takes the dash with it.
+- **Unknown `/events/types/<slug>/` now 404s properly.** The soft-404 note
+  under *The poster* describes the old site; the by-construction rule is
+  still how the slugs are chosen.
+- Unchanged and re-checked: `og:description` on every event page, the hours
+  and phone number in the footer, and `/events`, `/interest/` and the six
+  studio archives the QR codes print.
+
+The site carried a "we're updating our website" banner on the day, so expect
+more of this. If the board goes to "Cannot reach the calendar" again, fetch
+`/events/` and look for `site-data` first.
+
 ### Branding
 
 **Figtree is the only face on the site, as of 2026-10-22.** `--font-sans`

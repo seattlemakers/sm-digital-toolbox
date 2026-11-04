@@ -154,11 +154,14 @@ function studioLabel(studios: Studio[]): string {
   return studios.map((s) => s.name).join(' + ');
 }
 
-const CANCELLED = /\s*\(?\bcancell?ed\b\)?\s*/i;
+const CANCELLED = /\s*(?:[-–:]\s*)?[([]?\bcancell?ed\b[)\]]?\s*(?:[-–:]\s*)?/i;
 
 /**
  * Organisers edit "(CANCELLED)" into the event name rather than removing the
- * event, so the title is the only place this is recorded. Handed to
+ * event, so the title is the only place this is recorded. Since the
+ * 2026-11-04 migration it reads "CANCELLED - Upcycle Sewing", so the regex
+ * also takes a dash or colon either side, or the struck title would start
+ * "- Upcycle". Handed to
  * `statuses()` so a class that is not happening can never be what the board
  * calls "on now" or points at as starting soon.
  */
