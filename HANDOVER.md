@@ -6,6 +6,13 @@ account from the start, so the deployment, its URL and its billing were always
 final; the GitHub repo was the last personal piece and moved to the
 `seattlemakers` org on 2026-09-20.
 
+**It is live at <https://sm-digital-toolbox.noisy-leaf-680c.workers.dev/>** -
+the board is `/today/`, the calendar's feed `/api/events`. Written here
+because it was written nowhere else, and checking a deploy meant asking
+somebody. If a custom domain goes on, add it beside this one rather than
+replacing it: the `workers.dev` address keeps working, and screens or
+bookmarks may still point at it.
+
 One step of that move is still outstanding - see *Transfer steps* below, item
 3. Written down because the person doing the transfer may not be the person who
 set it up.
