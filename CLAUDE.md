@@ -318,8 +318,10 @@ is Figtree and `--font-display` is an alias of it, so prose, the printed labels,
 the calendar poster and the reel all moved in one token. The notes below about
 Roboto as the body face, labels "set in Roboto", and the reel staying on Lato
 describe the state before that. The Roboto and Lato `@font-face` rules, their
-preloads and `--font-reel` are gone; the font files are still in
-`public/fonts/`. Code spans on labels stay monospace.
+preloads and `--font-reel` are gone, and so are the files themselves, deleted
+on 2026-11-04 once a render audit of every page found Figtree on every text
+element and no other face requested. They are in git history if one is ever
+needed back. Code spans on labels stay monospace.
 
 The reel was checked rather than assumed, by switching the face in place and
 diffing every text element on all 19 slides: no line count changed, nothing
